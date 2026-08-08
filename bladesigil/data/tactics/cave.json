@@ -1,0 +1,14 @@
+{
+  "_comment": "Tactical battle template. The grid must be 13 wide x 8 tall. Symbols: . open floor, # obstacle (blocks movement), f front-row hero spawn, b back-row hero spawn, m monster spawn. Extra combatants beyond the marked spawns are placed on the nearest open square. Edit freely and refresh!",
+  "name": "Twisting Cave",
+  "map": [
+    "##..##...####",
+    "#b.f....#..m#",
+    "#b..#....m..#",
+    "#..f..##....#",
+    "#b.f..##..m.#",
+    "#...#.....###",
+    "#b..f...m..##",
+    "###..##..####"
+  ]
+}

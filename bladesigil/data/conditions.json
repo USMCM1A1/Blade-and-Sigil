@@ -1,0 +1,31 @@
+{
+  "_comment": "Conditions (afflictions and lingering effects). 'effect': damage = lose dice HP per tick, skip = lose the turn. In battle a condition ticks at the START of the afflicted creature's own initiative turn. 'lingers': false = it expires when the battle ends; true = it follows you onto the map, ticking every 'map_tick_every' map turns (camp is 50 turns — sleep off a poison at your peril). 'save': which ability resists when something tries to inflict it (monsters use their save bonus). 'color' paints the floating text and status pips. Edit freely and refresh!",
+  "conditions": {
+    "burning": {
+      "name": "Burning",
+      "effect": "damage",
+      "dice": "1d4",
+      "lingers": false,
+      "color": "#ff8c3a",
+      "description": "Fire clings — damage each round until it gutters out"
+    },
+    "poison": {
+      "name": "Poisoned",
+      "effect": "damage",
+      "dice": "1d3",
+      "lingers": true,
+      "map_tick_every": 10,
+      "save": "con",
+      "color": "#7ec850",
+      "description": "Venom in the blood — ticks in battle and on the march"
+    },
+    "paralysis": {
+      "name": "Paralyzed",
+      "effect": "skip",
+      "lingers": false,
+      "save": "wis",
+      "color": "#8fb8e8",
+      "description": "Frozen stiff — the turn is lost"
+    }
+  }
+}

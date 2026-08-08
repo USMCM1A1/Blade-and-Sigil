@@ -1,0 +1,52 @@
+{
+  "_comment": "Playable races, from the Blade & Sigil design doc. 'ability_bonus' adds to the rolled score. 'save_bonus' adds to all saving throws (the dwarven trait).",
+  "races": {
+    "human": {
+      "name": "Human",
+      "ability_bonus": {
+        "str": 1
+      },
+      "traits": [
+        "Bonus to melee combat"
+      ]
+    },
+    "high_elf": {
+      "name": "High Elf",
+      "ability_bonus": {
+        "int": 1
+      },
+      "traits": [
+        "Bonus to arcane magic"
+      ]
+    },
+    "wood_elf": {
+      "name": "Wood Elf",
+      "ability_bonus": {
+        "dex": 1
+      },
+      "traits": [
+        "Bonus to ranged combat",
+        "Detect secret doors"
+      ]
+    },
+    "halfling": {
+      "name": "Halfling",
+      "ability_bonus": {
+        "dex": 1
+      },
+      "traits": [
+        "Bonus to thief skills"
+      ]
+    },
+    "dwarf": {
+      "name": "Dwarf",
+      "ability_bonus": {
+        "con": 1
+      },
+      "traits": [
+        "Bonus to all saves"
+      ],
+      "save_bonus": 2
+    }
+  }
+}

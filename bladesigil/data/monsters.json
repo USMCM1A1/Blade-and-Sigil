@@ -1,0 +1,56 @@
+{
+  "_comment": "Phase 1 starter bestiary. 'ac' is the monster's armor bonus: attackers must roll d20 + bonuses >= 10 + ac to hit. 'damage' is a dice string. 'xp' is awarded to each party member on a kill. 'speed': how many player turns pass between monster moves (1 = every turn, 2 = every other turn). 'save': the monster's saving-throw bonus against spells (d20 + save vs the spell's DC; success = half damage). 'inflicts': {condition, rounds, dc} \u2014 on a hit, the victim saves (d20 + ability mod vs dc) or gains the condition.",
+  "monsters": {
+    "giant_rat": {
+      "name": "Giant Rat",
+      "sprite": "assets/enemies/giant_rat.jpg",
+      "hp": 6,
+      "ac": 2,
+      "to_hit": 1,
+      "damage": "1d4",
+      "speed": 1,
+      "xp": 5,
+      "save": 1,
+      "inflicts": {
+        "condition": "poison",
+        "rounds": 3,
+        "dc": 12
+      }
+    },
+    "goblin": {
+      "name": "Goblin",
+      "sprite": "assets/enemies/goblin.png",
+      "sprite_dead": "assets/enemies/goblin_dead.png",
+      "hp": 8,
+      "ac": 3,
+      "to_hit": 1,
+      "damage": "1d6",
+      "speed": 1,
+      "xp": 10,
+      "save": 1
+    },
+    "skeleton": {
+      "name": "Skeleton",
+      "sprite": "assets/enemies/skel_01.png",
+      "sprite_dead": "assets/enemies/skel_01_dead.png",
+      "hp": 10,
+      "ac": 4,
+      "to_hit": 2,
+      "damage": "1d6",
+      "speed": 2,
+      "xp": 15,
+      "save": 0
+    },
+    "orc": {
+      "name": "Orc",
+      "sprite": "assets/enemies/orc.jpg",
+      "hp": 12,
+      "ac": 5,
+      "to_hit": 2,
+      "damage": "1d6+1",
+      "speed": 1,
+      "xp": 25,
+      "save": 2
+    }
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "_comment": "Battlefield spells (design doc: cost = spell level x 2 + 1). Fields: classes = who can cast (ids from classes.json); stat = ability whose modifier boosts the spell (int = arcane, wis = divine); type = damage | heal | buff; range/area in battle squares (area 1 = a 3x3 burst); Damage spells never miss: each target rolls a save (d20 + bonus vs DC 10 + spell level + caster's stat mod) \u2014 save = which ability resists ('dex' to dodge a burst, 'wis' to resist divine power); success means half damage. auto = true means no save at all (magic missile always strikes true). Buffs last for the rest of the battle: hit adds to attack rolls, dmg to damage. Edit freely and refresh! 'condition': {id, rounds} \u2014 inflicted on targets that FAIL their save (or on every target if the spell allows no save). type 'afflict' = no damage, just a condition: the target saves (vs the same DC) or suffers it.",
+  "spells": {
+    "magic_missile": {
+      "name": "Magic Missile",
+      "level": 1,
+      "cost": 3,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "damage",
+      "dice": "1d4+1",
+      "range": 4,
+      "area": 0,
+      "auto": true,
+      "description": "A dart of force that never misses"
+    },
+    "lesser_fireball": {
+      "name": "Lesser Fireball",
+      "level": 1,
+      "cost": 3,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "damage",
+      "dice": "3d6",
+      "range": 6,
+      "area": 1,
+      "description": "A burst of flame \u2014 it does not spare your friends!",
+      "save": "dex",
+      "condition": {
+        "id": "burning",
+        "rounds": 2
+      }
+    },
+    "cure_light_wounds": {
+      "name": "Cure Light Wounds",
+      "level": 1,
+      "cost": 3,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "heal",
+      "dice": "1d8",
+      "range": 3,
+      "area": 0,
+      "description": "Mends the wounds of one living ally"
+    },
+    "holy_bolt": {
+      "name": "Holy Bolt",
+      "level": 1,
+      "cost": 3,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "damage",
+      "dice": "2d6",
+      "range": 5,
+      "area": 0,
+      "description": "A lance of searing light",
+      "save": "wis"
+    },
+    "bless": {
+      "name": "Bless",
+      "level": 1,
+      "cost": 3,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "buff",
+      "hit": 1,
+      "dmg": 0,
+      "targets": "allies",
+      "range": 0,
+      "area": 0,
+      "description": "The whole party strikes truer (+1 to hit this battle)"
+    },
+    "wicked_weapon": {
+      "name": "Wicked Weapon",
+      "level": 1,
+      "cost": 3,
+      "classes": [
+        "spellblade"
+      ],
+      "stat": "int",
+      "type": "buff",
+      "hit": 1,
+      "dmg": 2,
+      "targets": "self",
+      "range": 0,
+      "area": 0,
+      "description": "The blade hungers (+1 hit, +2 damage this battle)"
+    },
+    "poison_dart": {
+      "name": "Poison Dart",
+      "level": 1,
+      "cost": 3,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "damage",
+      "dice": "1d3",
+      "range": 5,
+      "area": 0,
+      "save": "con",
+      "condition": {
+        "id": "poison",
+        "rounds": 3
+      },
+      "description": "A sliver of venom \u2014 the wound is small, the poison is not"
+    },
+    "paralyze": {
+      "name": "Paralyze",
+      "level": 2,
+      "cost": 5,
+      "classes": [
+        "wizard",
+        "priest"
+      ],
+      "stat": "int",
+      "type": "afflict",
+      "range": 3,
+      "area": 0,
+      "condition": {
+        "id": "paralysis",
+        "rounds": 2
+      },
+      "description": "Lock a creature's limbs \u2014 it loses its next two turns"
+    }
+  }
+}

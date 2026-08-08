@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Blade &amp; Sigil</title>
+<style>
+  :root {
+    --bg: #0d0d12;
+    --panel: #16161e;
+    --panel-edge: #2c2c3a;
+    --gold: #d4a94e;
+    --parchment: #cfc4a6;
+    --dim: #8a8a99;
+    --blood: #b03535;
+    --mana: #4e7dd4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--parchment);
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 10px;
+    user-select: none;
+  }
+  #titlebar {
+    width: 1180px; max-width: 100%;
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 4px 8px 8px 8px;
+  }
+  #titlebar h1 { color: var(--gold); font-size: 26px; letter-spacing: 3px; font-variant: small-caps; }
+  #location { color: var(--dim); font-style: italic; }
+  #gold-display { color: var(--gold); }
+  #layout {
+    display: flex; gap: 10px;
+    width: 1180px; max-width: 100%;
+  }
+  #viewport {
+    background: #000;
+    border: 2px solid var(--panel-edge);
+    border-radius: 4px;
+    display: block;
+  }
+  #sidebar {
+    width: 320px; flex-shrink: 0;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .char-card {
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: 4px;
+    padding: 8px;
+    display: flex; gap: 10px; align-items: center;
+  }
+  .char-card.dead { opacity: 0.55; }
+  .char-card img {
+    width: 52px; height: 52px;
+    object-fit: contain;
+    background: #0a0a0f;
+    border: 1px solid var(--panel-edge);
+    border-radius: 3px;
+    image-rendering: pixelated;
+  }
+  .char-info { flex: 1; }
+  .char-status { font-size: 10.5px; margin-top: 2px; font-variant: small-caps; letter-spacing: 0.5px; }
+  .char-name { font-size: 15px; color: var(--parchment); }
+  .char-name .row-tag { color: var(--dim); font-size: 11px; }
+  .char-sub { font-size: 11.5px; color: var(--dim); margin-bottom: 4px; }
+  .bar {
+    height: 10px; border-radius: 2px;
+    background: #0a0a0f;
+    border: 1px solid #000;
+    margin-bottom: 3px;
+    position: relative;
+    overflow: hidden;
+  }
+  .bar .fill { position: absolute; inset: 0; transform-origin: left; }
+  .bar.hp .fill { background: linear-gradient(#c04848, #8c2e2e); }
+  .bar.sp .fill { background: linear-gradient(#5c88d8, #3a5da8); }
+  .bar-label {
+    position: absolute; inset: 0;
+    font-size: 8.5px; line-height: 10px; text-align: center;
+    color: #fff; font-family: Verdana, sans-serif;
+    text-shadow: 0 1px 1px #000;
+  }
+  #log {
+    width: 1180px; max-width: 100%;
+    height: 150px;
+    margin-top: 10px;
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: 4px;
+    padding: 8px 12px;
+    overflow-y: auto;
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+  #log .msg-combat { color: #d8b0b0; }
+  #log .msg-good  { color: #a8d8a8; }
+  #log .msg-gold  { color: var(--gold); }
+  #log .msg-info  { color: var(--dim); }
+  #log .msg-death { color: var(--blood); font-weight: bold; }
+  #controls {
+    width: 1180px; max-width: 100%;
+    padding: 6px 8px; font-size: 12px; color: var(--dim);
+    text-align: center;
+  }
+  #help {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 560px; max-width: 90vw;
+    background: var(--panel);
+    border: 2px solid var(--gold);
+    border-radius: 6px;
+    padding: 24px 30px;
+    z-index: 50;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.8);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  #help h2 { color: var(--gold); font-variant: small-caps; letter-spacing: 1px; margin-bottom: 10px; }
+  #help h2 + p, #help table { margin-bottom: 18px; }
+  #help table { border-collapse: collapse; width: 100%; }
+  #help td { padding: 3px 6px; vertical-align: top; }
+  #help td:first-child { color: var(--gold); white-space: nowrap; width: 160px; }
+  #help td.ind { padding-left: 24px; color: var(--dim); }
+  #help .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 6px; }
+  /* ---- Title screen & character creation ---- */
+  #creation {
+    display: none;
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at 50% 30%, #16161e 0%, #0d0d12 70%);
+    z-index: 60;
+    align-items: center; justify-content: center;
+  }
+  .cr-panel {
+    width: 860px; max-width: 94vw; max-height: 94vh;
+    overflow-y: auto;
+    background: var(--panel);
+    border: 2px solid var(--gold);
+    border-radius: 8px;
+    padding: 26px 34px;
+    box-shadow: 0 12px 60px rgba(0,0,0,0.85);
+  }
+  .cr-title { text-align: center; width: 520px; }
+  .cr-title h1 { color: var(--gold); font-size: 42px; letter-spacing: 6px; font-variant: small-caps; }
+  .cr-sub { color: var(--dim); font-style: italic; margin: 6px 0 26px; }
+  .cr-title-buttons { display: flex; flex-direction: column; gap: 12px; }
+  #creation button {
+    font-family: Georgia, serif;
+    background: #1d1d28;
+    color: var(--parchment);
+    border: 1px solid var(--panel-edge);
+    border-radius: 5px;
+    padding: 10px 16px;
+    font-size: 15px;
+    cursor: pointer;
+    text-align: left;
+  }
+  #creation button:hover { border-color: var(--gold); }
+  .cr-title-buttons button { text-align: center; font-size: 16px; }
+  #cr-new { border-color: var(--gold); color: var(--gold); }
+  .cr-step { color: var(--gold); font-variant: small-caps; letter-spacing: 2px; font-size: 18px; margin-bottom: 14px; }
+  .cr-columns { display: flex; gap: 28px; }
+  .cr-col { flex: 1; min-width: 0; }
+  .cr-label { display: block; color: var(--gold); font-variant: small-caps; letter-spacing: 1px; margin: 14px 0 6px; }
+  .cr-dim { color: var(--dim); font-variant: normal; letter-spacing: 0; font-size: 12px; }
+  #cr-name {
+    width: 100%;
+    background: #0a0a0f; color: var(--parchment);
+    border: 1px solid var(--panel-edge); border-radius: 4px;
+    font-family: Georgia, serif; font-size: 16px;
+    padding: 8px 10px;
+  }
+  #cr-name.cr-error { border-color: var(--blood); }
+  .cr-choices { display: flex; flex-direction: column; gap: 5px; }
+  .cr-rows { flex-direction: row; }
+  .cr-rows .cr-choice { flex: 1; }
+  .cr-choice b { display: block; font-size: 14px; }
+  .cr-choice span { display: block; font-size: 11.5px; color: var(--dim); margin-top: 2px; }
+  .cr-choice.picked { border-color: var(--gold); background: #23202c; }
+  .cr-choice.picked b { color: var(--gold); }
+  .cr-abilities { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .cr-ability { display: flex; align-items: baseline; gap: 6px; padding: 7px 10px !important; }
+  .cr-ability.swapping { border-color: var(--gold); background: #2c2618; }
+  .cr-ab-name { flex: 1; font-size: 13px; }
+  .cr-ab-score { font-size: 17px; color: var(--gold); }
+  .cr-ab-score i { font-style: normal; font-size: 11px; color: var(--dim); }
+  .cr-ab-mod { font-size: 12px; color: var(--dim); width: 24px; text-align: right; }
+  .cr-minor { font-size: 13px !important; color: var(--dim) !important; margin-top: 8px; }
+  .cr-preview {
+    display: flex; gap: 12px; align-items: center;
+    margin-top: 16px; padding: 10px;
+    background: #0a0a0f; border: 1px solid var(--panel-edge); border-radius: 5px;
+  }
+  .cr-preview img { width: 64px; height: 64px; object-fit: contain; image-rendering: pixelated; }
+  .cr-nav { display: flex; justify-content: space-between; margin-top: 22px; }
+  #cr-next { border-color: var(--gold); color: var(--gold); font-size: 16px; }
+  #fatal {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(5,5,8,0.96);
+    z-index: 100;
+    padding: 60px;
+    color: #e0b0b0;
+    font-family: Menlo, monospace;
+    white-space: pre-wrap;
+    font-size: 14px; line-height: 1.6;
+  }
+  #fatal h2 { color: var(--blood); margin-bottom: 20px; font-family: Georgia, serif; }
+</style>
+</head>
+<body>
+  <div id="titlebar">
+    <h1>Blade &amp; Sigil</h1>
+    <span id="location">Loading&hellip;</span>
+    <span id="gold-display">Gold: 0</span>
+  </div>
+  <div id="layout">
+    <canvas id="viewport" width="840" height="600"></canvas>
+    <div id="sidebar"></div>
+  </div>
+  <div id="log"></div>
+  <div id="controls">
+    <b>H — help &amp; controls</b> &nbsp;•&nbsp; Arrow keys / WASD — move (walk into things!) &nbsp;•&nbsp; T — camp &nbsp;•&nbsp; In battle: move &amp; bump to attack, Space ends turn, Esc flees &nbsp;•&nbsp; M — mute &nbsp;•&nbsp; R — restart
+  </div>
+  <div id="help">
+    <h2>How to Play</h2>
+    <table>
+      <tr><td>Arrow keys / WASD</td><td>Move the party — <b>walk into things to interact:</b></td></tr>
+      <tr><td class="ind">&rarr; a monster</td><td><b>battle begins!</b> (see below)</td></tr>
+      <tr><td class="ind">&rarr; a door</td><td>pushes it open</td></tr>
+      <tr><td class="ind">&rarr; a chest</td><td>loots the gold</td></tr>
+      <tr><td class="ind">&rarr; the stairs ▼</td><td>descend — clears the level!</td></tr>
+      <tr><td>Space</td><td>wait one turn (monsters still move)</td></tr>
+      <tr><td>T</td><td>make camp — restores HP &amp; spell points (no enemies in sight!)</td></tr>
+      <tr><td>` (backtick)</td><td>training arena — tough dummies, free spells, nothing is real; Esc leaves</td></tr>
+      <tr><td>H or ?</td><td>show / hide this help</td></tr>
+      <tr><td>M</td><td>mute sound</td></tr>
+      <tr><td>R</td><td>restart from the beginning</td></tr>
+    </table>
+    <h2>Battle</h2>
+    <p>Walking into a monster (or getting caught by one) moves the fight to a
+    tactical battlefield: every nearby monster joins, and each hero and monster
+    stands on their own square. <b>Initiative</b> (d20 + DEX) sets the turn
+    order. On a hero's turn: <b>arrow keys move</b> (4 squares), and
+    <b>walking into a monster attacks it</b> — that ends the turn.
+    <b>C</b> opens a caster's spell menu and <b>F</b> draws the archer's bow —
+    aim with the arrows, Enter to unleash. Beware: a fireball burns friend and
+    foe alike! Space ends the turn; Esc flees. Front-row heroes start closest
+    to the enemy. Every swing appears in the message log.</p>
+    <p class="dismiss">Press H to close</p>
+  </div>
+  <div id="creation"></div>
+  <div id="fatal"><h2>The dungeon collapsed! (data file error)</h2><div id="fatal-msg"></div></div>
+  <script type="module" src="engine/main.js"></script>
+</body>
+</html>
