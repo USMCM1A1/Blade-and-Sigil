@@ -3,7 +3,7 @@
 import { loadJSON, showFatal } from './loader.js';
 import { Game } from './game.js';
 import { Renderer, preloadImages } from './render.js';
-import { buildPartyPanel, updateUI, toggleInventory, inventoryOpen, toggleEquipment, equipmentOpen } from './ui.js';
+import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen } from './ui.js';
 import { choosePartyDef } from './creation.js';
 import * as audio from './audio.js';
 
@@ -31,13 +31,32 @@ async function boot() {
 
   // Collect every sprite the data mentions and preload it.
   const sprites = new Set(['assets/misc/loot_drop.jpg', 'assets/misc/door_1.png', 'assets/heroes/party-icon.png']);
-  for (const c of Object.values(classes.classes)) { sprites.add(c.sprite); sprites.add(c.sprite_dead); }
+  for (const c of Object.values(classes.classes)) { sprites.add(c.sprite); sprites.add(c.sprite_dead); if (c.portrait) sprites.add(c.portrait); }
   for (const m of Object.values(monsters.monsters)) { sprites.add(m.sprite); if (m.sprite_dead) sprites.add(m.sprite_dead); }
   const images = await preloadImages([...sprites]);
 
-  const renderer = new Renderer(document.getElementById('viewport'), game, images);
+  const canvas = document.getElementById('viewport');
+  const renderer = new Renderer(canvas, game, images);
   window.game = game; // console access for debugging/playtesting
   buildPartyPanel(game);
+
+  // Fill the window: the canvas takes all the room the sidebar, log, and
+  // bars leave, and the renderer's camera sees as many tiles as fit.
+  const TILE = 56;
+  const fitCanvas = () => {
+    const layout = document.getElementById('layout');
+    const w = Math.max(840, layout.clientWidth - 330); // sidebar + gap
+    const otherH = document.getElementById('titlebar').offsetHeight
+      + document.getElementById('log').offsetHeight
+      + document.getElementById('controls').offsetHeight + 44; // paddings/margins
+    const h = Math.max(600, window.innerHeight - otherH);
+    canvas.width = Math.floor(w / TILE) * TILE;
+    canvas.height = Math.floor(h / TILE) * TILE;
+    renderer.cols = Math.floor(canvas.width / TILE);
+    renderer.rows = Math.floor(canvas.height / TILE);
+  };
+  window.addEventListener('resize', fitCanvas);
+  fitCanvas();
 
   const MOVES = {
     ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
@@ -46,8 +65,14 @@ async function boot() {
   };
 
   const help = document.getElementById('help');
+  const guide = document.getElementById('guide');
   const toggleHelp = show => {
     help.style.display = (show ?? help.style.display !== 'block') ? 'block' : 'none';
+    if (help.style.display === 'block') guide.style.display = 'none';
+  };
+  const toggleGuide = show => {
+    guide.style.display = (show ?? guide.style.display !== 'block') ? 'block' : 'none';
+    if (guide.style.display === 'block') help.style.display = 'none';
   };
   if (!localStorage.getItem('bs_seen_help')) {
     toggleHelp(true); // first visit: open with the controls on screen
@@ -60,8 +85,15 @@ async function boot() {
       toggleHelp();
       return;
     }
-    if (help.style.display === 'block' && (e.key === 'Escape' || MOVES[e.key])) {
-      toggleHelp(false); // any move or Esc dismisses help, then the move happens
+    if (e.key === 'g' || e.key === 'G') {
+      e.preventDefault();
+      toggleGuide();
+      return;
+    }
+    if ((help.style.display === 'block' || guide.style.display === 'block')
+        && (e.key === 'Escape' || MOVES[e.key])) {
+      toggleHelp(false); // any move or Esc dismisses them, then the move happens
+      toggleGuide(false);
     }
     if (game.battle) {
       const b = game.battle;
@@ -106,13 +138,9 @@ async function boot() {
       }
       return;
     }
-    if (inventoryOpen()) {
-      // The pouch is modal on the map: I or Esc puts it away.
-      if (e.key === 'i' || e.key === 'I' || e.key === 'Escape') toggleInventory(game, false);
-      return;
-    }
     if (equipmentOpen()) {
-      if (e.key === 'e' || e.key === 'E' || e.key === 'Escape') toggleEquipment(game, false);
+      // The inventory screen is modal on the map: I, E, or Esc puts it away.
+      if ('iIeE'.includes(e.key) || e.key === 'Escape') toggleEquipment(game, false);
       return;
     }
     if (MOVES[e.key]) {
@@ -123,9 +151,7 @@ async function boot() {
       game.wait();
     } else if (e.key === 't' || e.key === 'T') {
       game.rest();
-    } else if (e.key === 'i' || e.key === 'I') {
-      if (!game.over && !game.victory) toggleInventory(game);
-    } else if (e.key === 'e' || e.key === 'E') {
+    } else if ('iIeE'.includes(e.key)) {
       if (!game.over && !game.victory) toggleEquipment(game);
     } else if (e.key === '`' || e.key === '~') {
       game.startArena();

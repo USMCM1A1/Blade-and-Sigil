@@ -1,16 +1,5 @@
-// DOM panels: party roster, message log, gold/location readouts, party pouch.
-
-// ---- Party pouch (map inventory, toggled with I) ----
-export function inventoryOpen() {
-  return document.getElementById('inventory').style.display === 'block';
-}
-
-export function toggleInventory(game, show) {
-  const panel = document.getElementById('inventory');
-  const opening = show ?? !inventoryOpen();
-  panel.style.display = opening ? 'block' : 'none';
-  if (opening) renderInventory(game);
-}
+// DOM panels: party roster, message log, gold/location readouts, and the
+// inventory screen (paper doll + potions + gear pool, toggled with I or E).
 
 // A one-line designer-friendly summary of what a piece of gear does.
 function gearStats(def) {
@@ -22,51 +11,7 @@ function gearStats(def) {
   return bits.join(' · ');
 }
 
-function renderInventory(game) {
-  const list = document.getElementById('inv-list');
-  const potions = game.heldItems();
-  const gear = game.heldGear();
-  list.innerHTML = '';
-  if (!potions.length && !gear.length) {
-    list.innerHTML = '<p class="inv-empty">The pouch is empty. Chests sometimes hold potions and gear...</p>';
-  }
-
-  for (const it of potions) {
-    const row = document.createElement('div');
-    row.className = 'inv-item';
-    row.innerHTML = `
-      <div class="inv-head">${it.def.name} <span class="inv-count">×${it.count}</span></div>
-      <div class="inv-desc">${it.def.description}</div>
-      <div class="inv-heroes"><span>Drink:</span></div>`;
-    const heroes = row.querySelector('.inv-heroes');
-    for (const ch of game.party) {
-      const btn = document.createElement('button');
-      const reason = game.itemBlockReason(it.def, ch);
-      btn.textContent = `${ch.name} ${ch.alive ? `${ch.hp}/${ch.maxHp}` : '✝'}`;
-      if (reason) { btn.disabled = true; btn.title = reason; }
-      btn.addEventListener('click', () => {
-        game.useItemOnMap(it.id, ch);
-        // Drinking passes a turn — the world may answer with a battle.
-        if (game.battle) toggleInventory(game, false);
-        else renderInventory(game);
-      });
-      heroes.appendChild(btn);
-    }
-    list.appendChild(row);
-  }
-
-  if (gear.length) {
-    const row = document.createElement('div');
-    row.className = 'inv-item';
-    row.innerHTML = `
-      <div class="inv-head">Carried gear</div>
-      <div class="inv-desc">${gear.map(it => `${it.def.name} ×${it.count}`).join(' · ')}</div>
-      <div class="inv-desc">Press <b>E</b> to open the equipment screen.</div>`;
-    list.appendChild(row);
-  }
-}
-
-// ---- Paper doll (equipment screen, toggled with E) ----
+// ---- The inventory screen ----
 // Slots are laid out around the hero's figure: head above, hands at the
 // sides, rings by the hands, boots at the feet — see #eq-doll grid areas.
 const DOLL_SLOTS = [
@@ -126,6 +71,30 @@ function renderEquipment(game) {
     doll.appendChild(cell);
   }
 
+  // Potions: drunk by the hero whose page is open (drinking passes a turn).
+  const potions = document.getElementById('eq-potions');
+  const held = game.heldItems();
+  potions.innerHTML = held.length ? '' : '<p class="inv-empty">No potions in the pouch.</p>';
+  for (const it of held) {
+    const row = document.createElement('div');
+    row.className = 'eq-pool-item';
+    const reason = game.itemBlockReason(it.def, ch);
+    row.innerHTML = `
+      <span class="eq-pool-name">${it.def.name} <span class="inv-count">×${it.count}</span></span>
+      <span class="inv-stats">${it.def.description}</span>`;
+    const btn = document.createElement('button');
+    btn.textContent = 'Drink';
+    if (reason) { btn.disabled = true; btn.title = reason; }
+    btn.addEventListener('click', () => {
+      game.useItemOnMap(it.id, ch);
+      // A turn passes as they drink — the world may answer with a battle.
+      if (game.battle) toggleEquipment(game, false);
+      else renderEquipment(game);
+    });
+    row.appendChild(btn);
+    potions.appendChild(row);
+  }
+
   // The pool: party gear this hero could put on.
   document.getElementById('eq-gold').textContent = `Party gear — Gold: ${game.gold}`;
   const pool = document.getElementById('eq-pool');
@@ -177,7 +146,7 @@ export function buildPartyPanel(game) {
 }
 
 export function updateUI(game) {
-  document.getElementById('location').textContent = game.level.name;
+  document.getElementById('location').textContent = `${game.level.name} · Turn ${game.turn}`;
   document.getElementById('gold-display').textContent = `Gold: ${game.gold}`;
 
   for (const ch of game.party) {
@@ -185,7 +154,7 @@ export function updateUI(game) {
     u.card.classList.toggle('dead', !ch.alive);
     u.img.src = ch.alive ? (ch.cls.portrait || ch.cls.sprite) : (ch.cls.sprite_dead || ch.cls.sprite);
     // AC and weapon change when gear does.
-    const sub = `Level ${ch.level} ${ch.race.name} ${ch.cls.name} · AC ${ch.ac} · ${ch.weapon.name}`;
+    const sub = `Level ${ch.level} ${ch.race.name} ${ch.cls.name} · AC ${ch.ac} · ${ch.weapon.name}${ch.xp ? ` · ${ch.xp} XP` : ''}`;
     if (u.sub.textContent !== sub) u.sub.textContent = sub;
     u.hpFill.style.transform = `scaleX(${Math.max(0, ch.hp / ch.maxHp)})`;
     u.hpLabel.textContent = ch.alive ? `HP ${ch.hp}/${ch.maxHp}` : 'DEAD';

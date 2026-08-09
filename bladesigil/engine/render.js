@@ -1,5 +1,7 @@
 // Canvas renderer: tile map, fog of war, sprites, camera.
 
+import { abilityMod } from './rules.js';
+
 const TILE = 56;
 const PARTY_ICON = 'assets/heroes/party-icon.png';
 
@@ -126,34 +128,61 @@ export class Renderer {
     const { ctx, game } = this;
     const b = game.battle;
     const W = this.canvas.width, H = this.canvas.height;
-    const CELL = 60;
     const gw = b.grid[0].length, gh = b.grid.length;
-    const ox = (W - gw * CELL) / 2, oy = 64;
+    // Cells grow with the canvas: fill the space between the header and the
+    // footer hints (44px floor keeps cramped windows playable).
+    const CELL = Math.max(44, Math.min(Math.floor((W - 60) / gw), Math.floor((H - 180) / gh)));
+    const ox = (W - gw * CELL) / 2;
+    const oy = 64 + Math.max(0, (H - 64 - 84 - gh * CELL) / 2);
 
     ctx.fillStyle = '#101018';
     ctx.fillRect(0, 0, W, H);
 
-    // Header: template name + round.
+    // Header: template name + round on the left…
     ctx.fillStyle = COLORS.stairs;
-    ctx.font = 'bold 22px Georgia';
-    ctx.textAlign = 'center';
+    ctx.font = 'bold 19px Georgia';
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(`⚔  ${b.templateName} — Round ${b.round}`, W / 2, 10);
-
-    // Initiative strip.
-    const order = b.combatants.filter(c => c.kind === 'hero' ? true : c.ref.hp > 0);
+    ctx.fillText(`⚔  ${b.templateName}`, 18, 10);
     ctx.font = '13px Georgia';
-    ctx.textBaseline = 'alphabetic';
-    let tx = W / 2 - order.reduce((s, c) => s + ctx.measureText(c.ref.name).width + 18, -18) / 2;
+    ctx.fillStyle = '#8a8a99';
+    ctx.fillText(`Round ${b.round}`, 20, 34);
+
+    // …and the initiative tracker on the right: portrait chips in turn
+    // order, HP slivers underneath, the active combatant ringed in gold.
+    const order = b.combatants.filter(c => c.kind === 'hero' ? true : c.ref.hp > 0);
+    const CHIP = 38, GAP = 9, chipY = 9;
+    let tx = W - 18 - order.length * (CHIP + GAP) + GAP;
     for (const c of order) {
-      const w = ctx.measureText(c.ref.name).width;
       const isActive = c === b.active();
-      ctx.fillStyle = isActive ? COLORS.stairs : (c.kind === 'hero' ? '#8fa8d8' : '#c98383');
-      if (c.kind === 'hero' && !c.ref.alive) ctx.fillStyle = '#555';
-      ctx.fillText(c.ref.name, tx + w / 2, 52);
-      if (isActive) ctx.fillText('▾', tx + w / 2, 40);
-      tx += w + 18;
+      const dead = c.kind === 'hero' && !c.ref.alive;
+      const icon = c.kind === 'hero'
+        ? (this.images[c.ref.cls.portrait] || this.images[c.ref.cls.sprite])
+        : this.images[c.ref.sprite];
+      ctx.save();
+      if (dead) ctx.globalAlpha = 0.35;
+      ctx.fillStyle = '#0a0a0f';
+      ctx.fillRect(tx, chipY, CHIP, CHIP);
+      if (icon) ctx.drawImage(icon, tx, chipY, CHIP, CHIP);
+      const hpFrac = Math.max(0, c.ref.hp / c.ref.maxHp);
+      ctx.fillStyle = '#0a0a0f';
+      ctx.fillRect(tx, chipY + CHIP + 2, CHIP, 4);
+      ctx.fillStyle = c.kind === 'hero' ? '#5c88d8' : '#c04848';
+      ctx.fillRect(tx, chipY + CHIP + 2, CHIP * hpFrac, 4);
+      ctx.strokeStyle = isActive ? COLORS.stairs : (c.kind === 'hero' ? '#3d4d6d' : '#5d3535');
+      ctx.lineWidth = isActive ? 3 : 1.5;
+      ctx.strokeRect(tx + 0.5, chipY + 0.5, CHIP - 1, CHIP - 1);
+      if (isActive) {
+        ctx.fillStyle = COLORS.stairs;
+        ctx.font = 'bold 12px Georgia';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText('▾', tx + CHIP / 2, chipY + CHIP + 16);
+      }
+      ctx.restore();
+      tx += CHIP + GAP;
     }
+    ctx.textBaseline = 'top';
 
     // The battlefield grid. In targeting mode, squares in range glow cold;
     // in move mode the active hero's reachable squares glow warm.
@@ -235,7 +264,7 @@ export class Renderer {
       // Name + HP bar in the square's footer.
       ctx.fillStyle = c.kind === 'hero' ? '#a8c0e8' : '#e8a8a8';
       if (dead) ctx.fillStyle = '#777';
-      ctx.font = '10px Verdana';
+      ctx.font = `${Math.max(10, Math.round(CELL / 6.5))}px Verdana`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'alphabetic';
       ctx.fillText(c.ref.name.slice(0, 9), px + CELL / 2, py + CELL - 12);
@@ -298,7 +327,25 @@ export class Renderer {
       ctx.fillStyle = COLORS.stairs;
       ctx.font = 'bold 15px Georgia';
       const what = b.pending.kind === 'shoot' ? `${a.ref.weapon.name}` : b.pending.spell.name;
-      ctx.fillText(`Aiming ${what} — range ${b.pending.range}`, W / 2, H - 42);
+      // Odds preview for the monster under the crosshair: to-hit % for
+      // shots, save DC (and odds of full damage) for spells.
+      let odds = '';
+      const tgt = b.cursor && b.cursorValid() && b.monsterAt(b.cursor.x, b.cursor.y);
+      if (tgt) {
+        const pct = p => `${Math.round(Math.max(5, Math.min(95, p * 100)))}%`;
+        if (b.pending.kind === 'shoot') {
+          odds = ` · ${pct((21 + b.attackBonus(a.ref) - (10 + tgt.ref.ac)) / 20)} to hit`;
+        } else {
+          const s = b.pending.spell;
+          if (s.auto) odds = ' · never misses';
+          else if (s.save) {
+            const dc = 10 + s.level + abilityMod(a.ref.abilities[s.stat]);
+            const failSave = (dc - (tgt.ref.save || 0) - 1) / 20;
+            odds = ` · save DC ${dc} — ${pct(failSave)} for full ${s.type === 'afflict' ? 'effect' : 'damage'}`;
+          }
+        }
+      }
+      ctx.fillText(`Aiming ${what} — range ${b.pending.range}${odds}`, W / 2, H - 42);
     }
     ctx.fillStyle = 'rgba(207,196,166,0.7)';
     ctx.font = '13px Georgia';
