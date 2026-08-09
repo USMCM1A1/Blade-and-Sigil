@@ -11,8 +11,9 @@ const HERO_MOVE = 4;
 const monsterMove = m => (m.speed > 1 ? 2 : 4); // map-slow monsters are battle-slow too
 
 export class Battle {
-  constructor(game, template, foes) {
+  constructor(game, template, foes, opts = {}) {
     this.game = game;
+    this.ambush = !!opts.ambush; // monsters caught the party: they start on top of you
     this.round = 1;
     this.templateName = template.name;
     this.mode = 'move';   // 'move' | 'menu' | 'target'
@@ -70,10 +71,18 @@ export class Battle {
       const spot = take(pool, { x: wantsFront ? 3 : 1, y: 3 });
       this.combatants.push({ kind: 'hero', ref: ch, x: spot.x, y: spot.y, alivePos: () => true });
     }
-    for (const m of foes) {
-      const spot = take(mSpawns, { x: GRID_W - 2, y: 3 });
+    // Ambushed (the monsters caught the party): they pour in right on top of
+    // the front line instead of forming up across the field — fleeing and
+    // re-engaging never buys free distance.
+    const anchors = this.combatants
+      .filter(c => c.ref.alive)
+      .sort((a, b) => (a.ref.row === 'front' ? 0 : 1) - (b.ref.row === 'front' ? 0 : 1));
+    foes.forEach((m, i) => {
+      const spot = this.ambush && anchors.length
+        ? (() => { const a = anchors[i % anchors.length]; return this.nearestOpen(a.x + 1, a.y); })()
+        : take(mSpawns, { x: GRID_W - 2, y: 3 });
       this.combatants.push({ kind: 'monster', ref: m, x: spot.x, y: spot.y, alivePos: () => m.hp > 0 });
-    }
+    });
     // Dead heroes still hold a square (a fallen body); dead monsters vanish.
   }
 
@@ -312,6 +321,34 @@ export class Battle {
     if (s.type === 'buff') { this.mode = 'move'; this.castBuff(c, s); return; }
     this.pending = { kind: 'spell', spell: s, range: s.range };
     this.beginTargeting(s.type === 'heal');
+  }
+
+  // ---- Items: the acting hero drinks from the shared pouch. It's their
+  // action — they can move first, but drinking ends the turn like a swing.
+  usableItems(c) {
+    return this.game.heldItems().map(it =>
+      ({ ...it, usable: !this.game.itemBlockReason(it.def, c.ref) }));
+  }
+
+  openItems() {
+    const c = this.active();
+    if (!c || c.kind !== 'hero') return;
+    if (!this.game.heldItems().length) {
+      this.game.log('The party pouch holds no potions.', 'info');
+      return;
+    }
+    this.mode = 'items';
+  }
+
+  chooseItem(n) {
+    const c = this.active();
+    const it = this.usableItems(c)[n - 1];
+    if (!it) return;
+    const res = this.game.useItem(it.id, c.ref);
+    if (!res.ok) return; // blocked (unhurt / not poisoned) — menu stays open
+    this.mode = 'move';
+    this.addFx(c.x, c.y, res.fxText, res.fxColor);
+    this.endHeroTurn();
   }
 
   beginShoot() {
@@ -631,8 +668,30 @@ export class Battle {
       this.game.endArena();
       return;
     }
-    this.stripBattleConditions();
-    this.game.battle = null;
-    this.game.log('The party breaks away from the fight!', 'info');
+    if (this.ending) return;
+    const exit = () => {
+      if (this.game.battle !== this) return;
+      this.stripBattleConditions();
+      // The foes spend a few map turns regrouping before they give chase —
+      // fleeing buys real distance instead of an instant rematch.
+      for (const mc of this.monsters()) mc.ref.regroup = 3;
+      this.game.battle = null;
+      this.game.log('The party breaks away from the fight — run!', 'info');
+    };
+    // Parting blows: every monster standing beside a hero gets one free
+    // swing at the fleeing party's backs. Running out of melee has a price.
+    const blows = [];
+    for (const mc of this.monsters()) {
+      const target = this.adjacentHero(mc);
+      if (target) blows.push([mc.ref, target.ref]);
+    }
+    if (!blows.length) { exit(); return; }
+    this.busy = true; // input stays locked while the blows land
+    this.game.log('The party turns to flee — the enemy strikes at their backs!', 'combat');
+    blows.forEach(([m, t], i) => setTimeout(() => {
+      if (this.game.battle !== this) return;
+      if (t.alive) this.monsterAttack(m, t);
+      if (i === blows.length - 1 && !this.checkEnd()) setTimeout(exit, 900);
+    }, 400 + i * 600));
   }
 }

@@ -4,6 +4,7 @@
     "giant_rat": {
       "name": "Giant Rat",
       "sprite": "assets/enemies/giant_rat.jpg",
+      "sprite_dead": "assets/enemies/giant_rat_dead.png",
       "hp": 6,
       "ac": 2,
       "to_hit": 1,
@@ -44,6 +45,7 @@
     "orc": {
       "name": "Orc",
       "sprite": "assets/enemies/orc.jpg",
+      "sprite_dead": "assets/enemies/orc_dead.png",
       "hp": 12,
       "ac": 5,
       "to_hit": 2,

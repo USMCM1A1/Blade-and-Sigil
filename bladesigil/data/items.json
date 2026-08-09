@@ -1,0 +1,141 @@
+{
+  "_comment": "All items. CONSUMABLES: effect 'heal' rolls 'dice' as HP; 'cure' removes the condition in 'cures'. GEAR goes on the paper doll (E key) — types map to slots: weapon_<category> and shield -> the two hands ('hands': 2 on a weapon claims both), armor_light/med/heavy -> body, helm -> head, boots -> feet, jewelry_ring -> one of two ring slots, jewelry_neck -> necklace. Weapon categories: light_blade/med_blade/heavy_blade/light_blunt/med_blunt/heavy_blunt/bow (weapons need 'damage', bows also 'range'). ANY worn piece may carry 'ac' and/or 'sp' — they all stack. Class permissions live in classes.json (weapon_types/armor_types/shields); helms, boots, and jewelry fit anyone. 'value' is the gold price for the Phase 4 shops. Add items freely!",
+  "items": {
+    "health_potion": {
+      "name": "Health Potion",
+      "type": "consumable",
+      "effect": "heal",
+      "dice": "1d8",
+      "value": 20,
+      "description": "A straw-colored potion that restores a small amount of health."
+    },
+    "antidote_potion": {
+      "name": "Antidote",
+      "type": "consumable",
+      "effect": "cure",
+      "cures": "poison",
+      "value": 25,
+      "description": "A bitter green draught that purges poison from the blood."
+    },
+    "longsword": {
+      "name": "Longsword",
+      "type": "weapon_med_blade",
+      "damage": "1d8",
+      "value": 100,
+      "description": "A soldier's blade, balanced and true."
+    },
+    "mace": {
+      "name": "Mace",
+      "type": "weapon_med_blunt",
+      "damage": "1d6",
+      "value": 60,
+      "description": "A heavy flanged head on a stout haft."
+    },
+    "staff": {
+      "name": "Staff",
+      "type": "weapon_light_blunt",
+      "damage": "1d4",
+      "value": 15,
+      "description": "A traveler's stave, worn smooth by the road."
+    },
+    "dagger": {
+      "name": "Dagger",
+      "type": "weapon_light_blade",
+      "damage": "1d4",
+      "value": 20,
+      "description": "Quick, quiet, and easily hidden."
+    },
+    "longbow": {
+      "name": "Longbow",
+      "type": "weapon_bow",
+      "damage": "1d6",
+      "range": 6,
+      "hands": 2,
+      "value": 90,
+      "description": "A tall yew bow that strikes from across the field. Needs both hands."
+    },
+    "elven_blade": {
+      "name": "Elven Blade",
+      "type": "weapon_med_blade",
+      "damage": "1d8",
+      "value": 150,
+      "description": "A slender sword of elven steel, light as a whisper."
+    },
+    "iron_sword": {
+      "name": "Iron Sword",
+      "type": "weapon_med_blade",
+      "damage": "1d6-1",
+      "value": 50,
+      "description": "A reliable sword that deals moderate damage."
+    },
+    "iron_dagger": {
+      "name": "Iron Dagger",
+      "type": "weapon_light_blade",
+      "damage": "1d4-1",
+      "value": 30,
+      "description": "A plain blade for a plain purpose."
+    },
+    "iron_mace": {
+      "name": "Iron Mace",
+      "type": "weapon_med_blunt",
+      "damage": "1d6-1",
+      "value": 50,
+      "description": "A reliable mace that deals moderate damage."
+    },
+    "wooden_shield": {
+      "name": "Wooden Shield",
+      "type": "shield",
+      "ac": 1,
+      "value": 40,
+      "description": "A basic shield offering minimal protection."
+    },
+    "leather_armor": {
+      "name": "Leather Armor",
+      "type": "armor_light",
+      "ac": 1,
+      "value": 40,
+      "description": "Basic light armor."
+    },
+    "ring_mail": {
+      "name": "Ring Mail",
+      "type": "armor_med",
+      "ac": 2,
+      "value": 100,
+      "description": "Basic medium armor."
+    },
+    "chain_mail": {
+      "name": "Chain Mail",
+      "type": "armor_heavy",
+      "ac": 3,
+      "value": 200,
+      "description": "Basic heavy armor."
+    },
+    "spell_ring": {
+      "name": "Spell Ring",
+      "type": "jewelry_ring",
+      "sp": 1,
+      "value": 40,
+      "description": "A magical ring that grants extra spell points."
+    },
+    "iron_helm": {
+      "name": "Iron Helm",
+      "type": "helm",
+      "ac": 1,
+      "value": 30,
+      "description": "A plain iron cap. Better than bare-headed."
+    },
+    "sturdy_boots": {
+      "name": "Sturdy Boots",
+      "type": "boots",
+      "value": 15,
+      "description": "Well-cobbled leather boots for dungeon floors."
+    },
+    "warding_amulet": {
+      "name": "Warding Amulet",
+      "type": "jewelry_neck",
+      "ac": 1,
+      "value": 80,
+      "description": "A silver charm that turns aside glancing blows."
+    }
+  }
+}

@@ -89,7 +89,8 @@ export function choosePartyDef(data) {
           const final = ab => state.rolls[ABILITIES.indexOf(ab)] + bonus(ab);
           const hp = Math.max(1, cls.hp_die + abilityMod(final('con')));
           const ac = 10 + cls.ac_bonus[0] + abilityMod(final('dex'));
-          const hit = cls.hit_bonus[0] + abilityMod(final(cls.weapon.range ? 'dex' : 'str')); // ranged weapons aim with DEX
+          const weap = id => data.items.items[data.classes.classes[id].starting_weapon] ?? { name: '?', damage: '?' };
+          const hit = cls.hit_bonus[0] + abilityMod(final(weap(state.class).range ? 'dex' : 'str')); // ranged weapons aim with DEX
 
           root.innerHTML = `
             <div class="cr-panel">
@@ -113,7 +114,7 @@ export function choosePartyDef(data) {
                     ${allowed.map(([id, c]) => `
                       <button class="cr-choice ${id === state.class ? 'picked' : ''}" data-class="${id}">
                         <b>${c.name}</b>
-                        <span>d${c.hp_die} hits · ${c.weapon.name} ${c.weapon.damage}${c.spell_points[0] ? ` · ${c.spell_points[0]} spell points` : ''}</span>
+                        <span>d${c.hp_die} hits · ${weap(id).name} ${weap(id).damage}${c.spell_points[0] ? ` · ${c.spell_points[0]} spell points` : ''}</span>
                       </button>`).join('')}
                   </div>
                 </div>

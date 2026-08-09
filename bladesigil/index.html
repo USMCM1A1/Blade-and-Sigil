@@ -130,6 +130,139 @@
   #help td:first-child { color: var(--gold); white-space: nowrap; width: 160px; }
   #help td.ind { padding-left: 24px; color: var(--dim); }
   #help .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 6px; }
+  /* ---- Party pouch (map inventory) ---- */
+  #inventory {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 480px; max-width: 90vw;
+    max-height: 80vh; overflow-y: auto;
+    background: var(--panel);
+    border: 2px solid var(--gold);
+    border-radius: 6px;
+    padding: 22px 28px;
+    z-index: 50;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.8);
+  }
+  #inventory h2 { color: var(--gold); font-variant: small-caps; letter-spacing: 1px; margin-bottom: 12px; }
+  .inv-item { border-top: 1px solid var(--panel-edge); padding: 10px 0; }
+  .inv-head { font-size: 15px; }
+  .inv-count { color: var(--gold); font-size: 13px; }
+  .inv-desc { font-style: italic; color: var(--dim); font-size: 12.5px; margin: 2px 0 8px; }
+  .inv-heroes { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .inv-heroes span { color: var(--dim); font-size: 12px; }
+  .inv-heroes button {
+    font-family: Georgia, serif;
+    background: #1d1d28;
+    color: var(--parchment);
+    border: 1px solid var(--panel-edge);
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .inv-heroes button:hover:not(:disabled) { border-color: var(--gold); }
+  .inv-heroes button:disabled { opacity: 0.4; cursor: default; }
+  .inv-empty { color: var(--dim); font-style: italic; }
+  .inv-stats { color: var(--dim); font-size: 12px; margin-left: 6px; }
+  .inv-worn { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 4px 0; font-size: 13px; }
+  .inv-worn-name { color: var(--gold); min-width: 70px; }
+  .inv-worn button {
+    font-family: Georgia, serif;
+    background: #1d1d28; color: var(--parchment);
+    border: 1px solid var(--panel-edge); border-radius: 4px;
+    padding: 3px 8px; font-size: 11.5px; cursor: pointer;
+  }
+  .inv-worn button:hover { border-color: var(--blood); }
+  /* ---- Paper doll (equipment screen) ---- */
+  #equipment {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 660px; max-width: 94vw;
+    max-height: 86vh; overflow-y: auto;
+    background: var(--panel);
+    border: 2px solid var(--gold);
+    border-radius: 6px;
+    padding: 22px 28px;
+    z-index: 50;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.8);
+  }
+  #equipment h2 { color: var(--gold); font-variant: small-caps; letter-spacing: 1px; margin-bottom: 10px; text-align: center; }
+  #eq-body { display: flex; gap: 14px; }
+  #eq-main { flex: 1; min-width: 0; }
+  #eq-name { text-align: center; color: var(--gold); font-variant: small-caps; letter-spacing: 2px; font-size: 18px; }
+  #eq-stats { color: var(--dim); font-size: 12.5px; margin-bottom: 12px; text-align: center; }
+  /* Portrait tabs down the right edge, Baldur's-Gate style. */
+  #eq-tabs { display: flex; flex-direction: column; gap: 6px; width: 86px; flex-shrink: 0; }
+  .eq-portrait {
+    font-family: Georgia, serif;
+    background: #0a0a0f; color: var(--dim);
+    border: 1px solid var(--panel-edge); border-radius: 4px;
+    padding: 5px 4px 3px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .eq-portrait img { width: 56px; height: 56px; object-fit: contain; image-rendering: pixelated; }
+  .eq-portrait span { font-size: 11px; }
+  .eq-portrait.picked { border-color: var(--gold); color: var(--gold); background: #1c1926; }
+  .eq-portrait.dead { opacity: 0.5; }
+  /* The doll: hero in the middle, slots around the body. */
+  #eq-doll {
+    display: grid;
+    grid-template-columns: 1fr 1.15fr 1fr;
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas:
+      "necklace head  armor"
+      "hand1    figure hand2"
+      "ring1    figure ring2"
+      ".        boots  .";
+    gap: 7px;
+    margin-bottom: 14px;
+    background: radial-gradient(ellipse at 50% 45%, #191722 0%, #0e0d14 75%);
+    border: 1px solid var(--panel-edge); border-radius: 6px;
+    padding: 12px;
+  }
+  .eq-figure {
+    grid-area: figure;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .eq-figure img {
+    width: 132px; height: 132px; object-fit: contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 6px 14px rgba(0,0,0,0.9));
+  }
+  .eq-slot {
+    min-height: 56px;
+    background: rgba(10,10,15,0.85);
+    border: 1px dashed #3a3a4c; border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 12.5px;
+  }
+  .eq-slot b { display: block; color: var(--dim); font-size: 9.5px; font-variant: small-caps; letter-spacing: 1px; }
+  .eq-slot .eq-glyph { display: block; text-align: center; font-size: 17px; color: #343444; font-style: normal; margin-top: 2px; }
+  .eq-slot .eq-2h { color: #55506a; font-size: 11px; }
+  .eq-slot span { display: block; color: var(--dim); font-size: 10.5px; }
+  .eq-slot.filled { border-style: solid; border-color: var(--gold); background: #16131f; cursor: pointer; }
+  .eq-slot.filled:hover { border-color: var(--blood); }
+  #eq-gold { color: var(--gold); font-variant: small-caps; letter-spacing: 1px; font-size: 13px; border-top: 1px solid var(--panel-edge); padding-top: 8px; }
+  .eq-pool-item {
+    display: flex; gap: 10px; align-items: center;
+    border-top: 1px solid var(--panel-edge);
+    padding: 6px 0; font-size: 13.5px;
+  }
+  .eq-pool-item .eq-pool-name { flex: 1; }
+  .eq-pool-item button {
+    font-family: Georgia, serif;
+    background: #1d1d28; color: var(--parchment);
+    border: 1px solid var(--panel-edge); border-radius: 4px;
+    padding: 4px 12px; font-size: 12.5px; cursor: pointer;
+  }
+  .eq-pool-item button:hover:not(:disabled) { border-color: var(--gold); }
+  .eq-pool-item button:disabled { opacity: 0.4; cursor: default; }
+  #equipment .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 10px; }
+  #inventory .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 12px; }
   /* ---- Title screen & character creation ---- */
   #creation {
     display: none;
@@ -227,7 +360,26 @@
   </div>
   <div id="log"></div>
   <div id="controls">
-    <b>H — help &amp; controls</b> &nbsp;•&nbsp; Arrow keys / WASD — move (walk into things!) &nbsp;•&nbsp; T — camp &nbsp;•&nbsp; In battle: move &amp; bump to attack, Space ends turn, Esc flees &nbsp;•&nbsp; M — mute &nbsp;•&nbsp; R — restart
+    <b>H — help &amp; controls</b> &nbsp;•&nbsp; Arrow keys / WASD — move (walk into things!) &nbsp;•&nbsp; T — camp &nbsp;•&nbsp; I — pouch &nbsp;•&nbsp; E — equipment &nbsp;•&nbsp; In battle: move &amp; bump to attack, Space ends turn, Esc flees &nbsp;•&nbsp; M — mute &nbsp;•&nbsp; R — restart
+  </div>
+  <div id="inventory">
+    <h2>Party Pouch</h2>
+    <div id="inv-list"></div>
+    <p class="dismiss">Press I to close &middot; drinking passes a turn</p>
+  </div>
+  <div id="equipment">
+    <h2>Equipment</h2>
+    <div id="eq-body">
+      <div id="eq-main">
+        <div id="eq-name"></div>
+        <div id="eq-stats"></div>
+        <div id="eq-doll"></div>
+        <div id="eq-gold"></div>
+        <div id="eq-pool"></div>
+      </div>
+      <div id="eq-tabs"></div>
+    </div>
+    <p class="dismiss">Click a worn piece to remove it &middot; E closes</p>
   </div>
   <div id="help">
     <h2>How to Play</h2>
@@ -235,10 +387,12 @@
       <tr><td>Arrow keys / WASD</td><td>Move the party — <b>walk into things to interact:</b></td></tr>
       <tr><td class="ind">&rarr; a monster</td><td><b>battle begins!</b> (see below)</td></tr>
       <tr><td class="ind">&rarr; a door</td><td>pushes it open</td></tr>
-      <tr><td class="ind">&rarr; a chest</td><td>loots the gold</td></tr>
+      <tr><td class="ind">&rarr; a chest</td><td>loots the gold (and sometimes a potion!)</td></tr>
       <tr><td class="ind">&rarr; the stairs ▼</td><td>descend — clears the level!</td></tr>
       <tr><td>Space</td><td>wait one turn (monsters still move)</td></tr>
       <tr><td>T</td><td>make camp — restores HP &amp; spell points (no enemies in sight!)</td></tr>
+      <tr><td>I</td><td>party pouch — drink potions (each swig passes a turn)</td></tr>
+      <tr><td>E</td><td>equipment — dress each hero: hands, armor, helm, boots, rings, necklace</td></tr>
       <tr><td>` (backtick)</td><td>training arena — tough dummies, free spells, nothing is real; Esc leaves</td></tr>
       <tr><td>H or ?</td><td>show / hide this help</td></tr>
       <tr><td>M</td><td>mute sound</td></tr>
@@ -250,9 +404,13 @@
     stands on their own square. <b>Initiative</b> (d20 + DEX) sets the turn
     order. On a hero's turn: <b>arrow keys move</b> (4 squares), and
     <b>walking into a monster attacks it</b> — that ends the turn.
-    <b>C</b> opens a caster's spell menu and <b>F</b> draws the archer's bow —
-    aim with the arrows, Enter to unleash. Beware: a fireball burns friend and
-    foe alike! Space ends the turn; Esc flees. Front-row heroes start closest
+    <b>C</b> opens a caster's spell menu, <b>F</b> draws the archer's bow —
+    aim with the arrows, Enter to unleash — and <b>I</b> drinks a potion from
+    the party pouch (that's the hero's action). Beware: a fireball burns friend and
+    foe alike! Space ends the turn; Esc flees — every enemy beside a hero gets
+    a free strike at their backs, then the foes regroup for a few turns while
+    you run: use that head start! Wounded monsters that catch you again start
+    the rematch <i>right on top of you</i>. Front-row heroes start closest
     to the enemy. Every swing appears in the message log.</p>
     <p class="dismiss">Press H to close</p>
   </div>

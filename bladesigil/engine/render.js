@@ -196,17 +196,20 @@ export class Renderer {
       }
     }
 
-    // Combatants. Slain monsters linger as a fading corpse so the player
-    // sees them fall instead of blinking out of existence.
+    // Combatants. Slain monsters fall and stay on the field as faded,
+    // walkable corpses for the rest of the battle. Corpses draw first so
+    // anyone stepping onto the square stands on top of the body.
     const nowD = performance.now();
-    for (const c of b.combatants) {
+    const drawOrder = [...b.combatants].sort((a, z) =>
+      (a.kind === 'monster' && a.ref.hp <= 0 ? 0 : 1) - (z.kind === 'monster' && z.ref.hp <= 0 ? 0 : 1));
+    for (const c of drawOrder) {
       const dying = c.kind === 'monster' && c.ref.hp <= 0;
-      if (dying && (!c.diedAt || nowD - c.diedAt > 1600)) continue;
+      if (dying && !c.diedAt) continue;
       const px = ox + c.x * CELL, py = oy + c.y * CELL;
       const dead = c.kind === 'hero' && !c.ref.alive;
       ctx.save();
       if (dead) ctx.globalAlpha = 0.5;
-      if (dying) ctx.globalAlpha = Math.max(0, 0.9 - (nowD - c.diedAt) / 1600);
+      if (dying) ctx.globalAlpha = Math.max(0.35, 0.9 - (nowD - c.diedAt) / 1600);
       const sprite = c.kind === 'hero'
         ? (c.ref.alive ? c.ref.cls.sprite : c.ref.cls.sprite_dead)
         : (dying ? (c.ref.sprite_dead || c.ref.sprite) : c.ref.sprite);
@@ -218,8 +221,8 @@ export class Renderer {
         ctx.lineWidth = 3;
         ctx.strokeRect(px + 1.5, py + 1.5, CELL - 3, CELL - 3);
       }
-      // Condition pips along the square's top edge.
-      (c.ref.conditions ?? []).forEach((cond, ci) => {
+      // Condition pips along the square's top edge (not on corpses).
+      (dying ? [] : c.ref.conditions ?? []).forEach((cond, ci) => {
         const cdef = this.game.conditionDef(cond.id);
         if (!cdef) return;
         ctx.fillStyle = cdef.color;
@@ -236,10 +239,12 @@ export class Renderer {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'alphabetic';
       ctx.fillText(c.ref.name.slice(0, 9), px + CELL / 2, py + CELL - 12);
-      ctx.fillStyle = '#0a0a0f';
-      ctx.fillRect(px + 5, py + CELL - 9, CELL - 10, 5);
-      ctx.fillStyle = c.kind === 'hero' ? '#5c88d8' : '#c04848';
-      ctx.fillRect(px + 5, py + CELL - 9, (CELL - 10) * Math.max(0, c.ref.hp / c.ref.maxHp), 5);
+      if (!dying) { // corpses keep a faint name but lose the drained HP bar
+        ctx.fillStyle = '#0a0a0f';
+        ctx.fillRect(px + 5, py + CELL - 9, CELL - 10, 5);
+        ctx.fillStyle = c.kind === 'hero' ? '#5c88d8' : '#c04848';
+        ctx.fillRect(px + 5, py + CELL - 9, (CELL - 10) * Math.max(0, c.ref.hp / c.ref.maxHp), 5);
+      }
       ctx.restore();
     }
 
@@ -299,7 +304,7 @@ export class Renderer {
     ctx.font = '13px Georgia';
     const hints = b.mode === 'target'
       ? 'arrows — aim · Enter — unleash! · Esc — cancel'
-      : `arrows — move & bump to attack · ${a?.kind === 'hero' && b.castables(a).length ? 'C — cast · ' : ''}${a?.kind === 'hero' && b.canShoot(a) ? 'F — shoot · ' : ''}Space — end turn · Esc — flee`;
+      : `arrows — move & bump to attack · ${a?.kind === 'hero' && b.castables(a).length ? 'C — cast · ' : ''}${a?.kind === 'hero' && b.canShoot(a) ? 'F — shoot · ' : ''}${a?.kind === 'hero' && this.game.heldItems().length ? 'I — item · ' : ''}Space — end turn · Esc — flee`;
     ctx.fillText(hints, W / 2, H - 20);
 
     // Spell menu overlay.
@@ -331,6 +336,37 @@ export class Renderer {
       ctx.fillStyle = '#8a8a99';
       ctx.font = '12px Georgia';
       ctx.fillText('press a number to cast · Esc to close', mx + mw / 2, my + mh - 22);
+    }
+
+    // Item menu overlay — same skin as the spell menu.
+    if (b.mode === 'items' && a?.kind === 'hero') {
+      const list = b.usableItems(a);
+      const mw = 380, mh = 70 + list.length * 44;
+      const mx = (W - mw) / 2, my = (H - mh) / 2;
+      ctx.fillStyle = 'rgba(10,10,16,0.92)';
+      ctx.fillRect(mx, my, mw, mh);
+      ctx.strokeStyle = COLORS.stairs;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(mx, my, mw, mh);
+      ctx.fillStyle = COLORS.stairs;
+      ctx.font = 'bold 17px Georgia';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`The party pouch — ${a.ref.name} drinks`, mx + mw / 2, my + 12);
+      list.forEach((it, i) => {
+        const ly = my + 48 + i * 44;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = it.usable ? '#cfc4a6' : '#66605a';
+        ctx.font = 'bold 14px Georgia';
+        ctx.fillText(`${i + 1}.  ${it.def.name}  ×${it.count}`, mx + 20, ly);
+        ctx.font = 'italic 11.5px Georgia';
+        ctx.fillStyle = it.usable ? '#8a8a99' : '#55504c';
+        ctx.fillText(it.def.description, mx + 38, ly + 17);
+      });
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#8a8a99';
+      ctx.font = '12px Georgia';
+      ctx.fillText('press a number to drink (ends the turn) · Esc to close', mx + mw / 2, my + mh - 22);
     }
 
     // Ending beat: let the killing blow's numbers land first, then banner.
