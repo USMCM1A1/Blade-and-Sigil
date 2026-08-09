@@ -39,8 +39,11 @@ export function choosePartyDef(data) {
     showTitle();
 
     // ---- Title screen ----
+    // Two choices only: make a party, or play one — your saved party if you
+    // have one, otherwise the premade party from data/party.json.
     function showTitle() {
       const saved = loadSavedParty();
+      const play = saved ?? data.party.party;
       root.style.display = 'flex';
       root.innerHTML = `
         <div class="cr-panel cr-title">
@@ -48,13 +51,11 @@ export function choosePartyDef(data) {
           <p class="cr-sub">An old-school party dungeon crawl</p>
           <div class="cr-title-buttons">
             <button id="cr-new">Create New Party</button>
-            ${saved ? `<button id="cr-saved">Play Your Party (${saved.map(h => h.name).join(', ')})</button>` : ''}
-            <button id="cr-quick">Quick Start — ${data.party.party.map(h => h.name).join(', ')}</button>
+            <button id="cr-play">${saved ? 'Play Your Party' : 'Quick Start'} (${play.map(h => h.name).join(', ')})</button>
           </div>
         </div>`;
       root.querySelector('#cr-new').onclick = () => startWizard();
-      root.querySelector('#cr-quick').onclick = () => finish(data.party.party);
-      if (saved) root.querySelector('#cr-saved').onclick = () => finish(saved);
+      root.querySelector('#cr-play').onclick = () => finish(play);
     }
 
     // ---- The wizard: one hero at a time ----

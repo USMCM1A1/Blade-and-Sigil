@@ -97,7 +97,7 @@ function renderEquipment(game) {
   game.party.forEach((hero, i) => {
     const btn = document.createElement('button');
     btn.className = 'eq-portrait' + (i === eqHeroIdx ? ' picked' : '') + (hero.alive ? '' : ' dead');
-    btn.innerHTML = `<img src="${hero.alive ? hero.cls.sprite : (hero.cls.sprite_dead || hero.cls.sprite)}" alt=""><span>${hero.name}</span>`;
+    btn.innerHTML = `<img src="${hero.alive ? (hero.cls.portrait || hero.cls.sprite) : (hero.cls.sprite_dead || hero.cls.sprite)}" alt=""><span>${hero.name}</span>`;
     btn.addEventListener('click', () => { eqHeroIdx = i; renderEquipment(game); });
     tabs.appendChild(btn);
   });
@@ -183,7 +183,7 @@ export function updateUI(game) {
   for (const ch of game.party) {
     const u = ch.ui;
     u.card.classList.toggle('dead', !ch.alive);
-    u.img.src = ch.alive ? ch.cls.sprite : (ch.cls.sprite_dead || ch.cls.sprite);
+    u.img.src = ch.alive ? (ch.cls.portrait || ch.cls.sprite) : (ch.cls.sprite_dead || ch.cls.sprite);
     // AC and weapon change when gear does.
     const sub = `Level ${ch.level} ${ch.race.name} ${ch.cls.name} · AC ${ch.ac} · ${ch.weapon.name}`;
     if (u.sub.textContent !== sub) u.sub.textContent = sub;

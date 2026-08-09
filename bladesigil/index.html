@@ -267,10 +267,13 @@
   #creation {
     display: none;
     position: fixed; inset: 0;
-    background: radial-gradient(ellipse at 50% 30%, #16161e 0%, #0d0d12 70%);
+    background:
+      linear-gradient(rgba(13,13,18,0.45), rgba(13,13,18,0.82)),
+      url('assets/misc/loading_screen.jpg') center / cover no-repeat #0d0d12;
     z-index: 60;
     align-items: center; justify-content: center;
   }
+  #creation .cr-panel { background: rgba(22,22,30,0.94); }
   .cr-panel {
     width: 860px; max-width: 94vw; max-height: 94vh;
     overflow-y: auto;

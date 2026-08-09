@@ -93,7 +93,12 @@ export class Game {
       const bad = rows.findIndex(r => r.length !== w);
       throw new DataError('data/levels/level1.json', `Map row ${bad + 1} is ${rows[bad].length} characters wide but row 1 is ${w}. All rows must match.`);
     }
-    this.level = { name: levelData.name, w, h: rows.length, chestGold: levelData.chest_gold || '2d20+10', chestItems: levelData.chest_items || [] };
+    this.level = {
+      name: levelData.name, w, h: rows.length,
+      chestGold: levelData.chest_gold || '2d20+10',
+      chestItems: levelData.chest_items || [],
+      chestRandom: levelData.chest_random || 0, // guaranteed random items per chest
+    };
     for (const entry of this.level.chestItems) {
       if (!this.data.items.items[entry.id]) {
         throw new DataError('data/levels/level1.json', `chest_items lists "${entry.id}" but there is no such item in items.json. Valid: ${Object.keys(this.data.items.items).join(', ')}`);
@@ -200,6 +205,13 @@ export class Game {
           this.addItem(entry.id);
           found.push(this.itemDef(entry.id).name);
         }
+      }
+      // Guaranteed surprises: N items drawn at random from the whole catalog.
+      const ids = Object.keys(this.data.items.items);
+      for (let i = 0; i < this.level.chestRandom; i++) {
+        const id = ids[Math.floor(Math.random() * ids.length)];
+        this.addItem(id);
+        found.push(this.itemDef(id).name);
       }
       this.log(found.length
         ? `You pry open the chest — ${amount} gold and: ${found.join(', ')}! (I — inventory)`

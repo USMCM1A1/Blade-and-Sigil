@@ -5,6 +5,7 @@
       "name": "Warrior",
       "sprite": "assets/heroes/warrior.png",
       "sprite_dead": "assets/heroes/warrior_dead.png",
+      "portrait": "assets/heroes/portraits/warrior_portrait.png",
       "hp_die": 10,
       "allowed_races": [
         "human",
@@ -113,6 +114,7 @@
       "name": "Priest",
       "sprite": "assets/heroes/priest.png",
       "sprite_dead": "assets/heroes/priest_dead.png",
+      "portrait": "assets/heroes/portraits/priest_portrait.png",
       "hp_die": 8,
       "allowed_races": [
         "human"
@@ -222,6 +224,7 @@
       "name": "Wizard",
       "sprite": "assets/heroes/wizard.png",
       "sprite_dead": "assets/heroes/wizard_dead.png",
+      "portrait": "assets/heroes/portraits/wizard_portrait.png",
       "hp_die": 4,
       "allowed_races": [
         "human",
@@ -330,6 +333,7 @@
       "name": "Thief",
       "sprite": "assets/heroes/thief.png",
       "sprite_dead": "assets/heroes/thief_dead.png",
+      "portrait": "assets/heroes/portraits/thief_portrait.png",
       "hp_die": 6,
       "allowed_races": [
         "halfling"
@@ -439,6 +443,7 @@
       "name": "Archer",
       "sprite": "assets/heroes/archer.png",
       "sprite_dead": "assets/heroes/archer_dead.png",
+      "portrait": "assets/heroes/portraits/archer_portrait.png",
       "hp_die": 6,
       "allowed_races": [
         "wood_elf"
@@ -545,6 +550,7 @@
       "name": "Spell Blade",
       "sprite": "assets/heroes/spellblade.png",
       "sprite_dead": "assets/heroes/spellblade_dead.png",
+      "portrait": "assets/heroes/portraits/spellblade_portrait.png",
       "hp_die": 8,
       "allowed_races": [
         "high_elf"
@@ -650,6 +656,7 @@
       "name": "Summoner",
       "sprite": "assets/heroes/summoner.png",
       "sprite_dead": "assets/heroes/summoner_dead.png",
+      "portrait": "assets/heroes/portraits/summoner_portrait.png",
       "hp_die": 4,
       "allowed_races": [
         "human",
