@@ -64,16 +64,32 @@ function carveRooms(w, h) {
   };
   for (let i = 1; i < rooms.length; i++) corridor(rooms[i - 1], rooms[i]);
   for (let i = 0; i < 2 && rooms.length > 3; i++) corridor(pick(rooms), pick(rooms));
-  // ',' marks freshly-carved corridor; doorways appear where a corridor
-  // squeezes between two walls right at a room's edge.
+  // Corridor carving can leave dead-end stubs where paths overlapped —
+  // unwind them wall-ward so no doorway ever opens onto nothing.
+  let pruned = true;
+  while (pruned) {
+    pruned = false;
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        if (g[y][x] !== ',') continue;
+        const solid = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+          .filter(([dx, dy]) => g[y + dy][x + dx] === '#').length;
+        if (solid >= 3) { g[y][x] = '#'; pruned = true; }
+      }
+    }
+  }
+  // ',' marks carved corridor. A doorway must actually DO something: walls
+  // on both flanks, open floor on BOTH opposite sides (it separates two
+  // places), and a room at its shoulder.
+  const open = c => c === '.' || c === ',';
   const doors = [];
   for (let y = 1; y < h - 1; y++) {
     for (let x = 1; x < w - 1; x++) {
       if (g[y][x] !== ',') continue;
-      const horizWalls = g[y - 1][x] === '#' && g[y + 1][x] === '#';
-      const vertWalls = g[y][x - 1] === '#' && g[y][x + 1] === '#';
+      const passesVert = g[y - 1][x] === '#' && g[y + 1][x] === '#' && open(g[y][x - 1]) && open(g[y][x + 1]);
+      const passesHoriz = g[y][x - 1] === '#' && g[y][x + 1] === '#' && open(g[y - 1][x]) && open(g[y + 1][x]);
       const touchesRoom = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => g[y + dy]?.[x + dx] === '.');
-      if ((horizWalls || vertWalls) && touchesRoom) doors.push({ x, y });
+      if ((passesVert || passesHoriz) && touchesRoom) doors.push({ x, y });
     }
   }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (g[y][x] === ',') g[y][x] = '.';
