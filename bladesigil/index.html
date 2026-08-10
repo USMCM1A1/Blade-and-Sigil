@@ -242,6 +242,31 @@
   .eq-pool-item button:disabled { opacity: 0.4; cursor: default; }
   #equipment .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 10px; }
   #inventory .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 12px; }
+  /* ---- Town buildings ---- */
+  #building {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(92vw, 640px);
+    max-height: 88vh; overflow-y: auto;
+    background: var(--panel);
+    border: 2px solid var(--gold);
+    border-radius: 6px;
+    padding: 22px 28px;
+    z-index: 50;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.8);
+  }
+  #building h2 { color: var(--gold); font-variant: small-caps; letter-spacing: 1px; margin-bottom: 10px; text-align: center; }
+  #b-head { display: flex; gap: 14px; align-items: center; margin-bottom: 10px; }
+  #b-keeper {
+    width: 84px; height: 84px; object-fit: cover;
+    border: 1px solid var(--panel-edge); border-radius: 4px;
+    image-rendering: pixelated; flex-shrink: 0;
+  }
+  #b-welcome { color: var(--dim); font-style: italic; font-size: 13.5px; }
+  #b-gold { color: var(--gold); font-variant: small-caps; letter-spacing: 1px; font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid var(--panel-edge); padding-bottom: 8px; }
+  #building .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 12px; }
   /* ---- Title screen & character creation ---- */
   #creation {
     display: none;
@@ -362,13 +387,23 @@
     </div>
     <p class="dismiss">Click a worn piece to remove it &middot; drinking passes a turn &middot; I closes</p>
   </div>
+  <div id="building">
+    <h2 id="b-title"></h2>
+    <div id="b-head">
+      <img id="b-keeper" alt="">
+      <p id="b-welcome"></p>
+    </div>
+    <div id="b-gold"></div>
+    <div id="b-body"></div>
+    <p class="dismiss">Esc leaves</p>
+  </div>
   <div id="help">
     <h2>Controls</h2>
     <table>
       <tr><td colspan="2" class="key-group">Exploring</td></tr>
       <tr><td>Arrows / WASD</td><td>move — walk into monsters, doors, chests, and stairs to interact</td></tr>
       <tr><td>Space</td><td>wait one turn</td></tr>
-      <tr><td>T</td><td>make camp</td></tr>
+      <tr><td>T</td><td>make camp (1 ration per living hero)</td></tr>
       <tr><td>I or E</td><td>inventory &amp; equipment</td></tr>
       <tr><td>` (backtick)</td><td>training arena</td></tr>
       <tr><td colspan="2" class="key-group">In battle</td></tr>
@@ -388,6 +423,12 @@
   </div>
   <div id="guide">
     <h2>How the Game Works</h2>
+    <h3>Novamagus, your home base</h3>
+    <p>Every run starts in town. Walk into the <b>inn</b> for a safe night's
+    rest (full HP and spell points, for a fee), the <b>shop</b> to buy gear
+    and sell loot at half value, or the <b>temple</b> to bring fallen heroes
+    back — for a steep offering. The dungeon gate leads below; the stairs at
+    the bottom of the dungeon bring you home. Time stands still in town.</p>
     <h3>Exploring</h3>
     <p>The party moves as one token. Walk into a door to open it, a chest to
     loot it (gold — often potions or gear), the stairs ▼ to clear the level.
@@ -411,13 +452,19 @@
     their own gear on the paper doll — head, necklace, armor, boots, two
     rings, and two hands (weapon, shield, or a two-hander that claims both).
     Classes have rules: priests swing blunt weapons, wizards wear no armor,
-    only warriors and priests carry shields. Drinking a potion passes a turn.</p>
+    only warriors and priests carry shields. Drinking a potion passes a turn.
+    Heroes set out with <b>rusty and splintered</b> weapons that hit a little
+    softer (−1 damage) — a clean blade from a shop or a chest is a real find.</p>
     <h3>Wounds, poison &amp; camp</h3>
     <p>Poison keeps ticking as you explore — cure it with an Antidote or
     wait it out. Burning and paralysis last only through a battle. Camping
     (<b>T</b>, no enemies in sight) restores everyone's HP and spell points,
-    but a full watch passes — poison bites through the night, so cure first.
-    The fallen stay fallen; greater magic than a nap will come later.</p>
+    but it isn't free: camp eats <b>one ration per living hero</b> (the shop
+    sells them, chests hold them, and the party can only carry so many), and
+    sometimes something finds the fire — you wake half-rested and fighting,
+    the rations already eaten. A full watch passes either way — poison bites
+    through the night, so cure first. The fallen stay fallen; greater magic
+    than a nap will come later.</p>
     <h3>Running away</h3>
     <p>Fleeing works — but every enemy beside a hero lands a parting blow,
     and though the foes regroup for a few turns while you run, wounded

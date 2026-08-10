@@ -1,5 +1,5 @@
 {
-  "_comment": "All items. CONSUMABLES: effect 'heal' rolls 'dice' as HP; 'cure' removes the condition in 'cures'. GEAR goes on the paper doll (E key) — types map to slots: weapon_<category> and shield -> the two hands ('hands': 2 on a weapon claims both), armor_light/med/heavy -> body, helm -> head, boots -> feet, jewelry_ring -> one of two ring slots, jewelry_neck -> necklace. Weapon categories: light_blade/med_blade/heavy_blade/light_blunt/med_blunt/heavy_blunt/bow (weapons need 'damage', bows also 'range'). ANY worn piece may carry 'ac' and/or 'sp' — they all stack. Class permissions live in classes.json (weapon_types/armor_types/shields); helms, boots, and jewelry fit anyone. 'value' is the gold price for the Phase 4 shops. Add items freely!",
+  "_comment": "All items. CONSUMABLES: effect 'heal' rolls 'dice' as HP; 'cure' removes the condition in 'cures'. GEAR goes on the paper doll (E key) — types map to slots: weapon_<category> and shield -> the two hands ('hands': 2 on a weapon claims both), armor_light/med/heavy -> body, helm -> head, boots -> feet, jewelry_ring -> one of two ring slots, jewelry_neck -> necklace. Weapon categories: light_blade/med_blade/heavy_blade/light_blunt/med_blunt/heavy_blunt/bow (weapons need 'damage', bows also 'range'). ANY worn piece may carry 'ac' and/or 'sp' — they all stack. Class permissions live in classes.json (weapon_types/armor_types/shields); helms, boots, and jewelry fit anyone. 'value' is the gold price for the Phase 4 shops. SUPPLIES: type 'supply' items (rations) are camp fuel, not potions — 'max_carry' caps how many the party can haul. Add items freely!",
   "items": {
     "health_potion": {
       "name": "Health Potion",
@@ -16,6 +16,13 @@
       "cures": "poison",
       "value": 25,
       "description": "A bitter green draught that purges poison from the blood."
+    },
+    "rations": {
+      "name": "Rations",
+      "type": "supply",
+      "value": 5,
+      "max_carry": 12,
+      "description": "A day's food and firewood. Making camp eats one per living hero."
     },
     "longsword": {
       "name": "Longsword",
@@ -54,6 +61,50 @@
       "value": 90,
       "description": "A tall yew bow that strikes from across the field. Needs both hands."
     },
+    "rusty_longsword": {
+      "name": "Rusty Longsword",
+      "type": "weapon_med_blade",
+      "damage": "1d8-1",
+      "value": 25,
+      "description": "A soldier's blade gone orange at the edge. It still cuts — mostly."
+    },
+    "rusty_mace": {
+      "name": "Rusty Mace",
+      "type": "weapon_med_blunt",
+      "damage": "1d6-1",
+      "value": 15,
+      "description": "Flaking iron on a worm-eaten haft."
+    },
+    "splintered_staff": {
+      "name": "Splintered Staff",
+      "type": "weapon_light_blunt",
+      "damage": "1d4-1",
+      "value": 5,
+      "description": "A cracked stave held together by twine and hope."
+    },
+    "rusty_dagger": {
+      "name": "Rusty Dagger",
+      "type": "weapon_light_blade",
+      "damage": "1d4-1",
+      "value": 5,
+      "description": "More tetanus than threat, but it fits the hand."
+    },
+    "splintered_longbow": {
+      "name": "Splintered Longbow",
+      "type": "weapon_bow",
+      "damage": "1d6-1",
+      "range": 6,
+      "hands": 2,
+      "value": 25,
+      "description": "A yew bow with a hairline crack — it thrums where it should sing. Needs both hands."
+    },
+    "tarnished_elven_blade": {
+      "name": "Tarnished Elven Blade",
+      "type": "weapon_med_blade",
+      "damage": "1d8-1",
+      "value": 40,
+      "description": "Elven steel dulled by neglect. It remembers being sharper."
+    },
     "elven_blade": {
       "name": "Elven Blade",
       "type": "weapon_med_blade",
@@ -65,21 +116,21 @@
       "name": "Iron Sword",
       "type": "weapon_med_blade",
       "damage": "1d6-1",
-      "value": 50,
+      "value": 15,
       "description": "A reliable sword that deals moderate damage."
     },
     "iron_dagger": {
       "name": "Iron Dagger",
       "type": "weapon_light_blade",
       "damage": "1d4-1",
-      "value": 30,
+      "value": 8,
       "description": "A plain blade for a plain purpose."
     },
     "iron_mace": {
       "name": "Iron Mace",
       "type": "weapon_med_blunt",
       "damage": "1d6-1",
-      "value": 50,
+      "value": 15,
       "description": "A reliable mace that deals moderate damage."
     },
     "wooden_shield": {

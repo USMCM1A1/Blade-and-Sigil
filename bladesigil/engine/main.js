@@ -3,12 +3,12 @@
 import { loadJSON, showFatal } from './loader.js';
 import { Game } from './game.js';
 import { Renderer, preloadImages } from './render.js';
-import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen } from './ui.js';
+import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding } from './ui.js';
 import { choosePartyDef } from './creation.js';
 import * as audio from './audio.js';
 
 async function boot() {
-  const [classes, races, monsters, party, level, spells, conditions, items] = await Promise.all([
+  const [classes, races, monsters, party, level, spells, conditions, items, town] = await Promise.all([
     loadJSON('data/classes.json'),
     loadJSON('data/races.json'),
     loadJSON('data/monsters.json'),
@@ -17,6 +17,7 @@ async function boot() {
     loadJSON('data/spells.json'),
     loadJSON('data/conditions.json'),
     loadJSON('data/items.json'),
+    loadJSON('data/town.json'),
   ]);
 
   // Tactical battle templates: the level says which ones its battles use.
@@ -25,12 +26,15 @@ async function boot() {
   for (const n of tacticsNames) tactics[n] = await loadJSON(`data/tactics/${n}.json`);
   const arenaTemplate = await loadJSON('data/tactics/arena.json');
 
-  const data = { classes, races, monsters, party, level, tactics, spells, conditions, items, arenaTemplate };
+  const data = { classes, races, monsters, party, level, tactics, spells, conditions, items, town, arenaTemplate };
   const partyDef = await choosePartyDef(data);
-  const game = new Game({ ...data, party: { party: partyDef } });
+  const game = new Game({ ...data, party: { ...party, party: partyDef } });
 
   // Collect every sprite the data mentions and preload it.
   const sprites = new Set(['assets/misc/loot_drop.jpg', 'assets/misc/door_1.png', 'assets/heroes/party-icon.png']);
+  for (const t of ['cobblestones.png', 'vegetation.png', 'inn.png', 'shop.png', 'dungeon_entrance.png']) {
+    sprites.add(`assets/town/${t}`);
+  }
   for (const c of Object.values(classes.classes)) { sprites.add(c.sprite); sprites.add(c.sprite_dead); if (c.portrait) sprites.add(c.portrait); }
   for (const m of Object.values(monsters.monsters)) { sprites.add(m.sprite); if (m.sprite_dead) sprites.add(m.sprite_dead); }
   const images = await preloadImages([...sprites]);
@@ -38,6 +42,7 @@ async function boot() {
   const canvas = document.getElementById('viewport');
   const renderer = new Renderer(canvas, game, images);
   window.game = game; // console access for debugging/playtesting
+  game.onBuilding = kind => openBuilding(game, kind);
   buildPartyPanel(game);
 
   // Fill the window: the canvas takes all the room the sidebar, log, and
@@ -136,6 +141,10 @@ async function boot() {
       } else if (e.key === 'r' || e.key === 'R') {
         location.reload();
       }
+      return;
+    }
+    if (buildingOpen()) {
+      if (e.key === 'Escape') closeBuilding();
       return;
     }
     if (equipmentOpen()) {

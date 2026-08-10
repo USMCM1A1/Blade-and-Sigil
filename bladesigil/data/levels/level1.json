@@ -1,10 +1,12 @@
 {
-  "_comment": "Map legend: # wall, . floor, + closed door, $ treasure chest, > stairs down, @ party start. Letters are monster spawns defined in 'legend'. Every row must be the same length. Edit freely and refresh the browser! 'chest_items': each entry rolls independently per chest — 'chance' 0.5 means half of chests hold that item (ids from items.json) alongside the gold. 'chest_random': every chest also holds this many items drawn at random from the whole of items.json (great for testing; set 0 or remove for none).",
+  "_comment": "Map legend: # wall, . floor, + closed door, $ treasure chest, > stairs down, @ party start. Letters are monster spawns defined in 'legend'. Every row must be the same length. Edit freely and refresh the browser! 'chest_items': each entry rolls independently per chest — 'chance' 0.5 means half of chests hold that item (ids from items.json) alongside the gold. 'chest_random': every chest also holds this many items drawn at random from the whole of items.json (great for testing; set 0 or remove for none). 'rest_ambush': chance (0-1) that making camp on this level is interrupted by wandering monsters from the legend — the party wakes half-healed and fighting.",
   "name": "The Vermin Warrens",
   "chest_gold": "3d20+20",
+  "rest_ambush": 0.25,
   "chest_items": [
     { "id": "health_potion", "chance": 0.5 },
-    { "id": "antidote_potion", "chance": 0.35 }
+    { "id": "antidote_potion", "chance": 0.35 },
+    { "id": "rations", "chance": 0.4 }
   ],
   "chest_random": 1,
   "tactics": ["room", "cave"],

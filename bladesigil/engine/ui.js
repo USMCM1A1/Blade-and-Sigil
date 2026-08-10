@@ -11,6 +11,96 @@ function gearStats(def) {
   return bits.join(' · ');
 }
 
+// Shop/pouch rows: gear shows its numbers, everything else its description.
+function itemStats(def) {
+  return def.type === 'consumable' || def.type === 'supply' ? def.description : gearStats(def);
+}
+
+// ---- Town buildings: shop, inn, temple (Phase 4) ----
+export function buildingOpen() {
+  return document.getElementById('building').style.display === 'block';
+}
+
+export function closeBuilding() {
+  document.getElementById('building').style.display = 'none';
+}
+
+export function openBuilding(game, kind) {
+  document.getElementById('building').style.display = 'block';
+  renderBuilding(game, kind);
+}
+
+const KEEPERS = { inn: 'assets/town/innkeep.png', shop: 'assets/town/shopkeep.jpg' };
+const B_TITLES = { inn: 'The Inn', shop: 'The Shop', temple: 'The Temple' };
+
+function renderBuilding(game, kind) {
+  const conf = game.data.town[kind];
+  document.getElementById('b-title').textContent = B_TITLES[kind];
+  const keeper = document.getElementById('b-keeper');
+  if (KEEPERS[kind]) { keeper.src = KEEPERS[kind]; keeper.style.display = 'block'; }
+  else keeper.style.display = 'none';
+  document.getElementById('b-welcome').textContent = conf.welcome ?? '';
+  document.getElementById('b-gold').textContent = `Party gold: ${game.gold}`;
+  const body = document.getElementById('b-body');
+  body.innerHTML = '';
+  const again = () => renderBuilding(game, kind);
+
+  const row = (label, stats, btnText, disabledReason, act) => {
+    const div = document.createElement('div');
+    div.className = 'eq-pool-item';
+    div.innerHTML = `<span class="eq-pool-name">${label}</span><span class="inv-stats">${stats}</span>`;
+    const btn = document.createElement('button');
+    btn.textContent = btnText;
+    if (disabledReason) { btn.disabled = true; btn.title = disabledReason; }
+    btn.addEventListener('click', () => { act(); again(); });
+    div.appendChild(btn);
+    body.appendChild(div);
+    return div;
+  };
+
+  if (kind === 'inn') {
+    row('A night for the whole party', 'full HP & spell points for the living', `Rest — ${conf.price} gold`,
+      game.gold < conf.price ? 'Not enough gold.' : null, () => game.innRest());
+  }
+
+  if (kind === 'temple') {
+    const fallen = game.party.filter(ch => !ch.alive);
+    if (!fallen.length) {
+      body.innerHTML = '<p class="inv-empty">The Light finds no one to call back. May it stay that way.</p>';
+    }
+    for (const ch of fallen) {
+      row(ch.name, `Level ${ch.level} ${ch.race.name} ${ch.cls.name}`, `Revive — ${conf.price} gold`,
+        game.gold < conf.price ? 'Not enough gold.' : null, () => game.templeRevive(ch));
+    }
+  }
+
+  if (kind === 'shop') {
+    const sale = document.createElement('div');
+    sale.className = 'eq-sec';
+    sale.textContent = 'For sale';
+    body.appendChild(sale);
+    for (const id of conf.stock) {
+      const def = game.itemDef(id);
+      if (!def) continue; // unknown ids in town.json just don't appear
+      row(def.name, itemStats(def), `Buy — ${def.value} gold`,
+        game.gold < (def.value ?? 0) ? 'Not enough gold.' : null, () => game.shopBuy(id));
+    }
+    const sellHead = document.createElement('div');
+    sellHead.className = 'eq-sec';
+    sellHead.style.marginTop = '12px';
+    sellHead.textContent = 'From the party pouch';
+    body.appendChild(sellHead);
+    const held = Object.entries(game.inventory).filter(([, n]) => n > 0);
+    if (!held.length) body.insertAdjacentHTML('beforeend', '<p class="inv-empty">Nothing to sell.</p>');
+    for (const [id, n] of held) {
+      const def = game.itemDef(id);
+      const price = Math.floor((def.value ?? 0) * (conf.sell_rate ?? 0.5));
+      row(`${def.name} ×${n}`, itemStats(def),
+        `Sell — ${price} gold`, null, () => game.shopSell(id));
+    }
+  }
+}
+
 // ---- The inventory screen ----
 // Slots are laid out around the hero's figure: head above, hands at the
 // sides, rings by the hands, boots at the feet — see #eq-doll grid areas.
@@ -74,7 +164,8 @@ function renderEquipment(game) {
   // Potions: drunk by the hero whose page is open (drinking passes a turn).
   const potions = document.getElementById('eq-potions');
   const held = game.heldItems();
-  potions.innerHTML = held.length ? '' : '<p class="inv-empty">No potions in the pouch.</p>';
+  const supplies = game.heldSupplies();
+  potions.innerHTML = held.length || supplies.length ? '' : '<p class="inv-empty">No potions in the pouch.</p>';
   for (const it of held) {
     const row = document.createElement('div');
     row.className = 'eq-pool-item';
@@ -92,6 +183,15 @@ function renderEquipment(game) {
       else renderEquipment(game);
     });
     row.appendChild(btn);
+    potions.appendChild(row);
+  }
+  // Camp supplies ride along here — nothing to click, just the count.
+  for (const it of supplies) {
+    const row = document.createElement('div');
+    row.className = 'eq-pool-item';
+    row.innerHTML = `
+      <span class="eq-pool-name">${it.def.name} <span class="inv-count">×${it.count}${it.def.max_carry ? `/${it.def.max_carry}` : ''}</span></span>
+      <span class="inv-stats">${it.def.description}</span>`;
     potions.appendChild(row);
   }
 
@@ -146,7 +246,8 @@ export function buildPartyPanel(game) {
 }
 
 export function updateUI(game) {
-  document.getElementById('location').textContent = `${game.level.name} · Turn ${game.turn}`;
+  document.getElementById('location').textContent =
+    game.mode === 'town' ? game.level.name : `${game.level.name} · Turn ${game.turn}`;
   document.getElementById('gold-display').textContent = `Gold: ${game.gold}`;
 
   for (const ch of game.party) {

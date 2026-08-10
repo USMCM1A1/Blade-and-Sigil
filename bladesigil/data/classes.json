@@ -11,7 +11,7 @@
         "human",
         "dwarf"
       ],
-      "starting_weapon": "longsword",
+      "starting_weapon": "rusty_longsword",
       "weapon_types": [
         "any"
       ],
@@ -119,7 +119,7 @@
       "allowed_races": [
         "human"
       ],
-      "starting_weapon": "mace",
+      "starting_weapon": "rusty_mace",
       "weapon_types": [
         "light_blunt",
         "med_blunt",
@@ -233,7 +233,7 @@
         "halfling",
         "dwarf"
       ],
-      "starting_weapon": "staff",
+      "starting_weapon": "splintered_staff",
       "weapon_types": [
         "light_blade",
         "light_blunt"
@@ -338,7 +338,7 @@
       "allowed_races": [
         "halfling"
       ],
-      "starting_weapon": "dagger",
+      "starting_weapon": "rusty_dagger",
       "weapon_types": [
         "light_blade",
         "med_blade",
@@ -448,7 +448,7 @@
       "allowed_races": [
         "wood_elf"
       ],
-      "starting_weapon": "longbow",
+      "starting_weapon": "splintered_longbow",
       "weapon_types": [
         "any"
       ],
@@ -555,7 +555,7 @@
       "allowed_races": [
         "high_elf"
       ],
-      "starting_weapon": "elven_blade",
+      "starting_weapon": "tarnished_elven_blade",
       "weapon_types": [
         "any"
       ],
@@ -662,7 +662,7 @@
         "human",
         "high_elf"
       ],
-      "starting_weapon": "staff",
+      "starting_weapon": "splintered_staff",
       "weapon_types": [
         "light_blade",
         "light_blunt"

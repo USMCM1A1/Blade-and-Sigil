@@ -35,6 +35,10 @@ export class Renderer {
       this.drawBattle();
       return;
     }
+    if (game.mode === 'town') {
+      this.drawTown();
+      return;
+    }
 
     // Camera centered on party, clamped to map bounds.
     const camX = Math.max(0, Math.min(game.level.w - this.cols, game.partyPos.x - Math.floor(this.cols / 2)));
@@ -119,6 +123,65 @@ export class Renderer {
       ctx.textBaseline = 'middle';
       ctx.fillText('▼', px + TILE / 2, py + TILE / 2 + 2);
     }
+  }
+
+  // ---- Novamagus (Phase 4) ----
+  // The whole town fits on screen: cobblestones, hedges, and the buildings
+  // with their signs. No fog, no turns — a safe place.
+  drawTown() {
+    const { ctx, game } = this;
+    const w = game.level.w, h = game.level.h;
+    const ox = Math.max(0, (this.canvas.width - w * TILE) / 2);
+    const oy = Math.max(0, (this.canvas.height - h * TILE) / 2);
+    const img = n => this.images[`assets/town/${n}`];
+    const SPRITES = { v: 'vegetation.png', i: 'inn.png', s: 'shop.png', d: 'dungeon_entrance.png' };
+    const LABELS = { i: 'Inn', s: 'Shop', t: 'Temple', d: 'Dungeon' };
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const px = ox + x * TILE, py = oy + y * TILE;
+        const cobble = img('cobblestones.png');
+        if (cobble) ctx.drawImage(cobble, px, py, TILE, TILE);
+        const c = game.grid[y][x];
+        if (c === 't') {
+          // Placeholder shrine tile until the designer paints a temple.
+          ctx.fillStyle = 'rgba(16,14,26,0.88)';
+          ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+          ctx.strokeStyle = COLORS.stairs;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
+          ctx.fillStyle = COLORS.stairs;
+          ctx.font = `bold ${TILE - 22}px Georgia`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('✝', px + TILE / 2, py + TILE / 2 + 2);
+        } else if (SPRITES[c]) {
+          const s = img(SPRITES[c]);
+          if (s) ctx.drawImage(s, px, py, TILE, TILE);
+        }
+        if (LABELS[c]) {
+          ctx.font = 'bold 11px Georgia';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'alphabetic';
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#000';
+          ctx.strokeText(LABELS[c], px + TILE / 2, py + TILE - 4);
+          ctx.fillStyle = COLORS.stairs;
+          ctx.fillText(LABELS[c], px + TILE / 2, py + TILE - 4);
+        }
+      }
+    }
+
+    // The party token.
+    const px = ox + game.partyPos.x * TILE, py = oy + game.partyPos.y * TILE;
+    const icon = this.images[PARTY_ICON];
+    if (icon) ctx.drawImage(icon, px + 1, py + 1, TILE - 2, TILE - 2);
+
+    ctx.fillStyle = 'rgba(207,196,166,0.75)';
+    ctx.font = '13px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillText('Walk into a building to enter it — the dungeon waits at its gate.',
+      this.canvas.width / 2, oy + h * TILE + 22);
   }
 
   // ---- Tactical battlefield (Phase 3a) ----

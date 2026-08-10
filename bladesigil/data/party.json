@@ -1,5 +1,6 @@
 {
-  "_comment": "Pregenerated Phase 1 party (character creation UI arrives in Phase 2). Abilities are the six rolled scores BEFORE racial bonus. 'row': front-row characters take the hits; back row is protected while any front-row member lives. Party marching order is the order of this list.",
+  "_comment": "Pregenerated Phase 1 party (character creation UI arrives in Phase 2). Abilities are the six rolled scores BEFORE racial bonus. 'row': front-row characters take the hits; back row is protected while any front-row member lives. Party marching order is the order of this list. 'starting_gold' is rolled once PER HERO and pooled into the shared purse (legacy rule from player.py).",
+  "starting_gold": "4d6+200",
   "party": [
     {
       "name": "Borin",

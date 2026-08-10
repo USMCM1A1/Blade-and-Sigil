@@ -20,8 +20,112 @@ export class Game {
     this.victory = false;   // reached the stairs
     this.battle = null;     // active tactical battle, or null while exploring
     this.party = data.party.party.map(p => this.buildCharacter(p));
-    this.loadLevel(data.level);
-    this.log(`Welcome to ${this.level.name}. The party descends into darkness...`, 'info');
+    // Each hero brings their own purse to the pool (data/party.json rule).
+    const goldDice = data.party.starting_gold || '4d6+200';
+    for (const ch of this.party) this.gold += roll(goldDice);
+    this.onBuilding = null; // main.js hooks this to open the shop/inn/temple panels
+    this.enterTown(true);   // Novamagus is home: every run starts here
+    this.log(`The party pools its purses: ${this.gold} gold.`, 'gold');
+  }
+
+  // ---- Novamagus (Phase 4): the home base between dungeon dives ----
+  enterTown(first = false) {
+    const t = this.data.town;
+    const rows = t.map;
+    const w = rows[0].length;
+    if (!rows.every(r => r.length === w)) {
+      throw new DataError('data/town.json', `Town map rows must all be the same length (row 1 is ${w} characters).`);
+    }
+    this.mode = 'town';
+    this.level = { name: t.name, w, h: rows.length };
+    this.grid = rows.map(r => r.split(''));
+    this.monsters = [];
+    this.partyPos = null;
+    for (let y = 0; y < rows.length; y++) {
+      for (let x = 0; x < w; x++) {
+        const c = this.grid[y][x];
+        if (c === '@') { this.partyPos = { x, y }; this.grid[y][x] = '.'; }
+        else if (!'.vistd'.includes(c)) {
+          throw new DataError('data/town.json', `Unknown town map symbol "${c}" at row ${y + 1}, column ${x + 1}. Use . v @ i s t d.`);
+        }
+      }
+    }
+    if (!this.partyPos) throw new DataError('data/town.json', 'No "@" (party position) found on the town map.');
+    this.log(first
+      ? `Welcome to ${t.name}. The inn is warm, the shop is stocked, and the dungeon waits below.`
+      : `You emerge into the daylight of ${t.name}.`, 'info');
+  }
+
+  enterDungeon() {
+    this.mode = 'dungeon';
+    this.loadLevel(this.data.level);
+    this.log(`The party descends into ${this.level.name}...`, 'info');
+  }
+
+  townMove(dx, dy) {
+    const nx = this.partyPos.x + dx, ny = this.partyPos.y + dy;
+    const cell = this.grid[ny]?.[nx];
+    if (cell === undefined || cell === 'v') return; // hedges block the way
+    if (cell === 'd') { this.enterDungeon(); return; }
+    const building = { i: 'inn', s: 'shop', t: 'temple' }[cell];
+    if (building) { this.onBuilding?.(building); return; }
+    this.partyPos = { x: nx, y: ny }; // town time stands still — no turns pass
+  }
+
+  // Building services. Each returns true if the transaction happened.
+  innRest() {
+    const price = this.data.town.inn.price;
+    if (this.gold < price) { this.log(`A night at the inn costs ${price} gold — the party cannot pay.`, 'info'); return false; }
+    this.gold -= price;
+    for (const ch of this.party) {
+      if (!ch.alive) continue;
+      ch.hp = ch.maxHp;
+      ch.sp = ch.maxSp;
+    }
+    audio.play('victory');
+    this.log(`The party sleeps soundly at the inn. Wounds mend and spirits return. (−${price} gold)`, 'good');
+    return true;
+  }
+
+  templeRevive(ch) {
+    const price = this.data.town.temple.price;
+    if (ch.alive) return false;
+    if (this.gold < price) { this.log(`The offering is ${price} gold — the party cannot pay.`, 'info'); return false; }
+    this.gold -= price;
+    ch.alive = true;
+    ch.hp = ch.maxHp;
+    ch.sp = ch.maxSp;
+    ch.conditions = [];
+    audio.play('victory');
+    this.log(`Light floods the altar — ${ch.name} draws breath once more! (−${price} gold)`, 'good');
+    return true;
+  }
+
+  shopBuy(id) {
+    const def = this.itemDef(id);
+    if (!def) return false;
+    if (def.max_carry && (this.inventory[id] || 0) >= def.max_carry) {
+      this.log(`The party can only carry ${def.max_carry} ${def.name.toLowerCase()}.`, 'info');
+      return false;
+    }
+    const price = def.value ?? 0;
+    if (this.gold < price) { this.log(`${def.name} costs ${price} gold — the party cannot pay.`, 'info'); return false; }
+    this.gold -= price;
+    this.addItem(id);
+    audio.play('gold');
+    this.log(`Bought ${def.name} for ${price} gold.`, 'gold');
+    return true;
+  }
+
+  shopSell(id) {
+    if (!(this.inventory[id] > 0)) return false;
+    const def = this.itemDef(id);
+    const price = Math.floor((def.value ?? 0) * (this.data.town.shop.sell_rate ?? 0.5));
+    this.inventory[id]--;
+    this.gold += price;
+    audio.play('gold');
+    this.log(`Sold ${def.name} for ${price} gold.`, 'gold');
+    return true;
   }
 
   // ---- Character building (design doc rules) ----
@@ -98,7 +202,11 @@ export class Game {
       chestGold: levelData.chest_gold || '2d20+10',
       chestItems: levelData.chest_items || [],
       chestRandom: levelData.chest_random || 0, // guaranteed random items per chest
+      restAmbush: levelData.rest_ambush ?? 0,   // chance camp is interrupted
     };
+    if (typeof this.level.restAmbush !== 'number' || this.level.restAmbush < 0 || this.level.restAmbush > 1) {
+      throw new DataError('data/levels/level1.json', `"rest_ambush" must be a number between 0 and 1 (e.g. 0.25 = a quarter of camps are attacked).`);
+    }
     for (const entry of this.level.chestItems) {
       if (!this.data.items.items[entry.id]) {
         throw new DataError('data/levels/level1.json', `chest_items lists "${entry.id}" but there is no such item in items.json. Valid: ${Object.keys(this.data.items.items).join(', ')}`);
@@ -181,6 +289,7 @@ export class Game {
   // ---- Player turn ----
   tryMove(dx, dy) {
     if (this.over || this.victory || this.battle) return;
+    if (this.mode === 'town') return this.townMove(dx, dy);
     const nx = this.partyPos.x + dx, ny = this.partyPos.y + dy;
     if (nx < 0 || ny < 0 || nx >= this.level.w || ny >= this.level.h) return;
     const cell = this.grid[ny][nx];
@@ -199,27 +308,26 @@ export class Game {
       this.gold += amount;
       this.grid[ny][nx] = '.';
       audio.play('gold');
-      const found = [];
+      const found = [], left = [];
       for (const entry of this.level.chestItems) {
         if (Math.random() < entry.chance) {
-          this.addItem(entry.id);
-          found.push(this.itemDef(entry.id).name);
+          (this.addItem(entry.id) ? found : left).push(this.itemDef(entry.id).name);
         }
       }
       // Guaranteed surprises: N items drawn at random from the whole catalog.
       const ids = Object.keys(this.data.items.items);
       for (let i = 0; i < this.level.chestRandom; i++) {
         const id = ids[Math.floor(Math.random() * ids.length)];
-        this.addItem(id);
-        found.push(this.itemDef(id).name);
+        (this.addItem(id) ? found : left).push(this.itemDef(id).name);
       }
       this.log(found.length
         ? `You pry open the chest — ${amount} gold and: ${found.join(', ')}! (I — inventory)`
         : `You pry open the chest — ${amount} gold!`, 'gold');
+      if (left.length) this.log(`The party can carry no more and leaves behind: ${left.join(', ')}.`, 'info');
     } else if (cell === '>') {
-      this.victory = true;
       audio.play('victory');
-      this.log('You descend the stairs... The Vermin Warrens are cleared! (Deeper levels arrive in a later phase.)', 'good');
+      this.log('The Vermin Warrens are cleared! The party climbs back to the surface. (Deeper levels arrive in a later phase.)', 'good');
+      this.enterTown();
       return;
     } else {
       this.partyPos = { x: nx, y: ny };
@@ -229,20 +337,52 @@ export class Game {
   }
 
   wait() {
-    if (this.over || this.victory || this.battle) return;
+    if (this.over || this.victory || this.battle || this.mode === 'town') return;
     this.endPlayerTurn();
   }
 
   // Make camp: restore HP and spell points. Only safe when no enemy is in
   // sight; the fallen stay fallen (that takes greater magic than a nap).
-  // Camp time advances the clock a full watch — lingering afflictions
-  // (Phase 3d conditions) will tick during it.
+  // Camp burns 1 ration per living hero (the shop sells them, chests drop
+  // them), so rest is a resource, not a free heal between every room — and
+  // the level's rest_ambush chance means wandering monsters may find the
+  // fire: the party wakes half-healed and fighting, rations already spent.
   rest() {
     if (this.over || this.victory || this.battle) return;
+    if (this.mode === 'town') {
+      this.log('No need to pitch camp on cobblestones — the inn is right there.', 'info');
+      return;
+    }
     if (this.monsters.some(m => this.isVisible(m.x, m.y))) {
       this.log('You cannot make camp with enemies in sight!', 'info');
       return;
     }
+    const mouths = this.party.filter(ch => ch.alive).length;
+    const packed = this.inventory.rations || 0;
+    if (packed < mouths) {
+      this.log(`Camp takes ${mouths} rations and the party carries ${packed}. The shop in Novamagus sells them.`, 'info');
+      return;
+    }
+    this.inventory.rations = packed - mouths;
+
+    if (Math.random() < this.level.restAmbush) {
+      const pack = this.spawnCampAmbush();
+      if (pack) {
+        // Half a night's sleep: half the missing HP and SP come back.
+        for (const ch of this.party) {
+          if (!ch.alive) continue;
+          ch.hp += Math.ceil((ch.maxHp - ch.hp) / 2);
+          ch.sp += Math.ceil((ch.maxSp - ch.sp) / 2);
+        }
+        this.log(`The party makes camp (−${mouths} rations)... but in the dead of night, something finds the fire!`, 'death');
+        this.advanceTime(25); // half a watch passes before the attack
+        if (this.over) return;
+        this.updateVision();
+        this.startBattle(pack[0], true);
+        return;
+      }
+    }
+
     const before = this.party.map(ch => ch.hp);
     for (const ch of this.party) {
       if (!ch.alive) continue;
@@ -251,10 +391,36 @@ export class Game {
     }
     audio.play('victory');
     const healed = this.party.some((ch, i) => ch.hp !== before[i]);
-    this.log(`The party makes camp and rests. ${healed ? 'Wounds mend and spirits return.' : 'Spirits return.'}`, 'good');
+    this.log(`The party makes camp and rests (−${mouths} rations). ${healed ? 'Wounds mend and spirits return.' : 'Spirits return.'}`, 'good');
     // A watch of camp time passes AFTER the healing — lingering poison
     // ticks through the night, so cure it before you sleep.
     this.advanceTime(50);
+  }
+
+  // Wandering monsters stumble onto the camp: 1-3 of one type from this
+  // level's roster, placed on open floor around the sleepers. Returns the
+  // pack (now real map monsters — flee and they're still out there).
+  spawnCampAmbush() {
+    const ids = [...new Set(Object.values(this.data.level.legend || {}))];
+    if (!ids.length) return null;
+    const id = ids[Math.floor(Math.random() * ids.length)];
+    const def = this.data.monsters.monsters[id];
+    const count = 1 + Math.floor(Math.random() * 3);
+    const spots = [];
+    for (let r = 1; r <= 3 && spots.length < count; r++) {
+      for (let dy = -r; dy <= r && spots.length < count; dy++) {
+        for (let dx = -r; dx <= r && spots.length < count; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const x = this.partyPos.x + dx, y = this.partyPos.y + dy;
+          const cell = this.grid[y]?.[x];
+          if ((cell === '.' || cell === "'") && !this.monsterAt(x, y)) spots.push({ x, y });
+        }
+      }
+    }
+    if (!spots.length) return null;
+    const pack = spots.map(s => ({ ...def, id, x: s.x, y: s.y, maxHp: def.hp, conditions: [] }));
+    this.monsters.push(...pack);
+    return pack;
   }
 
   // ---- Training arena (debug/design sandbox) ----
@@ -321,7 +487,16 @@ export class Game {
 
   // ---- Items (shared party pouch) ----
   itemDef(id) { return this.data.items.items[id]; }
-  addItem(id, n = 1) { this.inventory[id] = (this.inventory[id] || 0) + n; }
+
+  // Add to the pouch, honoring the item's max_carry cap (rations can't be
+  // stockpiled into an endless larder). Returns how many were actually taken.
+  addItem(id, n = 1) {
+    const cap = this.itemDef(id)?.max_carry;
+    const have = this.inventory[id] || 0;
+    const taken = cap ? Math.min(n, Math.max(0, cap - have)) : n;
+    if (taken > 0) this.inventory[id] = have + taken;
+    return taken;
+  }
 
   // Held consumables, for menus: [{id, def, count}]
   heldItems() {
@@ -329,6 +504,14 @@ export class Game {
       .filter(([, n]) => n > 0)
       .map(([id, n]) => ({ id, def: this.itemDef(id), count: n }))
       .filter(it => it.def && it.def.type === 'consumable');
+  }
+
+  // Camp supplies (rations etc.), for the inventory screen: [{id, def, count}]
+  heldSupplies() {
+    return Object.entries(this.inventory)
+      .filter(([, n]) => n > 0)
+      .map(([id, n]) => ({ id, def: this.itemDef(id), count: n }))
+      .filter(it => it.def && it.def.type === 'supply');
   }
 
   // Worn gear in the pouch, for the equip UI: [{id, def, count}]

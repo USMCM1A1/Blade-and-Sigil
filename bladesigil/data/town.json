@@ -1,0 +1,45 @@
+{
+  "_comment": "Novamagus, the party's home base. Map legend: . cobblestones (walkable), v vegetation (blocks the way), @ where the party stands on arrival, i inn, s shop, t temple, d dungeon entrance. Walk into a building to enter it. Every row must be the same length. 'inn.price' is the cost of a night's rest (full HP/SP for the living). 'temple.price' revives one fallen hero. 'shop.stock' lists item ids from items.json, in the order shown; 'shop.sell_rate' is the fraction of an item's value paid when the party sells (0.5 = half). Edit freely and refresh!",
+  "name": "Novamagus",
+  "map": [
+    "vvvvvvvvvvvv",
+    "v....t.....v",
+    "v..........v",
+    "v.i......s.v",
+    "v..........v",
+    "v....@.....v",
+    "v..........v",
+    "vv...d....vv",
+    "vvvvvvvvvvvv"
+  ],
+  "inn": {
+    "price": 10,
+    "welcome": "The innkeep stokes the fire. 'A warm bed and a hot meal — ten gold for the lot of you.'"
+  },
+  "temple": {
+    "price": 100,
+    "welcome": "Candles gutter before the altar. 'The Light can call back the fallen... for an offering.'"
+  },
+  "shop": {
+    "sell_rate": 0.5,
+    "welcome": "The shopkeep looks up from her ledger. 'Buying or selling? Coin either way.'",
+    "stock": [
+      "rations",
+      "health_potion",
+      "antidote_potion",
+      "iron_sword",
+      "iron_dagger",
+      "iron_mace",
+      "longsword",
+      "mace",
+      "dagger",
+      "longbow",
+      "wooden_shield",
+      "leather_armor",
+      "ring_mail",
+      "chain_mail",
+      "iron_helm",
+      "sturdy_boots"
+    ]
+  }
+}
