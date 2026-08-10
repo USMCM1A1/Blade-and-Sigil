@@ -600,7 +600,11 @@ export class Battle {
       return;
     }
     this.game.log(`The ${monster.name} is slain! Each hero gains ${monster.xp} XP.`, 'good');
-    for (const ch of this.game.party) if (ch.alive) ch.xp += monster.xp;
+    for (const ch of this.game.awardXp(monster.xp)) this.fxOn(ch, 'LEVEL UP!', '#d4a94e');
+    if (this.game.depth === 'boss' && monster.id === this.game.data.dungeon.boss.monster) {
+      this.game.victory = true; // the run is won — the map shows the banner when the fight ends
+      this.game.log(`The ${monster.name} is destroyed! The endless dark is broken — the party has conquered the dungeon!`, 'good');
+    }
   }
 
   finished() {
@@ -634,7 +638,7 @@ export class Battle {
       this.endedAt = performance.now();
       this.busy = true; // input locked while the scene plays out
       game.over = true;
-      game.log('The entire party has fallen. Darkness claims the Vermin Warrens. Press R to try again.', 'death');
+      game.log('The entire party has fallen. The dungeon keeps its dead. Press R to try again.', 'death');
       setTimeout(() => { if (game.battle === this) game.battle = null; }, 2400);
       return true;
     }

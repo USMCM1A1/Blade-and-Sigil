@@ -1,0 +1,163 @@
+{
+  "_comment": "The endless dungeon (Phase 5). Floors are generated from these five TIERS — each covers a span of floor depths and says what spawns there. 'styles': 'rooms' (halls and corridors) or 'caves' (twisting caverns; caves have no doors). 'monsters': id -> weight (higher = more common; ids from monsters.json). 'monster_count'/'chest_count'/'trap_count'/'secret_doors': dice strings rolled per floor. 'traps': which trap ids (from 'traps' below) this tier uses. 'rest_ambush': camp-attack chance. Floors deeper than the last tier keep using it. TRAPS: 'dice' damage, 'save' ability + 'dc' for half, optional 'condition' on a failed save. The BOSS floor is hand-drawn here — same format as a level file — and unlocks when every hero is level 20. Edit freely!",
+  "floor_size": { "w": [38, 46], "h": [22, 28] },
+  "tiers": [
+    {
+      "floors": [1, 4],
+      "name": "The Vermin Warrens",
+      "styles": ["rooms", "caves"],
+      "monsters": { "giant_rat": 3, "goblin": 3, "skeleton": 1 },
+      "monster_count": "2d3+2",
+      "chest_count": "1d3",
+      "chest_gold": "3d20+20",
+      "chest_items": [
+        { "id": "health_potion", "chance": 0.5 },
+        { "id": "antidote_potion", "chance": 0.3 },
+        { "id": "rations", "chance": 0.4 }
+      ],
+      "traps": ["spike_pit"],
+      "trap_count": "1d2-1",
+      "secret_doors": "1d2-1",
+      "rest_ambush": 0.25
+    },
+    {
+      "floors": [5, 8],
+      "name": "The Bone Galleries",
+      "styles": ["rooms", "caves"],
+      "monsters": { "goblin": 3, "skeleton": 3, "orc": 2 },
+      "monster_count": "2d4+3",
+      "chest_count": "1d3",
+      "chest_gold": "5d20+40",
+      "chest_items": [
+        { "id": "health_potion", "chance": 0.6 },
+        { "id": "antidote_potion", "chance": 0.35 },
+        { "id": "rations", "chance": 0.4 },
+        { "id": "longsword", "chance": 0.1 },
+        { "id": "wooden_shield", "chance": 0.1 }
+      ],
+      "traps": ["spike_pit", "dart_trap"],
+      "trap_count": "1d3-1",
+      "secret_doors": "1d2-1",
+      "rest_ambush": 0.3
+    },
+    {
+      "floors": [9, 12],
+      "name": "The Sunless Deep",
+      "styles": ["rooms", "caves"],
+      "monsters": { "skeleton": 3, "orc": 3 },
+      "monster_count": "2d4+5",
+      "chest_count": "1d3+1",
+      "chest_gold": "8d20+80",
+      "chest_items": [
+        { "id": "health_potion", "chance": 0.7 },
+        { "id": "antidote_potion", "chance": 0.4 },
+        { "id": "rations", "chance": 0.45 },
+        { "id": "ring_mail", "chance": 0.12 },
+        { "id": "spell_ring", "chance": 0.08 }
+      ],
+      "traps": ["dart_trap", "flame_jet"],
+      "trap_count": "1d3",
+      "secret_doors": "1d3-1",
+      "rest_ambush": 0.35
+    },
+    {
+      "floors": [13, 16],
+      "name": "The Screaming Halls",
+      "styles": ["rooms", "caves"],
+      "monsters": { "skeleton": 2, "orc": 3 },
+      "monster_count": "3d4+6",
+      "chest_count": "1d3+1",
+      "chest_gold": "10d20+150",
+      "chest_items": [
+        { "id": "health_potion", "chance": 0.8 },
+        { "id": "antidote_potion", "chance": 0.5 },
+        { "id": "rations", "chance": 0.5 },
+        { "id": "chain_mail", "chance": 0.12 },
+        { "id": "warding_amulet", "chance": 0.1 }
+      ],
+      "traps": ["flame_jet", "crushing_block"],
+      "trap_count": "1d3",
+      "secret_doors": "1d3-1",
+      "rest_ambush": 0.4
+    },
+    {
+      "floors": [17, 20],
+      "name": "The Abyssal Vaults",
+      "styles": ["rooms", "caves"],
+      "monsters": { "orc": 3, "skeleton": 1 },
+      "monster_count": "3d4+8",
+      "chest_count": "2d3",
+      "chest_gold": "12d20+250",
+      "chest_items": [
+        { "id": "health_potion", "chance": 0.9 },
+        { "id": "antidote_potion", "chance": 0.5 },
+        { "id": "rations", "chance": 0.5 },
+        { "id": "elven_blade", "chance": 0.1 },
+        { "id": "spell_ring", "chance": 0.15 }
+      ],
+      "traps": ["crushing_block", "soul_fire"],
+      "trap_count": "1d4",
+      "secret_doors": "1d3",
+      "rest_ambush": 0.45
+    }
+  ],
+  "traps": {
+    "spike_pit": {
+      "name": "Spike Pit",
+      "dice": "1d6",
+      "save": "dex",
+      "dc": 12
+    },
+    "dart_trap": {
+      "name": "Poison Dart",
+      "dice": "1d4",
+      "save": "dex",
+      "dc": 13,
+      "condition": { "id": "poison", "rounds": 3 }
+    },
+    "flame_jet": {
+      "name": "Flame Jet",
+      "dice": "2d6",
+      "save": "dex",
+      "dc": 14,
+      "condition": { "id": "burning", "rounds": 2 }
+    },
+    "crushing_block": {
+      "name": "Crushing Block",
+      "dice": "3d6",
+      "save": "dex",
+      "dc": 15
+    },
+    "soul_fire": {
+      "name": "Soul Fire",
+      "dice": "4d6",
+      "save": "wis",
+      "dc": 16,
+      "condition": { "id": "burning", "rounds": 3 }
+    }
+  },
+  "boss": {
+    "name": "The Hollow Throne",
+    "monster": "dread_sovereign",
+    "chest_gold": "20d20+500",
+    "chest_items": [],
+    "rest_ambush": 0,
+    "tactics": ["room"],
+    "legend": { "B": "dread_sovereign", "o": "orc" },
+    "map": [
+      "#####################",
+      "#####...........#####",
+      "####.....o.o.....####",
+      "###.......B.......###",
+      "####.............####",
+      "#####...........#####",
+      "######....$....######",
+      "#######.......#######",
+      "########.....########",
+      "########.....########",
+      "########..@..########",
+      "########..<..########",
+      "#####################"
+    ]
+  }
+}

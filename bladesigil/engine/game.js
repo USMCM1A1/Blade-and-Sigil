@@ -3,6 +3,7 @@
 import { roll, d20, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
 import { Battle } from './battle.js';
+import { generateFloor } from './dungeon.js';
 import * as audio from './audio.js';
 
 const VISION_RADIUS = 6.5;
@@ -19,6 +20,8 @@ export class Game {
     this.over = false;      // party wiped
     this.victory = false;   // reached the stairs
     this.battle = null;     // active tactical battle, or null while exploring
+    this.floors = {};       // visited floors keyed by depth — cleared rooms STAY cleared this run
+    this.depth = 0;         // current floor number ('boss' on the final floor)
     this.party = data.party.party.map(p => this.buildCharacter(p));
     // Each hero brings their own purse to the pool (data/party.json rule).
     const goldDice = data.party.starting_gold || '4d6+200';
@@ -57,9 +60,62 @@ export class Game {
   }
 
   enterDungeon() {
+    this.enterFloor(1, 'down');
+  }
+
+  // ---- Multi-floor dungeon (Phase 5) ----
+  // Floor 1 is the hand-made level; everything deeper is generated from
+  // data/dungeon.json's tier tables. Visited floors are cached for the whole
+  // run — kill a monster or loot a chest and it STAYS dead/empty, even
+  // after a trip to town (no more chest farming).
+  saveFloor() {
+    if (this.mode !== 'dungeon') return;
+    this.floors[this.depth] = {
+      level: this.level, grid: this.grid, monsters: this.monsters,
+      seen: this.seen, traps: this.traps, revealed: this.revealed,
+      triedDoors: this.triedDoors,
+    };
+  }
+
+  stairsAt(ch) {
+    for (let y = 0; y < this.level.h; y++) {
+      const x = this.grid[y].indexOf(ch);
+      if (x !== -1) return { x, y };
+    }
+    return null;
+  }
+
+  allAtPinnacle() { return this.party.every(ch => ch.level >= 20); }
+
+  enterFloor(depth, dir) {
+    this.saveFloor();
     this.mode = 'dungeon';
-    this.loadLevel(this.data.level);
-    this.log(`The party descends into ${this.level.name}...`, 'info');
+    this.depth = depth;
+    const cached = this.floors[depth];
+    if (cached) {
+      this.level = cached.level;
+      this.grid = cached.grid;
+      this.monsters = cached.monsters;
+      this.seen = cached.seen;
+      this.traps = cached.traps;
+      this.revealed = cached.revealed;
+      this.triedDoors = cached.triedDoors;
+      // Arriving from above, you stand on the up-stairs; from below, the down-stairs.
+      this.partyPos = (dir === 'down' ? this.stairsAt('<') : this.stairsAt('>')) || this.partyPos;
+      this.updateVision();
+    } else if (depth === 'boss') {
+      this.loadLevel(this.data.dungeon.boss);
+    } else if (depth === 1) {
+      this.loadLevel(this.data.level);
+    } else {
+      this.loadLevel(generateFloor(this.data, depth));
+    }
+    this.log(depth === 'boss'
+      ? `The stairs twist into darkness no map has charted. This is ${this.level.name}.`
+      : dir === 'down'
+        ? `The party descends to ${this.level.name}...`
+        : `The party climbs back up to ${this.level.name}.`, 'info');
+    this.searchNearby();
   }
 
   townMove(dx, dy) {
@@ -189,13 +245,56 @@ export class Game {
     ch.sp = Math.min(ch.sp, ch.maxSp);
   }
 
+  // ---- Experience & leveling ----
+  // Legacy player.py rule (the design doc is silent on XP): reaching the
+  // next level costs 50 × current level XP; the doc's per-level class
+  // tables (already in classes.json) say what each new level grants.
+  xpToLevel(ch) { return 50 * ch.level; }
+
+  // Every living hero shares the kill. Returns the heroes who leveled so
+  // battles can float LEVEL UP! over them.
+  awardXp(amount) {
+    const leveled = [];
+    for (const ch of this.party) {
+      if (!ch.alive) continue;
+      ch.xp += amount;
+      while (ch.level < 20 && ch.xp >= this.xpToLevel(ch)) {
+        ch.xp -= this.xpToLevel(ch);
+        this.levelUp(ch);
+        if (!leveled.includes(ch)) leveled.push(ch);
+      }
+      if (ch.level >= 20) ch.xp = Math.min(ch.xp, this.xpToLevel(ch)); // the bar just sits full
+    }
+    return leveled;
+  }
+
+  levelUp(ch) {
+    ch.level++;
+    const lvlIdx = ch.level - 1;
+    const conMod = abilityMod(ch.abilities.con);
+    const newMax = Math.max(1, ch.cls.hp_die + conMod) * ch.level;
+    const hpGain = newMax - ch.maxHp;
+    ch.maxHp = newMax;
+    ch.hp += hpGain; // the surge of a new level heals what it grants
+    ch.hitBase = ch.cls.hit_bonus[lvlIdx];
+    ch.attacks = ch.cls.attacks_per_round[lvlIdx];
+    this.refreshDerived(ch); // AC and spell points follow the class tables
+    audio.play('victory');
+    this.log(`${ch.name} reaches level ${ch.level}! (+${hpGain} HP${ch.maxSp ? `, SP ${ch.sp}/${ch.maxSp}` : ''})`, 'good');
+    if (ch.level === 20) this.log(`${ch.name} has reached the pinnacle of their art.`, 'good');
+    if (this.party.every(c => c.level >= 20)) {
+      this.log('The whole party stands at the height of mortal skill. Something below has taken notice...', 'death');
+    }
+  }
+
   // ---- Level parsing ----
   loadLevel(levelData) {
+    const src = levelData.file || 'data/levels/level1.json';
     const rows = levelData.map;
     const w = rows[0].length;
     if (!rows.every(r => r.length === w)) {
       const bad = rows.findIndex(r => r.length !== w);
-      throw new DataError('data/levels/level1.json', `Map row ${bad + 1} is ${rows[bad].length} characters wide but row 1 is ${w}. All rows must match.`);
+      throw new DataError(src, `Map row ${bad + 1} is ${rows[bad].length} characters wide but row 1 is ${w}. All rows must match.`);
     }
     this.level = {
       name: levelData.name, w, h: rows.length,
@@ -203,22 +302,33 @@ export class Game {
       chestItems: levelData.chest_items || [],
       chestRandom: levelData.chest_random || 0, // guaranteed random items per chest
       restAmbush: levelData.rest_ambush ?? 0,   // chance camp is interrupted
+      legend: levelData.legend || {},           // this floor's monster roster (camp ambushes draw from it)
+      tacticsNames: levelData.tactics,          // which battle templates fit this floor's style
     };
     if (typeof this.level.restAmbush !== 'number' || this.level.restAmbush < 0 || this.level.restAmbush > 1) {
       throw new DataError('data/levels/level1.json', `"rest_ambush" must be a number between 0 and 1 (e.g. 0.25 = a quarter of camps are attacked).`);
     }
     for (const entry of this.level.chestItems) {
       if (!this.data.items.items[entry.id]) {
-        throw new DataError('data/levels/level1.json', `chest_items lists "${entry.id}" but there is no such item in items.json. Valid: ${Object.keys(this.data.items.items).join(', ')}`);
+        throw new DataError(src, `chest_items lists "${entry.id}" but there is no such item in items.json. Valid: ${Object.keys(this.data.items.items).join(', ')}`);
       }
       if (typeof entry.chance !== 'number' || entry.chance < 0 || entry.chance > 1) {
-        throw new DataError('data/levels/level1.json', `chest_items entry "${entry.id}" needs a "chance" between 0 and 1 (e.g. 0.5 = half of chests).`);
+        throw new DataError(src, `chest_items entry "${entry.id}" needs a "chance" between 0 and 1 (e.g. 0.5 = half of chests).`);
       }
     }
     this.grid = rows.map(r => r.split(''));
     this.monsters = [];
     this.seen = Array.from({ length: rows.length }, () => new Array(w).fill(false));
     this.partyPos = null;
+    // Hidden dangers: traps [{x, y, id}] and secret doors ('S' on the map).
+    this.traps = (levelData.traps || []).map(t => ({ ...t, detected: false, tried: false }));
+    for (const t of this.traps) {
+      if (!this.data.dungeon.traps[t.id]) {
+        throw new DataError('data/dungeon.json', `A floor placed trap "${t.id}" but the "traps" section doesn't define it. Valid: ${Object.keys(this.data.dungeon.traps).join(', ')}`);
+      }
+    }
+    this.revealed = new Set();   // secret doors the party has spotted ("x,y")
+    this.triedDoors = new Set(); // walls already searched (Space re-searches)
 
     for (let y = 0; y < rows.length; y++) {
       for (let x = 0; x < w; x++) {
@@ -226,18 +336,18 @@ export class Game {
         if (c === '@') {
           this.partyPos = { x, y };
           this.grid[y][x] = '.';
-        } else if (levelData.legend[c]) {
+        } else if (levelData.legend?.[c]) {
           const id = levelData.legend[c];
           const def = this.data.monsters.monsters[id];
-          if (!def) throw new DataError('data/levels/level1.json', `Legend says "${c}" = "${id}" but there is no monster "${id}" in monsters.json. Valid: ${Object.keys(this.data.monsters.monsters).join(', ')}`);
+          if (!def) throw new DataError(src, `Legend says "${c}" = "${id}" but there is no monster "${id}" in monsters.json. Valid: ${Object.keys(this.data.monsters.monsters).join(', ')}`);
           this.monsters.push({ ...def, id, x, y, maxHp: def.hp, conditions: [] });
           this.grid[y][x] = '.';
-        } else if (!'#.+>$'.includes(c)) {
-          throw new DataError('data/levels/level1.json', `Unknown map symbol "${c}" at row ${y + 1}, column ${x + 1}. Use # . + > $ @ or a letter from the legend.`);
+        } else if (!'#.+>$<S'.includes(c)) {
+          throw new DataError(src, `Unknown map symbol "${c}" at row ${y + 1}, column ${x + 1}. Use # . + > < $ S @ or a letter from the legend.`);
         }
       }
     }
-    if (!this.partyPos) throw new DataError('data/levels/level1.json', 'No "@" (party start position) found on the map.');
+    if (!this.partyPos) throw new DataError(src, 'No "@" (party start position) found on the map.');
     this.updateVision();
   }
 
@@ -252,7 +362,7 @@ export class Game {
   // reaches it. Walls and closed doors block sight (open doors don't).
   blocksSight(x, y) {
     const c = this.grid[y]?.[x];
-    return c === '#' || c === '+';
+    return c === '#' || c === '+' || c === 'S'; // a secret door looks and acts like wall
   }
 
   // Bresenham line from (x0,y0) to (x1,y1): true if no cell strictly between
@@ -300,6 +410,10 @@ export class Game {
       return; // battle rounds take over; no map turn passes
     } else if (cell === '#') {
       return; // walls don't consume a turn
+    } else if (cell === 'S') {
+      if (!this.revealed.has(`${nx},${ny}`)) return; // to unknowing eyes, just wall
+      this.grid[ny][nx] = "'";
+      this.log('The hidden panel swings aside — a secret passage!', 'good');
     } else if (cell === '+') {
       this.grid[ny][nx] = "'";
       this.log('You push open the heavy door.', 'info');
@@ -325,19 +439,123 @@ export class Game {
         : `You pry open the chest — ${amount} gold!`, 'gold');
       if (left.length) this.log(`The party can carry no more and leaves behind: ${left.join(', ')}.`, 'info');
     } else if (cell === '>') {
-      audio.play('victory');
-      this.log('The Vermin Warrens are cleared! The party climbs back to the surface. (Deeper levels arrive in a later phase.)', 'good');
-      this.enterTown();
+      if (this.allAtPinnacle() && this.depth !== 'boss') {
+        this.preBossDepth = this.depth;
+        this.enterFloor('boss', 'down');
+      } else {
+        this.enterFloor(this.depth + 1, 'down');
+      }
+      return; // arriving on a new floor costs no turn
+    } else if (cell === '<') {
+      if (this.depth === 'boss') this.enterFloor(this.preBossDepth || 20, 'up');
+      else if (this.depth === 1) { this.saveFloor(); this.enterTown(); }
+      else this.enterFloor(this.depth - 1, 'up');
       return;
     } else {
+      const trap = this.trapAt(nx, ny);
       this.partyPos = { x: nx, y: ny };
       this.updateVision();
+      if (trap && !this.resolveTrap(trap)) return; // the party fell — no more turn
     }
     this.endPlayerTurn();
   }
 
+  trapAt(x, y) { return this.traps?.find(t => t.x === x && t.y === y); }
+
+  // The party's best chance (in %) of noticing hidden things: the design
+  // doc's thief/archer per-level tables, +5% per point of DEX modifier,
+  // +the wood-elf racial bonus. Everyone else contributes nothing.
+  detectChance() {
+    let best = 0;
+    for (const ch of this.party) {
+      if (!ch.alive) continue;
+      const base = ch.cls.detect?.[ch.level - 1] ?? 0;
+      const racial = ch.race.detect_bonus ?? 0;
+      if (base + racial <= 0) continue;
+      best = Math.max(best, base + racial + 5 * abilityMod(ch.abilities.dex));
+    }
+    return best;
+  }
+
+  // Called after every step (once per hidden feature) and again on Space —
+  // waiting is active searching, so a suspicious party can re-check a wall.
+  searchNearby(force = false) {
+    if (this.mode !== 'dungeon') return;
+    const chance = this.detectChance();
+    if (chance <= 0) return;
+    const near = (x, y) => Math.max(Math.abs(x - this.partyPos.x), Math.abs(y - this.partyPos.y)) <= 1;
+    for (const t of this.traps) {
+      if (t.detected || !near(t.x, t.y) || (t.tried && !force)) continue;
+      t.tried = true;
+      if (Math.random() * 100 < chance) {
+        t.detected = true;
+        audio.play('gold');
+        this.log(`Sharp eyes catch a ${this.data.dungeon.traps[t.id].name.toLowerCase()} hidden in the floor!`, 'good');
+      }
+    }
+    for (let y = this.partyPos.y - 1; y <= this.partyPos.y + 1; y++) {
+      for (let x = this.partyPos.x - 1; x <= this.partyPos.x + 1; x++) {
+        if (this.grid[y]?.[x] !== 'S' || this.revealed.has(`${x},${y}`)) continue;
+        const key = `${x},${y}`;
+        if (this.triedDoors.has(key) && !force) continue;
+        this.triedDoors.add(key);
+        if (Math.random() * 100 < chance) {
+          this.revealed.add(key);
+          audio.play('gold');
+          this.log('A seam in the stonework — there is a secret door here!', 'good');
+        }
+      }
+    }
+  }
+
+  // A trap goes off (or a thief defuses it). Returns false if the party wiped.
+  resolveTrap(trap) {
+    const def = this.data.dungeon.traps[trap.id];
+    this.traps = this.traps.filter(t => t !== trap); // one way or another, it's spent
+    const disarmer = trap.detected
+      ? this.party.find(ch => ch.alive && ch.cls.disarms) // the design doc: only thieves remove traps
+      : null;
+    if (disarmer) {
+      const chance = (disarmer.cls.detect[disarmer.level - 1] ?? 0) + 5 * abilityMod(disarmer.abilities.dex);
+      if (Math.random() * 100 < chance) {
+        audio.play('gold');
+        this.log(`${disarmer.name} picks the ${def.name.toLowerCase()} apart — disarmed!`, 'good');
+        return true;
+      }
+      this.log(`${disarmer.name} fumbles the mechanism — the ${def.name.toLowerCase()} goes off!`, 'death');
+      return this.springTrap(def, disarmer);
+    }
+    return this.springTrap(def);
+  }
+
+  springTrap(def, victim) {
+    audio.play('melee');
+    const living = this.party.filter(ch => ch.alive);
+    const ch = victim && victim.alive ? victim : living[Math.floor(Math.random() * living.length)];
+    let dmg = Math.max(1, roll(def.dice));
+    const saved = d20() + abilityMod(ch.abilities[def.save ?? 'dex']) + (ch.race.save_bonus ?? 0) >= def.dc;
+    if (saved) dmg = Math.floor(dmg / 2);
+    ch.hp -= dmg;
+    this.log(saved
+      ? `${def.name}! ${ch.name} twists away — ${dmg} damage.`
+      : `${def.name}! ${ch.name} takes it full on — ${dmg} damage!`, 'death');
+    if (!saved && def.condition) this.applyCondition(ch, def.condition.id, def.condition.rounds);
+    if (ch.hp <= 0) {
+      ch.hp = 0;
+      ch.alive = false;
+      this.log(`${ch.name} has fallen!`, 'death');
+    }
+    if (this.party.every(c => !c.alive)) {
+      this.over = true;
+      this.log('The entire party has fallen. The dungeon keeps its secrets. Press R to try again.', 'death');
+      return false;
+    }
+    return true;
+  }
+
   wait() {
     if (this.over || this.victory || this.battle || this.mode === 'town') return;
+    this.searchNearby(true); // waiting is searching: re-check the nearby walls and floor
     this.endPlayerTurn();
   }
 
@@ -401,7 +619,7 @@ export class Game {
   // level's roster, placed on open floor around the sleepers. Returns the
   // pack (now real map monsters — flee and they're still out there).
   spawnCampAmbush() {
-    const ids = [...new Set(Object.values(this.data.level.legend || {}))];
+    const ids = [...new Set(Object.values(this.level.legend || {}))];
     if (!ids.length) return null;
     const id = ids[Math.floor(Math.random() * ids.length)];
     const def = this.data.monsters.monsters[id];
@@ -473,13 +691,15 @@ export class Game {
       : foes.length === 1
         ? `Battle! ${article} ${trigger.name} blocks your path!`
         : `Battle! ${foes.length} monsters close in!`, 'info');
-    const names = Object.keys(this.data.tactics);
+    const pool = (this.level.tacticsNames || []).filter(n => this.data.tactics[n]);
+    const names = pool.length ? pool : Object.keys(this.data.tactics);
     const pick = this.data.tactics[names[Math.floor(Math.random() * names.length)]];
     this.battle = new Battle(this, pick, foes, { ambush });
   }
 
   endPlayerTurn() {
     this.updateVision(); // doors opening (etc.) change what the party can see
+    this.searchNearby(); // passive detection as the party passes hidden things
     this.advanceTime(1);
     if (this.over) return;
     this.monstersAct();
@@ -708,7 +928,7 @@ export class Game {
     }
     if (this.party.every(ch => !ch.alive)) {
       this.over = true;
-      this.log('The entire party has fallen. Darkness claims the Vermin Warrens. Press R to try again.', 'death');
+      this.log('The entire party has fallen. The dungeon keeps its dead. Press R to try again.', 'death');
     }
   }
 

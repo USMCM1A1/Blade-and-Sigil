@@ -1,5 +1,5 @@
 {
-  "_comment": "Playable races, from the Blade & Sigil design doc. 'ability_bonus' adds to the rolled score. 'save_bonus' adds to all saving throws (the dwarven trait).",
+  "_comment": "Playable races, from the Blade & Sigil design doc. 'ability_bonus' adds to the rolled score. 'save_bonus' adds to all saving throws (the dwarven trait). 'detect_bonus' adds flat % to secret-door/trap detection (the wood-elf trait; the doc doesn't give a number — 10 is a proposal, tune freely).",
   "races": {
     "human": {
       "name": "Human",
@@ -27,7 +27,8 @@
       "traits": [
         "Bonus to ranged combat",
         "Detect secret doors"
-      ]
+      ],
+      "detect_bonus": 10
     },
     "halfling": {
       "name": "Halfling",

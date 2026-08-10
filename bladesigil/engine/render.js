@@ -49,12 +49,24 @@ export class Renderer {
         const x = camX + sx, y = camY + sy;
         if (x >= game.level.w || y >= game.level.h) continue;
         if (!game.seen[y][x]) continue;
-        this.drawTile(game.grid[y][x], sx * TILE, sy * TILE);
+        this.drawTile(game.grid[y][x], sx * TILE, sy * TILE, x, y);
         if (!game.isVisible(x, y)) {
           ctx.fillStyle = 'rgba(0,0,0,0.6)'; // remembered but not currently lit
           ctx.fillRect(sx * TILE, sy * TILE, TILE, TILE);
         }
       }
+    }
+
+    // Spotted traps: a warning sigil the party can now walk around.
+    for (const t of game.traps || []) {
+      if (!t.detected || !game.seen[t.y]?.[t.x]) continue;
+      const tx = t.x - camX, ty = t.y - camY;
+      if (tx < 0 || ty < 0 || tx >= this.cols || ty >= this.rows) continue;
+      ctx.fillStyle = '#e0912f';
+      ctx.font = `bold ${Math.floor(TILE / 2)}px Georgia`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚠', tx * TILE + TILE / 2, ty * TILE + TILE / 2);
     }
 
     // Monsters (only when currently visible).
@@ -83,8 +95,10 @@ export class Renderer {
     if (game.victory || game.over) this.drawBanner(game.victory ? 'VICTORY!' : 'THE PARTY HAS FALLEN', game.victory ? '#d4a94e' : '#b03535');
   }
 
-  drawTile(c, px, py) {
-    const { ctx } = this;
+  drawTile(c, px, py, x, y) {
+    const { ctx, game } = this;
+    // An undetected secret door wears a wall's face; a spotted one glows.
+    if (c === 'S' && !game.revealed?.has(`${x},${y}`)) c = '#';
     if (c === '#') {
       ctx.fillStyle = COLORS.wall;
       ctx.fillRect(px, py, TILE, TILE);
@@ -92,6 +106,19 @@ export class Renderer {
       ctx.fillRect(px, py, TILE, 5);
       ctx.fillStyle = COLORS.wallDark;
       ctx.fillRect(px, py + TILE - 5, TILE, 5);
+      return;
+    }
+    if (c === 'S') { // revealed secret door: a wall with a telltale seam
+      ctx.fillStyle = COLORS.wall;
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.strokeStyle = '#7fd4c8';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px + 6, py + 4, TILE - 12, TILE - 8);
+      ctx.fillStyle = '#7fd4c8';
+      ctx.font = `bold ${Math.floor(TILE / 3)}px Georgia`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', px + TILE / 2, py + TILE / 2);
       return;
     }
     // Everything else sits on a floor tile.
@@ -122,6 +149,12 @@ export class Renderer {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('▼', px + TILE / 2, py + TILE / 2 + 2);
+    } else if (c === '<') {
+      ctx.fillStyle = COLORS.stairs;
+      ctx.font = `bold ${TILE - 10}px Georgia`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('▲', px + TILE / 2, py + TILE / 2 + 2);
     }
   }
 

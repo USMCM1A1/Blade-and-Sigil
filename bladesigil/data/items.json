@@ -115,22 +115,22 @@
     "iron_sword": {
       "name": "Iron Sword",
       "type": "weapon_med_blade",
-      "damage": "1d6-1",
-      "value": 15,
+      "damage": "1d6",
+      "value": 45,
       "description": "A reliable sword that deals moderate damage."
     },
     "iron_dagger": {
       "name": "Iron Dagger",
       "type": "weapon_light_blade",
-      "damage": "1d4-1",
-      "value": 8,
+      "damage": "1d4",
+      "value": 20,
       "description": "A plain blade for a plain purpose."
     },
     "iron_mace": {
       "name": "Iron Mace",
       "type": "weapon_med_blunt",
-      "damage": "1d6-1",
-      "value": 15,
+      "damage": "1d6",
+      "value": 60,
       "description": "A reliable mace that deals moderate damage."
     },
     "wooden_shield": {

@@ -42,6 +42,24 @@
       "xp": 15,
       "save": 0
     },
+    "dread_sovereign": {
+      "_comment": "PLACEHOLDER final boss (Phase 5) — designer: rename, restat, and commission art! Reached only when every hero is level 20.",
+      "name": "Dread Sovereign",
+      "sprite": "assets/enemies/orc.jpg",
+      "sprite_dead": "assets/enemies/orc_dead.png",
+      "hp": 250,
+      "ac": 9,
+      "to_hit": 10,
+      "damage": "3d6+5",
+      "speed": 1,
+      "xp": 2000,
+      "save": 8,
+      "inflicts": {
+        "condition": "burning",
+        "rounds": 3,
+        "dc": 16
+      }
+    },
     "orc": {
       "name": "Orc",
       "sprite": "assets/enemies/orc.jpg",

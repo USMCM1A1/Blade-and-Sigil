@@ -255,7 +255,7 @@ export function updateUI(game) {
     u.card.classList.toggle('dead', !ch.alive);
     u.img.src = ch.alive ? (ch.cls.portrait || ch.cls.sprite) : (ch.cls.sprite_dead || ch.cls.sprite);
     // AC and weapon change when gear does.
-    const sub = `Level ${ch.level} ${ch.race.name} ${ch.cls.name} · AC ${ch.ac} · ${ch.weapon.name}${ch.xp ? ` · ${ch.xp} XP` : ''}`;
+    const sub = `Level ${ch.level} ${ch.race.name} ${ch.cls.name} · AC ${ch.ac} · ${ch.weapon.name}${ch.level >= 20 ? ' · MAX' : ch.xp ? ` · XP ${ch.xp}/${game.xpToLevel(ch)}` : ''}`;
     if (u.sub.textContent !== sub) u.sub.textContent = sub;
     u.hpFill.style.transform = `scaleX(${Math.max(0, ch.hp / ch.maxHp)})`;
     u.hpLabel.textContent = ch.alive ? `HP ${ch.hp}/${ch.maxHp}` : 'DEAD';

@@ -1,5 +1,5 @@
 {
-  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. hit_bonus applies to attack AND damage rolls. Phase 1 uses levels 1-3; full tables are here so leveling 'just works' later. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules.",
+  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. hit_bonus applies to attack AND damage rolls. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules. 'detect': per-level % chance (design doc tables, thief & archer) to notice secret doors and traps — the party uses its best detector, +5% per point of DEX modifier, +race detect_bonus. 'disarms': true lets the class defuse a DETECTED trap by stepping onto it (thieves only, per the doc).",
   "classes": {
     "warrior": {
       "name": "Warrior",
@@ -339,6 +339,11 @@
         "halfling"
       ],
       "starting_weapon": "rusty_dagger",
+      "disarms": true,
+      "detect": [
+        5, 5, 10, 10, 10, 20, 20, 20, 30, 30,
+        30, 40, 40, 40, 50, 50, 50, 60, 70, 80
+      ],
       "weapon_types": [
         "light_blade",
         "med_blade",
@@ -449,6 +454,10 @@
         "wood_elf"
       ],
       "starting_weapon": "splintered_longbow",
+      "detect": [
+        5, 5, 10, 10, 10, 20, 20, 20, 30, 30,
+        30, 40, 40, 40, 50, 50, 50, 50, 50, 50
+      ],
       "weapon_types": [
         "any"
       ],
