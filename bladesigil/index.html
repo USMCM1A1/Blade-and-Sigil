@@ -63,6 +63,16 @@
     display: flex; gap: 10px; align-items: center;
   }
   .char-card.dead { opacity: 0.55; }
+  .char-portrait { position: relative; flex-shrink: 0; display: flex; }
+  .level-cross {
+    position: absolute; top: -6px; right: -6px;
+    width: 17px; height: 17px;
+    display: flex; align-items: center; justify-content: center;
+    background: #1a1408; color: var(--gold);
+    border: 1px solid var(--gold); border-radius: 50%;
+    font-size: 10px; line-height: 1; z-index: 2;
+    box-shadow: 0 0 7px rgba(212, 169, 78, 0.65);
+  }
   .char-card img {
     width: 52px; height: 52px;
     object-fit: contain;
@@ -168,7 +178,43 @@
     column-gap: 22px;
     align-content: start;
   }
-  #eq-name, #eq-stats { grid-column: 1 / -1; }
+  #eq-name, #eq-stats, #eq-xp, #eq-abilities { grid-column: 1 / -1; }
+  /* The six abilities in a compact strip. */
+  #eq-abilities { display: flex; gap: 6px; margin-bottom: 12px; }
+  .eq-ab {
+    flex: 1; text-align: center;
+    background: rgba(10,10,15,0.85);
+    border: 1px solid var(--panel-edge); border-radius: 4px;
+    padding: 4px 2px;
+  }
+  .eq-ab b { display: block; color: var(--dim); font-size: 9px; font-variant: small-caps; letter-spacing: 1px; }
+  .eq-ab span { font-size: 16px; color: var(--gold); }
+  .eq-ab i { font-style: normal; font-size: 10.5px; color: var(--dim); margin-left: 3px; }
+  /* Path & Powers: the lane and everything it grants, future rungs greyed. */
+  #eq-path { grid-column: 1; margin-top: 2px; }
+  .eq-power {
+    border-top: 1px solid var(--panel-edge);
+    padding: 6px 2px; font-size: 12.5px;
+  }
+  .eq-power b { color: var(--gold); }
+  .eq-power i { font-style: italic; color: #c98a3d; font-size: 11px; margin-left: 6px; }
+  .eq-power span { display: block; color: var(--dim); font-size: 11.5px; margin-top: 1px; }
+  .eq-power.locked { opacity: 0.45; }
+  .eq-power.locked b { color: var(--parchment); }
+  .eq-power.tally b { color: var(--parchment); font-variant: small-caps; letter-spacing: 0.5px; }
+  #eq-xp { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+  #eq-xp .bar.xp { flex: 1; height: 14px; margin-bottom: 0; }
+  .bar.xp .fill { background: linear-gradient(#d4a94e, #8f6d24); }
+  .bar.xp .bar-label { line-height: 14px; font-size: 9.5px; }
+  .eq-xp-max { flex: 1; text-align: center; color: var(--dim); font-style: italic; font-size: 12.5px; }
+  #eq-levelup {
+    font-family: Georgia, serif;
+    background: #2a2210; color: var(--gold);
+    border: 1px solid var(--gold); border-radius: 4px;
+    padding: 5px 14px; font-size: 13px; cursor: pointer;
+    box-shadow: 0 0 8px rgba(212, 169, 78, 0.35);
+  }
+  #eq-levelup:hover { background: #3a2f14; }
   #eq-doll { grid-column: 1; align-self: start; }
   #eq-right { grid-column: 2; min-width: 0; }
   .eq-sec { color: var(--gold); font-variant: small-caps; letter-spacing: 1px; font-size: 13px; margin-bottom: 2px; }
@@ -177,6 +223,7 @@
   /* Portrait tabs down the right edge, Baldur's-Gate style. */
   #eq-tabs { display: flex; flex-direction: column; gap: 6px; width: 86px; flex-shrink: 0; }
   .eq-portrait {
+    position: relative;
     font-family: Georgia, serif;
     background: #0a0a0f; color: var(--dim);
     border: 1px solid var(--panel-edge); border-radius: 4px;
@@ -242,6 +289,61 @@
   .eq-pool-item button:disabled { opacity: 0.4; cursor: default; }
   #equipment .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 10px; }
   #inventory .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 12px; }
+  /* ---- Level-up summary ---- */
+  #levelup {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(8,8,12,0.78);
+    z-index: 58;
+    align-items: center; justify-content: center;
+  }
+  .lv-panel { width: 560px; background: rgba(22,22,30,0.97); }
+  .lv-table { border-collapse: collapse; width: 100%; margin: 4px 0; }
+  .lv-table td { padding: 6px 8px; border-top: 1px solid var(--panel-edge); font-size: 13.5px; }
+  .lv-change { color: var(--gold); white-space: nowrap; }
+  .lv-note { color: var(--dim); font-size: 12px; }
+  .lv-milestone { color: var(--gold); font-style: italic; margin-top: 8px; }
+  #lv-close {
+    display: block; margin: 18px auto 0;
+    font-family: Georgia, serif;
+    background: #1d1d28; color: var(--gold);
+    border: 1px solid var(--gold); border-radius: 5px;
+    padding: 8px 28px; font-size: 15px; cursor: pointer;
+  }
+  #lv-close:hover { background: #23202c; }
+  /* ---- Playtest bench (designer test tools) ---- */
+  #playtest {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(92vw, 720px);
+    max-height: 88vh; overflow-y: auto;
+    background: var(--panel);
+    border: 2px dashed var(--gold);
+    border-radius: 6px;
+    padding: 22px 28px;
+    z-index: 50;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.8);
+  }
+  #playtest h2 { color: var(--gold); font-variant: small-caps; letter-spacing: 1px; margin-bottom: 4px; text-align: center; }
+  .pt-sub { text-align: center; color: var(--dim); font-style: italic; font-size: 12.5px; margin-bottom: 14px; }
+  .pt-note { color: var(--dim); font-size: 12px; margin: 3px 0 8px; line-height: 1.45; }
+  .pt-warn { color: #c98a3d; font-size: 12px; font-variant: normal; letter-spacing: 0; }
+  .pt-btnrow { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pt-stats { margin: 4px 0 8px; }
+  .pt-stat { font-size: 12px; color: var(--parchment); padding: 2px 0; }
+  .pt-stat b { color: var(--gold); }
+  .pt-stat i { color: var(--gold); font-style: normal; }
+  #playtest button {
+    font-family: Georgia, serif;
+    background: #1d1d28; color: var(--parchment);
+    border: 1px solid var(--panel-edge); border-radius: 4px;
+    padding: 5px 12px; font-size: 13px; cursor: pointer;
+  }
+  #playtest button:hover:not(:disabled) { border-color: var(--gold); }
+  #playtest button:disabled { opacity: 0.4; cursor: default; }
+  #playtest .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 12px; }
   /* ---- Town buildings ---- */
   #building {
     display: none;
@@ -267,6 +369,58 @@
   #b-welcome { color: var(--dim); font-style: italic; font-size: 13.5px; }
   #b-gold { color: var(--gold); font-variant: small-caps; letter-spacing: 1px; font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid var(--panel-edge); padding-bottom: 8px; }
   #building .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 12px; }
+  /* ---- Progression choices (lane forks) ---- */
+  #choice {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(8,8,12,0.78);
+    z-index: 55;
+    align-items: center; justify-content: center;
+  }
+  #choice .cr-panel { width: 600px; background: rgba(22,22,30,0.97); }
+  #choice button {
+    font-family: Georgia, serif;
+    background: #1d1d28;
+    color: var(--parchment);
+    border: 1px solid var(--panel-edge);
+    border-radius: 5px;
+    padding: 10px 16px;
+    font-size: 15px;
+    cursor: pointer;
+    text-align: left;
+  }
+  #choice button:hover { border-color: var(--gold); }
+  .ch-head { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+  .ch-head img { width: 64px; height: 64px; border-radius: 6px; border: 1px solid var(--panel-edge); object-fit: cover; }
+  .ch-warn { color: #c98a3d; font-style: italic; margin-top: 14px; text-align: center; }
+  /* ---- The Level 20 Rite & milestone cards ---- */
+  .rt-text { color: var(--parchment); margin-bottom: 12px; line-height: 1.5; }
+  .rt-dim { color: var(--dim); font-size: 12.5px; font-style: italic; }
+  .rt-power {
+    background: #0a0a0f; border: 1px solid var(--gold); border-radius: 5px;
+    padding: 12px 16px; margin-bottom: 14px;
+  }
+  .rt-power b { color: var(--gold); font-size: 17px; font-variant: small-caps; letter-spacing: 1px; display: block; }
+  .rt-power span { color: var(--parchment); font-size: 13.5px; }
+  .lv-how { color: var(--dim); font-size: 13px; font-style: italic; line-height: 1.5; }
+  #choice input[type="text"] {
+    width: 100%;
+    background: #0a0a0f; color: var(--gold);
+    border: 1px solid var(--panel-edge); border-radius: 4px;
+    font-family: Georgia, serif; font-size: 17px;
+    padding: 9px 12px; margin-bottom: 12px;
+  }
+  #choice input[type="text"]:focus { outline: none; border-color: var(--gold); }
+  .rt-next { display: block; margin: 6px auto 0; border-color: var(--gold) !important; color: var(--gold) !important; padding: 9px 30px !important; }
+  .rt-sel { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .rt-sel b { color: var(--dim); font-variant: small-caps; letter-spacing: 1px; font-size: 12px; width: 110px; }
+  .rt-sel select {
+    flex: 1;
+    background: #0a0a0f; color: var(--parchment);
+    border: 1px solid var(--panel-edge); border-radius: 4px;
+    font-family: Georgia, serif; font-size: 14px;
+    padding: 7px 10px;
+  }
   /* ---- Title screen & character creation ---- */
   #creation {
     display: none;
@@ -367,14 +521,16 @@
   </div>
   <div id="log"></div>
   <div id="controls">
-    <b>H — controls</b> &nbsp;•&nbsp; <b>G — how the game works</b> &nbsp;•&nbsp; Arrows / WASD — move (walk into things!) &nbsp;•&nbsp; T — camp &nbsp;•&nbsp; I — inventory &nbsp;•&nbsp; M — mute &nbsp;•&nbsp; R — restart
+    <b>H — controls</b> &nbsp;•&nbsp; <b>G — how the game works</b> &nbsp;•&nbsp; Arrows / WASD — move (walk into things!) &nbsp;•&nbsp; T — camp &nbsp;•&nbsp; C — character sheet &nbsp;•&nbsp; M — mute &nbsp;•&nbsp; R — restart
   </div>
   <div id="equipment">
-    <h2>Inventory</h2>
+    <h2>Character Sheet</h2>
     <div id="eq-body">
       <div id="eq-main">
         <div id="eq-name"></div>
         <div id="eq-stats"></div>
+        <div id="eq-xp"></div>
+        <div id="eq-abilities"></div>
         <div id="eq-doll"></div>
         <div id="eq-right">
           <div class="eq-sec">Potions</div>
@@ -382,10 +538,17 @@
           <div id="eq-gold"></div>
           <div id="eq-pool"></div>
         </div>
+        <div id="eq-path"></div>
       </div>
       <div id="eq-tabs"></div>
     </div>
-    <p class="dismiss">Click a worn piece to remove it &middot; drinking passes a turn &middot; I closes</p>
+    <p class="dismiss">Click a worn piece to remove it &middot; drinking passes a turn &middot; I or C closes</p>
+  </div>
+  <div id="playtest">
+    <h2>Playtest Bench</h2>
+    <p class="pt-sub">Designer tools — nothing here is part of the real game.</p>
+    <div id="pt-body"></div>
+    <p class="dismiss">P or Esc closes</p>
   </div>
   <div id="building">
     <h2 id="b-title"></h2>
@@ -404,8 +567,9 @@
       <tr><td>Arrows / WASD</td><td>move — walk into monsters, doors, chests, and stairs to interact</td></tr>
       <tr><td>Space</td><td>wait one turn &amp; search for hidden things</td></tr>
       <tr><td>T</td><td>make camp (1 ration per living hero)</td></tr>
-      <tr><td>I or E</td><td>inventory &amp; equipment</td></tr>
+      <tr><td>I, C, or E</td><td>character sheet — stats, gear, XP &amp; leveling up</td></tr>
       <tr><td>` (backtick)</td><td>training arena</td></tr>
+      <tr><td>P</td><td>playtest bench — set party level, summon test fights</td></tr>
       <tr><td colspan="2" class="key-group">In battle</td></tr>
       <tr><td>Arrows / WASD</td><td>move — walk into a monster to attack</td></tr>
       <tr><td>C</td><td>cast a spell</td></tr>
@@ -438,10 +602,27 @@
     chase. Waiting and every step cost one turn.</p>
     <h3>Levels &amp; the depths below</h3>
     <p>Slain monsters grant XP; reaching the next level costs 50 × your
-    current level. Each new level brings the gifts of your class — HP,
-    attacks, spell points, AC — automatically. When <b>every</b> hero stands
-    at level 20, the next stairs down lead somewhere no map has charted.
-    Bring everything you have.</p>
+    current level. When a hero has earned enough, a <b>gold cross ✚</b>
+    appears on their portrait — open the character sheet (<b>C</b> or <b>I</b>) and press
+    <b>Level up</b> to take it: you roll your class hit die for new HP (a
+    hero starts with the full die at level 1, and rolls of 1 are always
+    rerolled), and
+    a summary shows everything the level granted (to-hit, attacks, AC,
+    spell points). The inventory screen always shows each hero's XP bar.
+    When <b>every</b> hero stands at level 20, the next stairs down lead
+    somewhere no map has charted. Bring everything you have.</p>
+    <h3>Paths &amp; powers</h3>
+    <p>At level 5 some classes reach a <b>fork</b>: two paths, one choice,
+    forever. Your path leans your numbers, grants an always-on knack, then
+    a <b>signature move</b> at level 10 (a warrior of the Blade rampages
+    from kill to kill; one of the Shield can take a blow meant for a friend
+    — you'll be asked Y/N when it matters), a <b>capstone</b> at 15 that
+    names you (Barbarian, Knight...) and joins the C menu, and a sharpening
+    of your signature at 18. At level 20 comes <b>the Rite</b>: a power no
+    other soul commands — you name it yourself — a personal sigil, and a
+    title earned by how you actually fought, with rewards for the greatest
+    deeds. A natural 20 is always a <b>critical hit</b>: it cannot miss and
+    deals full weapon damage.</p>
     <h3>Traps &amp; secret doors</h3>
     <p>Deeper floors hide traps in the floor and doors in the walls. Thieves
     and archers sense them as the party passes (their class tables + 5% per
@@ -492,6 +673,8 @@
     Everything is exactly as it was when you step back out.</p>
     <p class="dismiss">Press G to close &middot; H shows the controls</p>
   </div>
+  <div id="choice"></div>
+  <div id="levelup"></div>
   <div id="creation"></div>
   <div id="fatal"><h2>The dungeon collapsed! (data file error)</h2><div id="fatal-msg"></div></div>
   <script type="module" src="engine/main.js"></script>

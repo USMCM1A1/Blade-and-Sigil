@@ -4,6 +4,7 @@ import { roll, d20, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
 import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
+import { laneOf, classProg, pendingChoices, focusOptions, displayClass, riteTier } from './progression.js';
 import * as audio from './audio.js';
 
 const VISION_RADIUS = 6.5;
@@ -27,8 +28,57 @@ export class Game {
     const goldDice = data.party.starting_gold || '4d6+200';
     for (const ch of this.party) this.gold += roll(goldDice);
     this.onBuilding = null; // main.js hooks this to open the shop/inn/temple panels
+    this.choiceQueue = [];  // progression choices owed (lane forks etc.) — shown on the map
+    this.refreshChoices();  // pre-leveled heroes (party.json test path) owe theirs at once
     this.enterTown(true);   // Novamagus is home: every run starts here
     this.log(`The party pools its purses: ${this.gold} gold.`, 'gold');
+  }
+
+  // ---- Progression choices (v2 lanes) ----
+  refreshChoices() {
+    this.choiceQueue = this.party.flatMap(ch => pendingChoices(this.data, ch));
+  }
+
+  displayClass(ch) { return displayClass(this.data, ch); }
+  focusOptions(ch) { return focusOptions(this.data, ch); }
+
+  // The player walked a path (or picked a focus). Hard lock — no take-backs.
+  applyChoice(choice, value) {
+    const ch = choice.ch;
+    if (choice.type === 'lane') {
+      ch.lane = value;
+      const lane = laneOf(this.data, ch);
+      this.log(`${ch.name} walks the ${lane.name}. There is no turning back.`, 'good');
+    } else if (choice.type === 'focus') {
+      ch.focusType = value;
+      this.log(`${ch.name}'s hands know the ${value.replace('_', ' ')} now — Weapon Focus (+1 damage with it).`, 'good');
+    }
+    audio.play('victory');
+    this.refreshDerived(ch); // lane offsets land immediately
+    this.refreshChoices();   // a lane pick may owe a follow-up (weapon focus)
+  }
+
+  // The Level 20 Rite concludes (ui.js ran the four-step ceremony).
+  // result: {abilityName, sigil: {shape, modifier, color}, title}
+  applyRite(ch, result) {
+    const lane = laneOf(this.data, ch);
+    const rite = lane?.rite;
+    if (!rite || ch.rite) return;
+    const tier = riteTier(this.data, ch);
+    ch.rite = { ...result, tier };
+    audio.play('victory');
+    this.log(`The Rite is complete. ${ch.name} ${ch.rite.title} bears the sigil of the ${result.sigil.modifier} ${result.sigil.shape}, wrought in ${result.sigil.color.toLowerCase()}.`, 'good');
+    this.log(`${result.abilityName} is theirs alone now — no other living soul commands it. (C in battle)`, 'good');
+    const tierDef = rite.tiers[tier];
+    if (tierDef.trinket) {
+      this.addItem(tierDef.trinket);
+      this.log(`The Rite leaves a gift: ${this.itemDef(tierDef.trinket).name} (in the party pouch).`, 'gold');
+    }
+    if (tierDef.dungeon) {
+      ch.rite.dungeonUnlocked = true;
+      this.log(`Legends of ${ch.name} ${ch.rite.title} spread. Somewhere, a door has opened: ${tierDef.dungeon.toLowerCase()}. (Its floor arrives in a coming build.)`, 'gold');
+    }
+    this.refreshChoices();
   }
 
   // ---- Novamagus (Phase 4): the home base between dungeon dives ----
@@ -198,8 +248,13 @@ export class Game {
     for (const [ab, bonus] of Object.entries(race.ability_bonus)) abilities[ab] += bonus;
 
     const lvlIdx = def.level - 1;
-    // Design doc: max HP roll at creation, +con modifier per level (min 1/level).
-    const maxHp = Math.max(1, cls.hp_die + abilityMod(abilities.con)) * def.level;
+    // The HP rule (designer, 2026-08-22): a hero starts with the MAX of their
+    // hit die at level 1; every level after that is rolled, rerolling ones.
+    // Heroes built above level 1 (premade parties, bench jumps) simulate
+    // those rolls so they match a hero who climbed there.
+    const conMod = abilityMod(abilities.con);
+    let maxHp = Math.max(1, cls.hp_die + conMod);
+    for (let l = 2; l <= def.level; l++) maxHp += this.rollHp(cls, conMod).gain;
     if (!this.data.items.items[cls.starting_weapon]) {
       throw new DataError('data/classes.json', `${cls.name}'s starting_weapon "${cls.starting_weapon}" is not in items.json. Valid: ${Object.keys(this.data.items.items).join(', ')}`);
     }
@@ -212,8 +267,17 @@ export class Game {
       xp: 0,
       // Attack math lives in battle.js: melee uses STR, ranged weapons use DEX
       // (design doc), and battle buffs stack on top of hitBase.
-      hitBase: cls.hit_bonus[lvlIdx],
-      attacks: cls.attacks_per_round[lvlIdx],
+      // hitBase/attacks are computed in refreshDerived (lane offsets apply).
+      hitBase: 0,
+      attacks: 1,
+      // Progression v2: the lane walked at the fork (null until chosen), the
+      // Weapon Focus category, timed battle buffs (Rage), and the playstyle
+      // counters that will feed the level-20 Rite's titles.
+      lane: def.lane ?? null,
+      focusType: def.focus ?? null,
+      timedBuffs: [],
+      counters: { rampageKills: 0, standSaves: 0 },
+      rite: null, // filled by the Level 20 Rite: {abilityName, sigil, title, tier}
       // The paper doll: item ids from items.json. Hands hold weapons or a
       // shield; a hero always keeps at least one weapon in hand.
       equipment: {
@@ -235,11 +299,16 @@ export class Game {
   // carry 'ac' and/or 'sp' — it all stacks.
   refreshDerived(ch) {
     const lvlIdx = ch.level - 1;
+    const lane = laneOf(this.data, ch); // v2 lanes: permanent stat leans on top of the base tables
+    const off = lane?.offsets ?? {};
     const pieces = Object.values(ch.equipment).filter(Boolean).map(id => this.itemDef(id));
     ch.weapon = pieces.find(d => d.type.startsWith('weapon_')); // battle.js reads name/damage/range
-    ch.ac = 10 + ch.cls.ac_bonus[lvlIdx] + abilityMod(ch.abilities.dex)
+    ch.gearDmg = pieces.reduce((sum, d) => sum + (d.dmg || 0), 0); // worn 'dmg' stacks onto every hit
+    ch.hitBase = ch.cls.hit_bonus[lvlIdx] + (off.hit ?? 0);
+    ch.attacks = ch.cls.attacks_per_round[lvlIdx];
+    ch.ac = 10 + ch.cls.ac_bonus[lvlIdx] + abilityMod(ch.abilities.dex) + (off.ac ?? 0)
       + pieces.reduce((sum, d) => sum + (d.ac || 0), 0);
-    const newMax = ch.cls.spell_points[lvlIdx] + pieces.reduce((sum, d) => sum + (d.sp || 0), 0);
+    const newMax = ch.cls.spell_points[lvlIdx] + (off.sp ?? 0) + pieces.reduce((sum, d) => sum + (d.sp || 0), 0);
     if (newMax > ch.maxSp) ch.sp += newMax - ch.maxSp; // a found ring's points are ready to use
     ch.maxSp = newMax;
     ch.sp = Math.min(ch.sp, ch.maxSp);
@@ -251,40 +320,68 @@ export class Game {
   // tables (already in classes.json) say what each new level grants.
   xpToLevel(ch) { return 50 * ch.level; }
 
-  // Every living hero shares the kill. Returns the heroes who leveled so
-  // battles can float LEVEL UP! over them.
+  // Every living hero shares the kill — but XP only ACCUMULATES here.
+  // Taking the level is the player's act: a gold cross marks who's ready,
+  // and the Level Up button lives on the inventory screen (I). Returns the
+  // heroes who just crossed the threshold so battles can float the news.
   awardXp(amount) {
-    const leveled = [];
+    const newlyReady = [];
     for (const ch of this.party) {
-      if (!ch.alive) continue;
+      if (!ch.alive || ch.level >= 20) continue;
+      const ready = this.canLevel(ch);
       ch.xp += amount;
-      while (ch.level < 20 && ch.xp >= this.xpToLevel(ch)) {
-        ch.xp -= this.xpToLevel(ch);
-        this.levelUp(ch);
-        if (!leveled.includes(ch)) leveled.push(ch);
-      }
-      if (ch.level >= 20) ch.xp = Math.min(ch.xp, this.xpToLevel(ch)); // the bar just sits full
+      if (!ready && this.canLevel(ch)) newlyReady.push(ch);
     }
-    return leveled;
+    return newlyReady;
   }
 
+  canLevel(ch) { return ch.alive && ch.level < 20 && ch.xp >= this.xpToLevel(ch); }
+
+  // The HP a new level grants: roll the class hit die (ones are always
+  // rerolled — the designer's rule), + CON modifier, minimum 1.
+  rollHp(cls, conMod) {
+    let rolled = roll(`1d${cls.hp_die}`);
+    let rerolled = false;
+    while (rolled === 1 && cls.hp_die > 1) { rerolled = true; rolled = roll(`1d${cls.hp_die}`); }
+    return { rolled, rerolled, gain: Math.max(1, rolled + conMod) };
+  }
+
+  // The player takes the level (the button on the inventory screen).
+  // New HP is ROLLED — 1d(class hit die) + CON modifier, minimum 1 — the
+  // one moment of chance in leveling. Returns a summary of everything that
+  // changed so the UI can show it (null if the hero can't level).
   levelUp(ch) {
+    if (!this.canLevel(ch)) return null;
+    const before = { maxHp: ch.maxHp, hitBase: ch.hitBase, attacks: ch.attacks, ac: ch.ac, maxSp: ch.maxSp };
+    ch.xp -= this.xpToLevel(ch);
     ch.level++;
-    const lvlIdx = ch.level - 1;
     const conMod = abilityMod(ch.abilities.con);
-    const newMax = Math.max(1, ch.cls.hp_die + conMod) * ch.level;
-    const hpGain = newMax - ch.maxHp;
-    ch.maxHp = newMax;
+    const { rolled, rerolled, gain: hpGain } = this.rollHp(ch.cls, conMod);
+    ch.maxHp += hpGain;
     ch.hp += hpGain; // the surge of a new level heals what it grants
-    ch.hitBase = ch.cls.hit_bonus[lvlIdx];
-    ch.attacks = ch.cls.attacks_per_round[lvlIdx];
-    this.refreshDerived(ch); // AC and spell points follow the class tables
+    this.refreshDerived(ch); // hit/attacks/AC/spell points follow the tables (+ lane offsets)
+    this.refreshChoices();   // fork levels owe a choice (pops once back on the map)
     audio.play('victory');
-    this.log(`${ch.name} reaches level ${ch.level}! (+${hpGain} HP${ch.maxSp ? `, SP ${ch.sp}/${ch.maxSp}` : ''})`, 'good');
+    this.log(`${ch.name} reaches level ${ch.level}! (+${hpGain} HP)`, 'good');
     if (ch.level === 20) this.log(`${ch.name} has reached the pinnacle of their art.`, 'good');
     if (this.party.every(c => c.level >= 20)) {
       this.log('The whole party stands at the height of mortal skill. Something below has taken notice...', 'death');
     }
+    // Milestones this level unlocked: {kind, text} — the text is the summary
+    // teaser, the kind drives the full narrated card that follows it.
+    const milestones = [];
+    const prog = classProg(this.data, ch);
+    if (prog && ch.level === prog.fork_level && !ch.lane) {
+      milestones.push({ kind: 'fork', text: `The ${ch.cls.name}'s road forks here.` });
+    }
+    const lane = laneOf(this.data, ch);
+    if (lane?.verb && ch.level === lane.verb.level) milestones.push({ kind: 'verb', text: `New signature move: ${lane.verb.name}!` });
+    if (lane?.capstone && ch.level === lane.capstone.level) {
+      milestones.push({ kind: 'capstone', text: `${ch.name} is now a ${lane.archetype ?? lane.capstone.name}!` });
+    }
+    if (lane?.refinement && ch.level === lane.refinement.level) milestones.push({ kind: 'refinement', text: `${lane.verb?.name ?? 'Their signature move'} sharpens.` });
+    if (lane?.rite && ch.level === 20) milestones.push({ kind: 'rite', text: 'The Rite awaits.' });
+    return { ch, rolled, rerolled, conMod, hpGain, before, milestones };
   }
 
   // ---- Level parsing ----
@@ -624,6 +721,16 @@ export class Game {
     const id = ids[Math.floor(Math.random() * ids.length)];
     const def = this.data.monsters.monsters[id];
     const count = 1 + Math.floor(Math.random() * 3);
+    const spots = this.openSpotsAround(count);
+    if (!spots.length) return null;
+    const pack = spots.map(s => ({ ...def, id, x: s.x, y: s.y, maxHp: def.hp, conditions: [] }));
+    this.monsters.push(...pack);
+    return pack;
+  }
+
+  // Open floor tiles ringing the party, nearest ring first — shared by camp
+  // ambushes and the playtest bench's monster spawner.
+  openSpotsAround(count) {
     const spots = [];
     for (let r = 1; r <= 3 && spots.length < count; r++) {
       for (let dy = -r; dy <= r && spots.length < count; dy++) {
@@ -635,10 +742,97 @@ export class Game {
         }
       }
     }
-    if (!spots.length) return null;
+    return spots;
+  }
+
+  // ---- Playtest bench (P key): the designer's test tools ----
+  // Set every hero to an exact level in one stroke, recomputing HP/AC/SP
+  // from the class tables. Dropping below a class's fork un-walks the lane
+  // (and Weapon Focus) so the choice can be tested again; jumping up leaves
+  // the owed forks in the queue — they pop once the bench is closed.
+  debugSetPartyLevel(n) {
+    n = Math.max(1, Math.min(20, Math.round(n)));
+    for (const ch of this.party) {
+      ch.level = n;
+      ch.xp = 0;
+      const prog = classProg(this.data, ch);
+      if (prog && n < prog.fork_level) { ch.lane = null; ch.focusType = null; }
+      if (n < 20) ch.rite = null; // dropping below the pinnacle un-runs the Rite (re-testable)
+      // Same HP rule as real play: max die at level 1, rolled (rerolling
+      // ones) for every level after — simulated fresh for the jump.
+      const conMod = abilityMod(ch.abilities.con);
+      ch.maxHp = Math.max(1, ch.cls.hp_die + conMod);
+      for (let l = 2; l <= n; l++) ch.maxHp += this.rollHp(ch.cls, conMod).gain;
+      if (ch.alive) ch.hp = ch.maxHp;
+      this.refreshDerived(ch);
+      if (ch.alive) ch.sp = ch.maxSp;
+    }
+    this.refreshChoices();
+    this.log(`TEST: the whole party now stands at level ${n}. The tables paid out in full:`, 'info');
+    for (const ch of this.party) {
+      this.log(`TEST: ${ch.name} — HP ${ch.hp}/${ch.maxHp} · hit +${ch.hitBase} · ${ch.attacks} attack${ch.attacks > 1 ? 's' : ''} · AC ${ch.ac}${ch.maxSp ? ` · SP ${ch.sp}/${ch.maxSp}` : ''}`, 'info');
+    }
+  }
+
+  // Bank enough XP for each hero to TAKE the next `times` levels themselves —
+  // the real flow: gold cross, Level Up button, HP roll, summary, forks.
+  // Nothing levels automatically here.
+  debugGrantLevelXp(times = 1) {
+    for (const ch of this.party) {
+      if (!ch.alive || ch.level >= 20) continue;
+      let need = 0;
+      for (let i = 0; i < times && ch.level + i < 20; i++) need += 50 * (ch.level + i);
+      ch.xp = Math.max(ch.xp, need);
+    }
+    this.log(`TEST: the party has earned enough XP to level ${times > 1 ? `${times} times` : 'up'} — the gold ✚ marks who's ready (open I).`, 'info');
+  }
+
+  debugHealParty() {
+    for (const ch of this.party) {
+      ch.alive = true;
+      ch.hp = ch.maxHp;
+      ch.sp = ch.maxSp;
+      ch.conditions = [];
+    }
+    this.log('TEST: the party is made whole — wounds, deaths, and ailments erased.', 'good');
+  }
+
+  debugGold(amount) {
+    this.gold += amount;
+    this.log(`TEST: ${amount} gold appears in the purse.`, 'gold');
+  }
+
+  // Bump every hero's tracked playstyle counters — for testing the Rite's
+  // title tiers without grinding real Rampage kills / Stand saves.
+  debugAddCounters(amount) {
+    for (const ch of this.party) {
+      for (const key of Object.keys(ch.counters)) ch.counters[key] += amount;
+    }
+    this.log(`TEST: every playstyle counter grows by ${amount}.`, 'info');
+  }
+
+  // Conjure a pack beside the party and fight it on the spot. These are real
+  // monsters with real stakes: they grant XP, and if the party flees they
+  // stay prowling on the map.
+  debugFight(id, count) {
+    if (this.battle || this.over || this.victory) return false;
+    if (this.mode !== 'dungeon') {
+      this.log('TEST: Novamagus stays monster-free — step through the dungeon gate first.', 'info');
+      return false;
+    }
+    const def = this.data.monsters.monsters[id];
+    if (!def) return false;
+    const spots = this.openSpotsAround(count);
+    if (!spots.length) {
+      this.log('TEST: no open floor beside the party to spawn on.', 'info');
+      return false;
+    }
     const pack = spots.map(s => ({ ...def, id, x: s.x, y: s.y, maxHp: def.hp, conditions: [] }));
     this.monsters.push(...pack);
-    return pack;
+    this.updateVision();
+    this.log(`TEST: ${pack.length} ${def.name}${pack.length > 1 ? 's' : ''} step${pack.length > 1 ? '' : 's'} out of thin air!`, 'info');
+    this.startBattle(pack[0], true);
+    return true;
   }
 
   // ---- Training arena (debug/design sandbox) ----
@@ -651,6 +845,7 @@ export class Game {
       hp: ch.hp, sp: ch.sp, xp: ch.xp, alive: ch.alive,
       buffs: { ...ch.buffs },
       conditions: ch.conditions.map(c => ({ ...c })),
+      counters: { ...ch.counters }, // sparring feats don't count toward titles
     }));
     this.arena = true;
     const dummies = Object.entries(this.data.monsters.monsters).map(([id, def]) => ({
@@ -668,6 +863,8 @@ export class Game {
       ch.hp = s.hp; ch.sp = s.sp; ch.xp = s.xp; ch.alive = s.alive;
       ch.buffs = s.buffs;
       ch.conditions = s.conditions;
+      ch.timedBuffs = []; // Rage and its kin are battle-scoped — nothing leaves the ring
+      ch.counters = s.counters;
     });
     this.arena = false;
     this.arenaSnapshot = null;
@@ -754,6 +951,7 @@ export class Game {
   }
 
   isWeapon(id) { const d = id && this.itemDef(id); return !!d && d.type.startsWith('weapon_'); }
+  hasShield(ch) { return ['hand1', 'hand2'].some(h => ch.equipment[h] && this.itemDef(ch.equipment[h]).type === 'shield'); }
   // A two-handed weapon ("hands": 2 on the item) claims both hand slots.
   twoHanded(ch) { const d = ch.equipment.hand1 && this.itemDef(ch.equipment.hand1); return d?.hands === 2 ? d : null; }
 

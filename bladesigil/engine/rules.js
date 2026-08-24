@@ -12,6 +12,14 @@ export function roll(diceStr) {
 
 export const d20 = () => 1 + Math.floor(Math.random() * 20);
 
+// The biggest a dice string can roll — a natural 20 deals this (crits).
+export function maxRoll(diceStr) {
+  const m = /^(\d+)d(\d+)([+-]\d+)?$/.exec(diceStr.trim());
+  if (!m) throw new Error(`Bad dice string: "${diceStr}"`);
+  const [, count, sides, mod] = m;
+  return +count * +sides + (mod ? parseInt(mod, 10) : 0);
+}
+
 // Ability modifier table from the design doc.
 export function abilityMod(score) {
   if (score <= 5) return -2;

@@ -1,0 +1,56 @@
+{
+  "_comment": "Class Progression (design doc v3): each class here gets a hard FORK at 'fork_level' into two lanes; classes absent from this file simply level along their base tables. Each lane: 'name' + 'archetype' (the name shown from capstone level on), 'blurb' (shown on the choice card), 'offsets' (permanent adds to the class table: hit = to-hit AND damage, ac = armor class), 'passive' (always-on, from the passive list below), 'verb' (the signature action gained at its 'level'), 'capstone' (gained at its 'level'; numbers tunable), 'refinement' (upgrades the verb at its 'level'), and 'rite' (the Level 20 Rite, see below). PASSIVES: weapon_focus (+dmg with a chosen weapon category — the player picks which at the fork), braced_stance (-'reduce' damage taken per hit while a shield is worn). VERBS: rampage (a kill grants a free attack on an adjacent foe), guardians_stand (when an ally is about to be hit, take the blow instead — asked via Y/N). CAPSTONES: rage (timed self-buff: hit/dmg/ac/extra_attacks for 'rounds'), bulwark (allies adjacent to the hero get +'aura_ac' AC, plus a Taunt action: enemies target the hero for 'taunt_rounds'). REFINEMENTS: rampage_crits (rampage also triggers on a natural 20), stand_half_cost (guardian's stand costs only half the redirected damage). TESTING TIP: the Playtest Bench (P) banks XP and bumps playstyle counters — the fastest road to any milestone.",
+  "_rite_comment": "THE LEVEL 20 RITE (doc v3). 'sigil' lists the shared 8x8x8 vocabulary — every hero draws from the same pool. Per lane, 'rite' has: 'ability' (the unique capstone verb — engine knows 'whirlwind' and 'aegis'; name/numbers are CONTENT FLAGS, rename and retune freely), 'tracked' (which playstyle counter gates the title: rampageKills or standSaves), and 'tiers' — three entries, low to high: 'min' (counter needed; thresholds are proposals, doc says TBD pending playtesting) and 'title' (offered wording; the player may re-word it but keeps the tier). Tier 2 grants 'trinket' (an item id); tier 3 also records the lane's vignette-dungeon unlock (the dungeon itself is a later build).",
+  "sigil": {
+    "shapes": ["Blade", "Shield", "Flame", "Wing", "Star", "Eye", "Serpent", "Tree"],
+    "modifiers": ["Crowned", "Broken", "Bound in Chain", "Wreathed in Thorns", "Split", "Ascendant", "Shrouded", "Radiant"],
+    "colors": ["Gold", "Iron", "Bone-white", "Blood-red", "Void-black", "Verdant", "Silver", "Ember"]
+  },
+  "classes": {
+    "warrior": {
+      "fork_level": 5,
+      "lanes": [
+        {
+          "id": "blade",
+          "name": "Way of the Blade",
+          "archetype": "Barbarian",
+          "blurb": "The best shield is a fallen enemy. Hit harder, guard less.",
+          "offsets": { "hit": 1, "ac": -1 },
+          "passive": { "id": "weapon_focus", "dmg": 1 },
+          "verb": { "id": "rampage", "level": 10, "name": "Rampage", "blurb": "Felling a foe grants an immediate free attack on another foe in reach." },
+          "capstone": { "id": "rage", "level": 15, "name": "Rage", "hit": 2, "dmg": 2, "ac": -2, "extra_attacks": 1, "rounds": 3, "blurb": "Forsake defense for fury: +2 hit and damage, one extra attack, -2 AC." },
+          "refinement": { "id": "rampage_crits", "level": 18, "blurb": "Rampage now also triggers on a natural 20, not only on a kill." },
+          "rite": {
+            "ability": { "id": "whirlwind", "name": "Whirlwind", "blurb": "One furious action: strike every foe in reach, each once. Stacks with Rage.", "_comment": "CONTENT FLAG: placeholder design — rename and retune freely" },
+            "tracked": "rampageKills",
+            "tiers": [
+              { "min": 0, "title": "the Blooded" },
+              { "min": 5, "title": "Reaper of the Line", "trinket": "trophy_of_the_slain" },
+              { "min": 15, "title": "Bladestorm", "dungeon": "A gladiatorial proving-ground of endless foes", "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build" }
+            ]
+          }
+        },
+        {
+          "id": "shield",
+          "name": "Way of the Shield",
+          "archetype": "Knight",
+          "blurb": "The line holds because you hold it. Guard more, hit lighter.",
+          "offsets": { "hit": -1, "ac": 1 },
+          "passive": { "id": "braced_stance", "reduce": 1 },
+          "verb": { "id": "guardians_stand", "level": 10, "name": "Guardian's Stand", "blurb": "When an ally is about to take a hit, step in and take it yourself." },
+          "capstone": { "id": "bulwark", "level": 15, "name": "Bulwark", "aura_ac": 1, "taunt_rounds": 2, "blurb": "Allies beside you gain +1 AC, and you can Taunt enemies into striking you." },
+          "refinement": { "id": "stand_half_cost", "level": 18, "blurb": "Guardian's Stand now costs you only half the damage you turn aside." },
+          "rite": {
+            "ability": { "id": "aegis", "name": "Aegis", "blurb": "Once per battle: for one full round, every blow that lands on any ally strikes you instead — at half force.", "_comment": "CONTENT FLAG: placeholder design — rename and retune freely" },
+            "tracked": "standSaves",
+            "tiers": [
+              { "min": 0, "title": "the Steadfast" },
+              { "min": 5, "title": "Oathkeeper", "trinket": "oathkeepers_band" },
+              { "min": 15, "title": "the Unbroken Wall", "dungeon": "A ruined keep under siege, with lives to hold", "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build" }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

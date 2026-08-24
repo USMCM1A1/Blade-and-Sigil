@@ -447,12 +447,12 @@ export class Renderer {
     ctx.font = '13px Georgia';
     const hints = b.mode === 'target'
       ? 'arrows — aim · Enter — unleash! · Esc — cancel'
-      : `arrows — move & bump to attack · ${a?.kind === 'hero' && b.castables(a).length ? 'C — cast · ' : ''}${a?.kind === 'hero' && b.canShoot(a) ? 'F — shoot · ' : ''}${a?.kind === 'hero' && this.game.heldItems().length ? 'I — item · ' : ''}Space — end turn · Esc — flee`;
+      : `arrows — move & bump to attack · ${a?.kind === 'hero' && b.abilities(a).length ? 'C — abilities · ' : ''}${a?.kind === 'hero' && b.canShoot(a) ? 'F — shoot · ' : ''}${a?.kind === 'hero' && this.game.heldItems().length ? 'I — item · ' : ''}Space — end turn · Esc — flee`;
     ctx.fillText(hints, W / 2, H - 20);
 
-    // Spell menu overlay.
+    // Abilities menu overlay (spells + class battle arts).
     if (b.mode === 'menu' && a?.kind === 'hero') {
-      const list = b.castables(a);
+      const list = b.abilities(a);
       const mw = 380, mh = 70 + list.length * 44;
       const mx = (W - mw) / 2, my = (H - mh) / 2;
       ctx.fillStyle = 'rgba(10,10,16,0.92)';
@@ -464,13 +464,13 @@ export class Renderer {
       ctx.font = 'bold 17px Georgia';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.fillText(`${a.ref.name}'s spells — ${a.ref.sp} SP`, mx + mw / 2, my + 12);
+      ctx.fillText(`${a.ref.name}'s abilities${a.ref.maxSp ? ` — ${a.ref.sp} SP` : ''}`, mx + mw / 2, my + 12);
       list.forEach((s, i) => {
         const ly = my + 48 + i * 44;
         ctx.textAlign = 'left';
         ctx.fillStyle = s.affordable ? '#cfc4a6' : '#66605a';
         ctx.font = 'bold 14px Georgia';
-        ctx.fillText(`${i + 1}.  ${s.name}  —  ${s.cost} SP${s.range ? ` · range ${s.range}` : ''}${s.area ? ` · burst ${s.area}` : ''}`, mx + 20, ly);
+        ctx.fillText(`${i + 1}.  ${s.name}  —  ${s.cost ? `${s.cost} SP` : 'free'}${s.range ? ` · range ${s.range}` : ''}${s.area ? ` · burst ${s.area}` : ''}`, mx + 20, ly);
         ctx.font = 'italic 11.5px Georgia';
         ctx.fillStyle = s.affordable ? '#8a8a99' : '#55504c';
         ctx.fillText(s.description, mx + 38, ly + 17);
@@ -510,6 +510,29 @@ export class Renderer {
       ctx.fillStyle = '#8a8a99';
       ctx.font = '12px Georgia';
       ctx.fillText('press a number to drink (ends the turn) · Esc to close', mx + mw / 2, my + mh - 22);
+    }
+
+    // Guardian's Stand: the blow hangs in the air while the player decides.
+    if (b.pendingReaction) {
+      const r = b.pendingReaction;
+      const mw = 480, mh = 110;
+      const mx = (W - mw) / 2, my = (H - mh) / 2;
+      ctx.fillStyle = 'rgba(10,10,16,0.94)';
+      ctx.fillRect(mx, my, mw, mh);
+      ctx.strokeStyle = '#7fd4c8';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(mx, my, mw, mh);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#7fd4c8';
+      ctx.font = 'bold 18px Georgia';
+      ctx.fillText(`Guardian's Stand!`, mx + mw / 2, my + 14);
+      ctx.fillStyle = '#cfc4a6';
+      ctx.font = '14px Georgia';
+      ctx.fillText(`The ${r.m.name}'s blow (${r.dmg} damage) is falling on ${r.target.name}.`, mx + mw / 2, my + 44);
+      ctx.fillStyle = COLORS.stairs;
+      ctx.font = 'bold 14px Georgia';
+      ctx.fillText(`Y — ${r.guardian.name} takes the blow · N — let it land`, mx + mw / 2, my + 74);
     }
 
     // Ending beat: let the killing blow's numbers land first, then banner.

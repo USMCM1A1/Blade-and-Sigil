@@ -1,5 +1,5 @@
 {
-  "_comment": "All items. CONSUMABLES: effect 'heal' rolls 'dice' as HP; 'cure' removes the condition in 'cures'. GEAR goes on the paper doll (E key) — types map to slots: weapon_<category> and shield -> the two hands ('hands': 2 on a weapon claims both), armor_light/med/heavy -> body, helm -> head, boots -> feet, jewelry_ring -> one of two ring slots, jewelry_neck -> necklace. Weapon categories: light_blade/med_blade/heavy_blade/light_blunt/med_blunt/heavy_blunt/bow (weapons need 'damage', bows also 'range'). ANY worn piece may carry 'ac' and/or 'sp' — they all stack. Class permissions live in classes.json (weapon_types/armor_types/shields); helms, boots, and jewelry fit anyone. 'value' is the gold price for the Phase 4 shops. SUPPLIES: type 'supply' items (rations) are camp fuel, not potions — 'max_carry' caps how many the party can haul. Add items freely!",
+  "_comment": "All items. CONSUMABLES: effect 'heal' rolls 'dice' as HP; 'cure' removes the condition in 'cures'. GEAR goes on the paper doll (E key) — types map to slots: weapon_<category> and shield -> the two hands ('hands': 2 on a weapon claims both), armor_light/med/heavy -> body, helm -> head, boots -> feet, jewelry_ring -> one of two ring slots, jewelry_neck -> necklace. Weapon categories: light_blade/med_blade/heavy_blade/light_blunt/med_blunt/heavy_blunt/bow (weapons need 'damage', bows also 'range'). ANY worn piece may carry 'ac', 'sp', and/or 'dmg' (+damage on every hit) — they all stack. Class permissions live in classes.json (weapon_types/armor_types/shields); helms, boots, and jewelry fit anyone. 'value' is the gold price for the Phase 4 shops. SUPPLIES: type 'supply' items (rations) are camp fuel, not potions — 'max_carry' caps how many the party can haul. Add items freely!",
   "items": {
     "health_potion": {
       "name": "Health Potion",
@@ -187,6 +187,22 @@
       "ac": 1,
       "value": 80,
       "description": "A silver charm that turns aside glancing blows."
+    },
+    "trophy_of_the_slain": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Way of the Blade — rename/retune freely",
+      "name": "Trophy of the Slain",
+      "type": "jewelry_neck",
+      "dmg": 1,
+      "value": 150,
+      "description": "A cord of grim keepsakes from a hundred rampages. +1 damage on every hit."
+    },
+    "oathkeepers_band": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Way of the Shield — rename/retune freely",
+      "name": "Oathkeeper's Band",
+      "type": "jewelry_ring",
+      "ac": 1,
+      "value": 150,
+      "description": "An iron band engraved with the names of everyone it has kept alive."
     }
   }
 }

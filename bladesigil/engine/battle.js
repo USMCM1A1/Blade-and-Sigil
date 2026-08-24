@@ -2,9 +2,13 @@
 // in data/tactics/. Each side starts on its own edge, initiative decides the
 // turn order, and every combatant moves and fights on their own square.
 
-import { roll, d20, abilityMod } from './rules.js';
+import { roll, d20, maxRoll, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
+import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf } from './progression.js';
 import * as audio from './audio.js';
+
+// Sum of a field across a hero's timed buffs (Rage etc.).
+const timedSum = (ref, key) => (ref.timedBuffs ?? []).reduce((s, b) => s + (b[key] || 0), 0);
 
 export const GRID_W = 13, GRID_H = 8;
 const HERO_MOVE = 4;
@@ -21,7 +25,10 @@ export class Battle {
     this.cursor = null;   // targeting crosshair {x, y}
     this.fx = [];         // floating combat text: {x, y, text, color, born}
     this.busy = false;    // true while a monster acts (player input locked)
-    for (const ch of game.party) ch.buffs = { hit: 0, dmg: 0 }; // buffs last one battle
+    this.pendingReaction = null; // Guardian's Stand: an ally's Y/N moment
+    this.taunt = null;    // Bulwark's taunt: {c, until} — monsters strike the knight
+    this.fleeing = false; // parting blows allow no heroics
+    for (const ch of game.party) { ch.buffs = { hit: 0, dmg: 0 }; ch.timedBuffs = []; } // buffs last one battle
     this.parseTemplate(template);
     this.placeCombatants(foes);
     this.rollInitiative();
@@ -115,6 +122,15 @@ export class Battle {
       }
       const c = this.active();
       if (c.kind === 'hero' && c.ref.alive) {
+        // Timed powers (Rage) burn down at the start of their owner's turn.
+        for (const b of [...(c.ref.timedBuffs ?? [])]) {
+          b.rounds--;
+          if (b.rounds <= 0) {
+            c.ref.timedBuffs = c.ref.timedBuffs.filter(x => x !== b);
+            this.addFx(c.x, c.y, `${b.name} fades`, '#9a94a8');
+            this.game.log(`${c.ref.name}'s ${b.name.toLowerCase()} fades.`);
+          }
+        }
         const verdict = this.tickConditions(c); // burn ticks, paralysis check
         if (this.checkEnd()) return;
         if (verdict === 'dead') continue;
@@ -138,6 +154,7 @@ export class Battle {
           const verdict = this.tickConditions(c);
           if (this.checkEnd()) return;
           if (verdict !== 'dead' && verdict !== 'skip') this.monsterTurn(c);
+          if (this.pendingReaction) return; // frozen mid-blow — resolveReaction resumes
           if (this.checkEnd()) return;
           this.nextTurn();
         }, 600);
@@ -246,25 +263,75 @@ export class Battle {
     if (c) this.addFx(c.x, c.y, text, color);
   }
 
-  // Melee: STR. Ranged weapons (a "range" on the weapon): DEX. Buffs stack.
-  attackBonus(ch) { return ch.hitBase + abilityMod(ch.weapon.range ? ch.abilities.dex : ch.abilities.str) + ch.buffs.hit; }
-  damageBonus(ch) { return ch.hitBase + abilityMod(ch.weapon.range ? ch.abilities.dex : ch.abilities.str) + ch.buffs.dmg; }
+  // Melee: STR. Ranged weapons (a "range" on the weapon): DEX. Buffs stack —
+  // battle buffs (spells), timed buffs (Rage), and the Weapon Focus passive.
+  attackBonus(ch) { return ch.hitBase + abilityMod(ch.weapon.range ? ch.abilities.dex : ch.abilities.str) + ch.buffs.hit + timedSum(ch, 'hit'); }
+  damageBonus(ch) {
+    let bonus = ch.hitBase + abilityMod(ch.weapon.range ? ch.abilities.dex : ch.abilities.str) + ch.buffs.dmg + timedSum(ch, 'dmg') + (ch.gearDmg || 0);
+    const p = passiveOf(this.game.data, ch);
+    if (p?.id === 'weapon_focus' && ch.focusType && ch.weapon.type === `weapon_${ch.focusType}`) bonus += p.dmg ?? 1;
+    return bonus;
+  }
+  heroAttacks(ch) { return ch.attacks + timedSum(ch, 'attacks'); } // Rage grants extras
+
+  // One swing (or shot). A natural 20 always hits for the weapon's maximum.
+  // Returns what happened so Rampage can chain off kills and crits.
+  strike(c, foeC, verb) {
+    const ch = c.ref, monster = foeC.ref;
+    const die = d20();
+    const crit = die === 20;
+    if (crit || die + this.attackBonus(ch) >= 10 + monster.ac) {
+      const base = crit ? maxRoll(ch.weapon.damage) : roll(ch.weapon.damage);
+      const dmg = Math.max(1, base + this.damageBonus(ch));
+      monster.hp -= dmg;
+      this.addFx(foeC.x, foeC.y, crit ? `-${dmg}!!` : `-${dmg}`, crit ? '#ffd24a' : '#ff6a4a');
+      this.game.log(crit
+        ? `A perfect blow! ${ch.name} crits the ${monster.name} for ${dmg} damage!`
+        : `${ch.name} hits the ${monster.name} with ${ch.weapon.name.toLowerCase()} for ${dmg} damage.`);
+      return { hit: true, crit, kill: monster.hp <= 0 };
+    }
+    this.addFx(foeC.x, foeC.y, 'miss', '#9a94a8');
+    this.game.log(`${ch.name} ${verb} at the ${monster.name} and misses.`);
+    return { hit: false, crit: false, kill: false };
+  }
+
+  // Way of the Blade, level 10: felling a foe grants a free attack on
+  // another foe in reach — and kills CHAIN. At 18 a natural 20 counts too.
+  rampageChain(c) {
+    if (!hasVerb(this.game.data, c.ref, 'rampage')) return;
+    for (let links = 0; links < 12; links++) { // generous cap against pathology
+      const next = this.monsters()
+        .filter(mc => Math.abs(mc.x - c.x) + Math.abs(mc.y - c.y) === 1)
+        .sort((a, b) => a.ref.hp - b.ref.hp)[0]; // fury seeks the weakest neighbor
+      if (!next) return;
+      this.addFx(c.x, c.y, 'RAMPAGE!', '#e0483a');
+      this.game.log(`${c.ref.name} rampages onward!`, 'combat');
+      const res = this.strike(c, next, 'swings');
+      if (res.kill) {
+        c.ref.counters.rampageKills++;
+        this.slay(next.ref);
+        continue; // another falls — the chain rolls on
+      }
+      if (res.crit && hasRefinement(this.game.data, c.ref, 'rampage_crits')) continue;
+      return;
+    }
+  }
 
   heroAttack(c, foeC, verb = 'swings') {
     const ch = c.ref, monster = foeC.ref;
     audio.play('melee');
-    for (let a = 0; a < ch.attacks && monster.hp > 0; a++) {
-      if (d20() + this.attackBonus(ch) >= 10 + monster.ac) {
-        const dmg = Math.max(1, roll(ch.weapon.damage) + this.damageBonus(ch));
-        monster.hp -= dmg;
-        this.addFx(foeC.x, foeC.y, `-${dmg}`, '#ff6a4a');
-        this.game.log(`${ch.name} hits the ${monster.name} with ${ch.weapon.name.toLowerCase()} for ${dmg} damage.`);
-      } else {
-        this.addFx(foeC.x, foeC.y, 'miss', '#9a94a8');
-        this.game.log(`${ch.name} ${verb} at the ${monster.name} and misses.`);
-      }
+    let killed = false, crit = false;
+    for (let a = 0; a < this.heroAttacks(ch) && monster.hp > 0; a++) {
+      const res = this.strike(c, foeC, verb);
+      killed = killed || res.kill;
+      crit = crit || res.crit;
     }
     if (monster.hp <= 0) this.slay(monster);
+    // Rampage: a kill (or, refined, a crit) with a melee weapon lets the
+    // fury spill onto the next foe in reach.
+    if (!ch.weapon.range && (killed || (crit && hasRefinement(this.game.data, ch, 'rampage_crits')))) {
+      this.rampageChain(c);
+    }
     this.endHeroTurn();
   }
 
@@ -298,11 +365,45 @@ export class Battle {
 
   canShoot(c) { return !!c.ref.weapon.range; }
 
+  // Class actives (capstones and the Rite's unique power) — listed beside
+  // spells in the C menu, driven by the lane data in progression.json.
+  classActives(c) {
+    const ref = c.ref;
+    const lane = laneOf(this.game.data, ref);
+    const out = [];
+    const cap = lane?.capstone;
+    if (cap && ref.level >= cap.level) {
+      if (cap.id === 'rage') {
+        out.push({ kind: 'active', id: 'rage', name: cap.name ?? 'Rage', cost: 0, affordable: true,
+          description: `+${cap.hit ?? 2} hit, +${cap.dmg ?? 2} damage, ${cap.extra_attacks ?? 1} extra attack, ${cap.ac ?? -2} AC for ${cap.rounds ?? 3} rounds.` });
+      }
+      if (cap.id === 'bulwark') {
+        out.push({ kind: 'active', id: 'taunt', name: 'Taunt', cost: 0, affordable: true,
+          description: `Bellow a challenge — enemies strike at YOU for ${cap.taunt_rounds ?? 2} rounds.` });
+      }
+    }
+    // The Rite's unique power, under the name the player gave it.
+    const rite = riteOf(this.game.data, ref);
+    if (rite && ref.rite) {
+      if (rite.ability.id === 'whirlwind') {
+        out.push({ kind: 'active', id: 'whirlwind', name: ref.rite.abilityName, cost: 0, affordable: true,
+          description: 'One furious action: strike every foe in reach, each once.' });
+      }
+      if (rite.ability.id === 'aegis' && !this.aegisSpent?.has(ref)) {
+        out.push({ kind: 'active', id: 'aegis', name: ref.rite.abilityName, cost: 0, affordable: true,
+          description: 'Once per battle: for a full round, every blow on any ally strikes you instead — at half force.' });
+      }
+    }
+    return out;
+  }
+
+  abilities(c) { return [...this.castables(c), ...this.classActives(c)]; }
+
   openMenu() {
     const c = this.active();
     if (!c || c.kind !== 'hero') return;
-    if (!this.castables(c).length) {
-      this.game.log(`${c.ref.name} knows no spells.`, 'info');
+    if (!this.abilities(c).length) {
+      this.game.log(`${c.ref.name} knows no spells or battle arts.`, 'info');
       return;
     }
     this.mode = 'menu';
@@ -310,9 +411,10 @@ export class Battle {
 
   chooseSpell(n) {
     const c = this.active();
-    const list = this.castables(c);
+    const list = this.abilities(c);
     const s = list[n - 1];
     if (!s) return;
+    if (s.kind === 'active') { this.mode = 'move'; this.useActive(c, s); return; }
     if (!s.affordable) {
       this.addFx(c.x, c.y, 'not enough SP', '#9a94a8');
       this.game.log(`${c.ref.name} lacks the spell points for ${s.name}.`, 'info');
@@ -321,6 +423,55 @@ export class Battle {
     if (s.type === 'buff') { this.mode = 'move'; this.castBuff(c, s); return; }
     this.pending = { kind: 'spell', spell: s, range: s.range };
     this.beginTargeting(s.type === 'heal');
+  }
+
+  // Capstone actives. Like a swing or a spell, using one ends the turn.
+  useActive(c, entry) {
+    const ref = c.ref;
+    const cap = laneOf(this.game.data, ref).capstone;
+    audio.play('spell');
+    if (entry.id === 'rage') {
+      ref.timedBuffs = ref.timedBuffs.filter(b => b.name !== (cap.name ?? 'Rage'));
+      ref.timedBuffs.push({
+        name: cap.name ?? 'Rage',
+        hit: cap.hit ?? 2, dmg: cap.dmg ?? 2, ac: cap.ac ?? -2,
+        attacks: cap.extra_attacks ?? 1, rounds: cap.rounds ?? 3,
+      });
+      this.addFx(c.x, c.y, 'RAGE!', '#e0483a');
+      this.game.log(`${ref.name} gives themself to the fury — all blade, no shield!`, 'good');
+    } else if (entry.id === 'taunt') {
+      this.taunt = { c, until: this.round + (cap.taunt_rounds ?? 2) };
+      this.addFx(c.x, c.y, 'TAUNT!', '#d4a94e');
+      this.game.log(`${ref.name} bellows a challenge — every foe turns their way!`, 'good');
+    } else if (entry.id === 'whirlwind') {
+      // The Rite's storm of steel: one strike at every foe in reach.
+      const foes = this.monsters().filter(mc => Math.abs(mc.x - c.x) + Math.abs(mc.y - c.y) === 1);
+      if (!foes.length) {
+        this.addFx(c.x, c.y, 'no foe in reach', '#9a94a8');
+        this.game.log(`${ref.name} finds no one in reach for ${entry.name}.`, 'info');
+        return; // the action isn't wasted — move in and try again
+      }
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#ffd24a');
+      this.game.log(`${ref.name} unleashes ${entry.name} — steel in every direction!`, 'good');
+      for (const foeC of foes) {
+        const res = this.strike(c, foeC, 'swings');
+        if (res.kill) this.slay(foeC.ref);
+      }
+    } else if (entry.id === 'aegis') {
+      (this.aegisSpent ??= new Set()).add(ref);
+      this.aegis = { c, until: this.round + 1 };
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#7fd4c8');
+      this.game.log(`${ref.name} raises ${entry.name} — for this round, every blow meant for the party finds them instead.`, 'good');
+    }
+    this.endHeroTurn();
+  }
+
+  // The Rite's Aegis: while raised, a blow aimed at any OTHER ally lands on
+  // the knight at half force instead.
+  aegisGuard(target) {
+    const a = this.aegis;
+    if (!a || this.round > a.until || !a.c.ref.alive || a.c.ref === target) return null;
+    return a.c;
   }
 
   // ---- Items: the acting hero drinks from the shared pouch. It's their
@@ -529,16 +680,24 @@ export class Battle {
     }
   }
 
+  // Bulwark's taunt: while it holds, monsters strike the knight if they can.
+  tauntActive() {
+    return this.taunt && this.round <= this.taunt.until && this.taunt.c.ref.alive;
+  }
+
   adjacentHero(c) {
     const near = this.heroes().filter(h => h.ref.alive && Math.abs(h.x - c.x) + Math.abs(h.y - c.y) === 1);
     if (!near.length) return null;
+    if (this.tauntActive() && near.includes(this.taunt.c)) return this.taunt.c;
     return near[Math.floor(Math.random() * near.length)];
   }
 
   stepToward(c) {
-    // BFS to the closest square adjacent to a living hero, then take the first step.
+    // BFS to the closest square adjacent to a living hero, then take the first
+    // step. A taunting knight draws every march toward himself.
+    const pool = this.tauntActive() ? [this.taunt.c] : this.heroes();
     const targets = new Set();
-    for (const h of this.heroes()) {
+    for (const h of pool) {
       if (!h.ref.alive) continue;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const x = h.x + dx, y = h.y + dy;
@@ -566,26 +725,107 @@ export class Battle {
     return true;
   }
 
-  monsterAttack(m, target) {
-    if (d20() + m.to_hit >= target.ac) {
-      const dmg = Math.max(1, roll(m.damage));
-      target.hp -= dmg;
-      audio.play('melee');
-      this.fxOn(target, `-${dmg}`, '#ff6a4a');
-      this.game.log(`The ${m.name} strikes ${target.name} for ${dmg} damage!`);
-      if (target.hp <= 0) {
-        target.hp = 0;
-        target.alive = false;
-        this.fxOn(target, 'FALLEN', '#b03535');
-        this.game.log(`${target.name} has fallen!`, 'death');
-      } else if (m.inflicts) {
-        const tc = this.combatants.find(cc => cc.ref === target);
-        if (tc) this.tryInflict(tc, m.inflicts.condition, m.inflicts.rounds, m.inflicts.dc);
+  // A hero's AC in the moment: sheet AC, timed buffs (Rage's recklessness),
+  // and Bulwark — a knight standing beside you turns blades aside.
+  heroAcOf(hc) {
+    let ac = hc.ref.ac + timedSum(hc.ref, 'ac');
+    for (const other of this.heroes()) {
+      if (other === hc || !other.ref.alive) continue;
+      const lane = laneOf(this.game.data, other.ref);
+      if (lane?.capstone?.id === 'bulwark' && other.ref.level >= lane.capstone.level
+        && Math.abs(other.x - hc.x) + Math.abs(other.y - hc.y) === 1) {
+        ac += lane.capstone.aura_ac ?? 1;
       }
+    }
+    return ac;
+  }
+
+  // A living shield-brother who could take this blow instead (level-10 verb).
+  standCandidate(target) {
+    return this.heroes().map(h => h.ref).find(ref =>
+      ref.alive && ref !== target && hasVerb(this.game.data, ref, 'guardians_stand'));
+  }
+
+  monsterAttack(m, target) {
+    const tc = this.combatants.find(cc => cc.ref === target);
+    const ac = tc?.kind === 'hero' ? this.heroAcOf(tc) : target.ac;
+    if (d20() + m.to_hit >= ac) {
+      const dmg = Math.max(1, roll(m.damage));
+      // Aegis (the Rite): the raised guard takes the blow at half force —
+      // no question asked, that's what the round was bought for.
+      const aegisC = tc?.kind === 'hero' && !this.fleeing ? this.aegisGuard(target) : null;
+      if (aegisC) {
+        this.fxOn(target, 'shielded!', '#7fd4c8');
+        this.game.log(`The blow meant for ${target.name} breaks against ${aegisC.ref.name}'s guard!`, 'good');
+        this.applyMonsterHit(m, aegisC.ref, Math.max(1, Math.ceil(dmg / 2)));
+        return;
+      }
+      // Guardian's Stand: the blow hangs in the air while the player decides.
+      const guardian = this.fleeing ? null : this.standCandidate(target);
+      if (guardian) {
+        this.pendingReaction = { m, target, dmg, guardian };
+        this.mode = 'reaction';
+        return;
+      }
+      this.applyMonsterHit(m, target, dmg);
     } else {
       this.fxOn(target, 'miss', '#9a94a8');
       this.game.log(`The ${m.name} lunges at ${target.name} but misses.`);
     }
+  }
+
+  applyMonsterHit(m, target, dmg) {
+    // Braced Stance (Way of the Shield): a shield in hand blunts every hit.
+    const p = passiveOf(this.game.data, target);
+    if (p?.id === 'braced_stance' && this.game.hasShield(target)) dmg = Math.max(0, dmg - (p.reduce ?? 1));
+    audio.play('melee');
+    if (dmg <= 0) {
+      this.fxOn(target, 'blocked', '#9a94a8');
+      this.game.log(`The ${m.name} strikes ${target.name} — the shield takes it all.`);
+      return;
+    }
+    target.hp -= dmg;
+    this.fxOn(target, `-${dmg}`, '#ff6a4a');
+    this.game.log(`The ${m.name} strikes ${target.name} for ${dmg} damage!`);
+    if (target.hp <= 0) {
+      target.hp = 0;
+      target.alive = false;
+      this.fxOn(target, 'FALLEN', '#b03535');
+      this.game.log(`${target.name} has fallen!`, 'death');
+    } else if (m.inflicts) {
+      const tc = this.combatants.find(cc => cc.ref === target);
+      if (tc) this.tryInflict(tc, m.inflicts.condition, m.inflicts.rounds, m.inflicts.dc);
+    }
+  }
+
+  // The player answered the Guardian's Stand prompt (Y/N from main.js).
+  resolveReaction(accept) {
+    const r = this.pendingReaction;
+    if (!r) return;
+    this.pendingReaction = null;
+    this.mode = 'move';
+    if (accept) {
+      const g = r.guardian;
+      let cost = hasRefinement(this.game.data, g, 'stand_half_cost') ? Math.ceil(r.dmg / 2) : r.dmg;
+      const p = passiveOf(this.game.data, g);
+      if (p?.id === 'braced_stance' && this.game.hasShield(g)) cost = Math.max(0, cost - (p.reduce ?? 1));
+      g.counters.standSaves++;
+      audio.play('melee');
+      this.fxOn(r.target, 'shielded!', '#7fd4c8');
+      this.fxOn(g, cost > 0 ? `-${cost}` : 'blocked', '#d4a94e');
+      this.game.log(`${g.name} throws themself before the blow meant for ${r.target.name}${cost > 0 ? ` — ${cost} damage taken` : ' — and shrugs it off'}!`, 'good');
+      g.hp -= cost;
+      if (g.hp <= 0) {
+        g.hp = 0;
+        g.alive = false;
+        this.fxOn(g, 'FALLEN', '#b03535');
+        this.game.log(`${g.name} has fallen!`, 'death');
+      }
+    } else {
+      this.applyMonsterHit(r.m, r.target, r.dmg);
+    }
+    if (this.checkEnd()) return;
+    this.nextTurn();
   }
 
   slay(monster) {
@@ -600,7 +840,7 @@ export class Battle {
       return;
     }
     this.game.log(`The ${monster.name} is slain! Each hero gains ${monster.xp} XP.`, 'good');
-    for (const ch of this.game.awardXp(monster.xp)) this.fxOn(ch, 'LEVEL UP!', '#d4a94e');
+    for (const ch of this.game.awardXp(monster.xp)) this.fxOn(ch, 'READY TO LEVEL!', '#d4a94e');
     if (this.game.depth === 'boss' && monster.id === this.game.data.dungeon.boss.monster) {
       this.game.victory = true; // the run is won — the map shows the banner when the fight ends
       this.game.log(`The ${monster.name} is destroyed! The endless dark is broken — the party has conquered the dungeon!`, 'good');
@@ -663,10 +903,12 @@ export class Battle {
   stripBattleConditions() {
     for (const ch of this.game.party) {
       ch.conditions = ch.conditions.filter(c => this.game.conditionDef(c.id)?.lingers);
+      ch.timedBuffs = []; // Rage and its kin gutter out with the fight
     }
   }
 
   flee() {
+    this.fleeing = true; // no Guardian's Stand for backs that are turned
     if (this.game.arena) {
       this.game.battle = null;
       this.game.endArena();

@@ -3,12 +3,13 @@
 import { loadJSON, showFatal } from './loader.js';
 import { Game } from './game.js';
 import { Renderer, preloadImages } from './render.js';
-import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding } from './ui.js';
+import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding, maybeOpenChoice, choiceOpen, choicePick, togglePlaytest, playtestOpen, levelupOpen, dismissLevelup } from './ui.js';
+import { validateProgression } from './progression.js';
 import { choosePartyDef } from './creation.js';
 import * as audio from './audio.js';
 
 async function boot() {
-  const [classes, races, monsters, party, level, spells, conditions, items, town, dungeon] = await Promise.all([
+  const [classes, races, monsters, party, level, spells, conditions, items, town, dungeon, progression] = await Promise.all([
     loadJSON('data/classes.json'),
     loadJSON('data/races.json'),
     loadJSON('data/monsters.json'),
@@ -19,6 +20,7 @@ async function boot() {
     loadJSON('data/items.json'),
     loadJSON('data/town.json'),
     loadJSON('data/dungeon.json'),
+    loadJSON('data/progression.json'),
   ]);
 
   // Tactical battle templates: the level says which ones its battles use.
@@ -27,7 +29,8 @@ async function boot() {
   for (const n of tacticsNames) tactics[n] = await loadJSON(`data/tactics/${n}.json`);
   const arenaTemplate = await loadJSON('data/tactics/arena.json');
 
-  const data = { classes, races, monsters, party, level, tactics, spells, conditions, items, town, dungeon, arenaTemplate };
+  const data = { classes, races, monsters, party, level, tactics, spells, conditions, items, town, dungeon, progression, arenaTemplate };
+  validateProgression(data); // friendly errors for progression.json typos
   const partyDef = await choosePartyDef(data);
   const game = new Game({ ...data, party: { ...party, party: partyDef } });
 
@@ -103,6 +106,12 @@ async function boot() {
     }
     if (game.battle) {
       const b = game.battle;
+      // Guardian's Stand: the world waits on a single question.
+      if (b.pendingReaction) {
+        if (e.key === 'y' || e.key === 'Y') b.resolveReaction(true);
+        else if (e.key === 'n' || e.key === 'N' || e.key === 'Escape') b.resolveReaction(false);
+        return;
+      }
       if (b.busy) return; // a monster is taking its turn — watch it play out
       // Battle mode: arrows move the active hero (walk into a monster to
       // attack), C casts, F shoots, Space/Enter ends the turn, Esc flees.
@@ -144,13 +153,31 @@ async function boot() {
       }
       return;
     }
+    if (choiceOpen()) {
+      // A fork in the road: number keys (or clicks) decide. No backing out.
+      if (/^[1-9]$/.test(e.key)) choicePick(Number(e.key));
+      return;
+    }
     if (buildingOpen()) {
       if (e.key === 'Escape') closeBuilding();
       return;
     }
+    if (levelupOpen()) {
+      // The level-up summary (or a milestone card) sits on top of the
+      // character sheet — dismissing it advances the level-up chain.
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+        e.preventDefault();
+        dismissLevelup(game);
+      }
+      return;
+    }
     if (equipmentOpen()) {
-      // The inventory screen is modal on the map: I, E, or Esc puts it away.
-      if ('iIeE'.includes(e.key) || e.key === 'Escape') toggleEquipment(game, false);
+      // The character sheet is modal on the map: I, E, C, or Esc puts it away.
+      if ('iIeEcC'.includes(e.key) || e.key === 'Escape') toggleEquipment(game, false);
+      return;
+    }
+    if (playtestOpen()) {
+      if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') togglePlaytest(game, false);
       return;
     }
     if (MOVES[e.key]) {
@@ -161,10 +188,12 @@ async function boot() {
       game.wait();
     } else if (e.key === 't' || e.key === 'T') {
       game.rest();
-    } else if ('iIeE'.includes(e.key)) {
+    } else if ('iIeEcC'.includes(e.key)) {
       if (!game.over && !game.victory) toggleEquipment(game);
     } else if (e.key === '`' || e.key === '~') {
       game.startArena();
+    } else if (e.key === 'p' || e.key === 'P') {
+      if (!game.over && !game.victory) togglePlaytest(game);
     } else if (e.key === 'm' || e.key === 'M') {
       const muted = audio.toggleMute();
       game.log(muted ? 'Sound muted.' : 'Sound on.', 'info');
@@ -176,6 +205,7 @@ async function boot() {
   function frame() {
     renderer.draw();
     updateUI(game);
+    maybeOpenChoice(game); // owed lane forks pop up once the party is on the map
     requestAnimationFrame(frame);
   }
   frame();
