@@ -321,6 +321,15 @@ export class Renderer {
       }
     }
 
+    // The Burglar's planted traps — the party knows where they are.
+    for (const t of b.battleTraps ?? []) {
+      ctx.fillStyle = '#e0912f';
+      ctx.font = `bold ${Math.floor(CELL / 3)}px Georgia`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚙', ox + t.x * CELL + CELL / 2, oy + t.y * CELL + CELL / 2);
+    }
+
     // Combatants. Slain monsters fall and stay on the field as faded,
     // walkable corpses for the rest of the battle. Corpses draw first so
     // anyone stepping onto the square stands on top of the body.
@@ -332,8 +341,10 @@ export class Renderer {
       if (dying && !c.diedAt) continue;
       const px = ox + c.x * CELL, py = oy + c.y * CELL;
       const dead = c.kind === 'hero' && !c.ref.alive;
+      const hidden = c.kind === 'hero' && c.ref.hidden;
       ctx.save();
       if (dead) ctx.globalAlpha = 0.5;
+      if (hidden) ctx.globalAlpha = 0.4; // in the shadows: the player sees a ghost, monsters see nothing
       if (dying) ctx.globalAlpha = Math.max(0.35, 0.9 - (nowD - c.diedAt) / 1600);
       const sprite = c.kind === 'hero'
         ? (c.ref.alive ? c.ref.cls.sprite : c.ref.cls.sprite_dead)
@@ -345,6 +356,27 @@ export class Renderer {
         ctx.strokeStyle = c.kind === 'hero' ? COLORS.stairs : '#c04040';
         ctx.lineWidth = 3;
         ctx.strokeRect(px + 1.5, py + 1.5, CELL - 3, CELL - 3);
+      }
+      // Stealth badges: 💤 on a monster that hasn't noticed the party yet
+      // (an Assassinate mark), a wisp on a hidden hero.
+      if (c.kind === 'monster' && !dying && !c.aware) {
+        ctx.font = `bold ${Math.max(12, Math.round(CELL / 4))}px Georgia`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#000';
+        ctx.strokeText('💤', px + CELL - 3, py + 1);
+        ctx.fillStyle = '#b03a8e';
+        ctx.fillText('💤', px + CELL - 3, py + 1);
+      }
+      if (hidden) {
+        ctx.globalAlpha = 0.9;
+        ctx.font = `bold ${Math.max(10, Math.round(CELL / 5.5))}px Georgia`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#8a7ab8';
+        ctx.fillText('hidden', px + CELL - 4, py + 2);
+        ctx.globalAlpha = 0.4;
       }
       // Condition pips along the square's top edge (not on corpses).
       (dying ? [] : c.ref.conditions ?? []).forEach((cond, ci) => {
@@ -418,21 +450,43 @@ export class Renderer {
     } else if (a?.kind === 'hero' && b.mode === 'move') {
       ctx.fillStyle = COLORS.stairs;
       ctx.font = 'bold 15px Georgia';
-      ctx.fillText(`${a.ref.name}'s turn — ${b.movesLeft} move${b.movesLeft === 1 ? '' : 's'} left`, W / 2, H - 42);
+      // Bump preview: a foe in reach shows the odds — and why (stealth tags).
+      let bump = '';
+      const foe = b.monsters()
+        .filter(mc => Math.abs(mc.x - a.x) + Math.abs(mc.y - a.y) === 1)
+        .sort((p, q) => (b.assassinateTriggers(a, q) ? 2 : b.isUnaware(q, a.ref) ? 1 : 0)
+          - (b.assassinateTriggers(a, p) ? 2 : b.isUnaware(p, a.ref) ? 1 : 0))[0];
+      if (foe) {
+        const tags = [];
+        if (b.assassinateTriggers(a, foe)) tags.push('ASSASSINATE ready!');
+        else if (b.assassinateGuarded(a, foe)) tags.push('💤 unaware but GUARDED — no Assassinate');
+        else if (b.isUnaware(foe, a.ref)) tags.push('💤 unaware');
+        if (b.isFlanked(foe)) tags.push('flanked');
+        const pct = Math.round(Math.max(5, Math.min(95, (21 + b.attackBonus(a.ref) - (10 + foe.ref.ac)) / 20 * 100)));
+        bump = ` · bump the ${foe.ref.name}: ${tags.some(t => t.startsWith('ASSASSINATE')) ? 'auto-crit' : `${pct}% to hit`}${tags.length ? ` (${tags.join(', ')})` : ''}`;
+      }
+      ctx.fillText(`${a.ref.name}'s turn — ${b.movesLeft} move${b.movesLeft === 1 ? '' : 's'} left${bump}`, W / 2, H - 42);
     } else if (b.mode === 'target') {
       ctx.fillStyle = COLORS.stairs;
       ctx.font = 'bold 15px Georgia';
-      const what = b.pending.kind === 'shoot' ? `${a.ref.weapon.name}` : b.pending.spell.name;
+      const p = b.pending;
+      const what = p.kind === 'shoot' ? `${a.ref.weapon.name}`
+        : p.kind === 'trap' ? `${p.entry.name} (pick an empty square)`
+        : p.kind === 'shadowstep' ? `${p.entry.name} (pick where to reappear)`
+        : p.kind === 'deathblow' ? p.entry.name
+        : p.spell.name;
       // Odds preview for the monster under the crosshair: to-hit % for
       // shots, save DC (and odds of full damage) for spells.
       let odds = '';
       const tgt = b.cursor && b.cursorValid() && b.monsterAt(b.cursor.x, b.cursor.y);
       if (tgt) {
-        const pct = p => `${Math.round(Math.max(5, Math.min(95, p * 100)))}%`;
-        if (b.pending.kind === 'shoot') {
+        const pct = pr => `${Math.round(Math.max(5, Math.min(95, pr * 100)))}%`;
+        if (p.kind === 'shoot') {
           odds = ` · ${pct((21 + b.attackBonus(a.ref) - (10 + tgt.ref.ac)) / 20)} to hit`;
-        } else {
-          const s = b.pending.spell;
+        } else if (p.kind === 'deathblow') {
+          odds = ' · an automatic critical — it cannot miss';
+        } else if (p.spell) {
+          const s = p.spell;
           if (s.auto) odds = ' · never misses';
           else if (s.save) {
             const dc = 10 + s.level + abilityMod(a.ref.abilities[s.stat]);
@@ -445,9 +499,22 @@ export class Renderer {
     }
     ctx.fillStyle = 'rgba(207,196,166,0.7)';
     ctx.font = '13px Georgia';
+    // The C hint NAMES the hero's battle arts — a power nobody sees is a
+    // power nobody uses (Rage, Vanish, and every named Rite verb).
+    let cHint = '';
+    if (a?.kind === 'hero') {
+      const acts = b.classActives(a);
+      const hasSpells = b.castables(a).length > 0;
+      if (acts.length) {
+        const names = acts.slice(0, 2).map(s => s.name).join(', ');
+        cHint = `C — ${names}${acts.length > 2 ? ' +more' : ''}${hasSpells ? ' & spells' : ''} · `;
+      } else if (hasSpells) {
+        cHint = 'C — spells · ';
+      }
+    }
     const hints = b.mode === 'target'
       ? 'arrows — aim · Enter — unleash! · Esc — cancel'
-      : `arrows — move & bump to attack · ${a?.kind === 'hero' && b.abilities(a).length ? 'C — abilities · ' : ''}${a?.kind === 'hero' && b.canShoot(a) ? 'F — shoot · ' : ''}${a?.kind === 'hero' && this.game.heldItems().length ? 'I — item · ' : ''}Space — end turn · Esc — flee`;
+      : `arrows — move & bump to attack · ${cHint}${a?.kind === 'hero' && b.canShoot(a) ? 'F — shoot · ' : ''}${a?.kind === 'hero' && this.game.heldItems().length ? 'I — item · ' : ''}Space — end turn · Esc — flee`;
     ctx.fillText(hints, W / 2, H - 20);
 
     // Abilities menu overlay (spells + class battle arts).

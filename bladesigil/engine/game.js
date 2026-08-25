@@ -4,7 +4,7 @@ import { roll, d20, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
 import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
-import { laneOf, classProg, pendingChoices, focusOptions, displayClass, riteTier } from './progression.js';
+import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier } from './progression.js';
 import * as audio from './audio.js';
 
 const VISION_RADIUS = 6.5;
@@ -276,7 +276,7 @@ export class Game {
       lane: def.lane ?? null,
       focusType: def.focus ?? null,
       timedBuffs: [],
-      counters: { rampageKills: 0, standSaves: 0 },
+      counters: { rampageKills: 0, standSaves: 0, assassinateKills: 0, shadowFeats: 0 },
       rite: null, // filled by the Level 20 Rite: {abilityName, sigil, title, tier}
       // The paper doll: item ids from items.json. Hands hold weapons or a
       // shield; a hero always keeps at least one weapon in hand.
@@ -559,19 +559,25 @@ export class Game {
 
   trapAt(x, y) { return this.traps?.find(t => t.x === x && t.y === y); }
 
-  // The party's best chance (in %) of noticing hidden things: the design
-  // doc's thief/archer per-level tables, +5% per point of DEX modifier,
-  // +the wood-elf racial bonus. Everyone else contributes nothing.
+  // One hero's trap-and-secrets skill (in %): the design doc's thief/archer
+  // per-level table, +5% per DEX modifier, + racial bonus, + the Thief lane
+  // leans (Shadows up, Blade Work down) and Keen Senses. Used for detection,
+  // disarming, and the Burglar's Set Trap.
+  heroSkill(ch) {
+    const base = ch.cls.detect?.[ch.level - 1] ?? 0;
+    const racial = ch.race.detect_bonus ?? 0;
+    if (base + racial <= 0) return 0; // this class has no eye for it at all
+    const lane = laneOf(this.data, ch);
+    const p = passiveOf(this.data, ch);
+    return base + racial
+      + (lane?.offsets?.detect ?? 0)
+      + (p?.id === 'keen_senses' ? (p.bonus ?? 10) : 0)
+      + 5 * abilityMod(ch.abilities.dex);
+  }
+
+  // The party's best chance of noticing hidden things as they explore.
   detectChance() {
-    let best = 0;
-    for (const ch of this.party) {
-      if (!ch.alive) continue;
-      const base = ch.cls.detect?.[ch.level - 1] ?? 0;
-      const racial = ch.race.detect_bonus ?? 0;
-      if (base + racial <= 0) continue;
-      best = Math.max(best, base + racial + 5 * abilityMod(ch.abilities.dex));
-    }
-    return best;
+    return Math.max(0, ...this.party.filter(ch => ch.alive).map(ch => this.heroSkill(ch)));
   }
 
   // Called after every step (once per hidden feature) and again on Space —
@@ -613,7 +619,7 @@ export class Game {
       ? this.party.find(ch => ch.alive && ch.cls.disarms) // the design doc: only thieves remove traps
       : null;
     if (disarmer) {
-      const chance = (disarmer.cls.detect[disarmer.level - 1] ?? 0) + 5 * abilityMod(disarmer.abilities.dex);
+      const chance = this.heroSkill(disarmer);
       if (Math.random() * 100 < chance) {
         audio.play('gold');
         this.log(`${disarmer.name} picks the ${def.name.toLowerCase()} apart — disarmed!`, 'good');
@@ -816,6 +822,13 @@ export class Game {
   // stay prowling on the map.
   debugFight(id, count) {
     if (this.battle || this.over || this.victory) return false;
+    // Destiny before bloodshed: a hero with an unmade choice (crossroads,
+    // weapon focus, the Rite) would fight WITHOUT the powers that choice
+    // unlocks — confusing every playtest. The choices open first.
+    if (this.choiceQueue.length) {
+      this.log(`TEST: choices wait first — ${[...new Set(this.choiceQueue.map(c => c.ch.name))].join(' and ')} must decide their path before the next fight.`, 'info');
+      return false;
+    }
     if (this.mode !== 'dungeon') {
       this.log('TEST: Novamagus stays monster-free — step through the dungeon gate first.', 'info');
       return false;
@@ -830,8 +843,10 @@ export class Game {
     const pack = spots.map(s => ({ ...def, id, x: s.x, y: s.y, maxHp: def.hp, conditions: [] }));
     this.monsters.push(...pack);
     this.updateVision();
-    this.log(`TEST: ${pack.length} ${def.name}${pack.length > 1 ? 's' : ''} step${pack.length > 1 ? '' : 's'} out of thin air!`, 'info');
-    this.startBattle(pack[0], true);
+    this.log(`TEST: ${pack.length} ${def.name}${pack.length > 1 ? 's' : ''} step${pack.length > 1 ? '' : 's'} out of thin air — and the party has the drop!`, 'info');
+    // NOT an ambush: summoned fights count as party-initiated, so the
+    // monsters start unaware — the only way to playtest stealth on demand.
+    this.startBattle(pack[0]);
     return true;
   }
 

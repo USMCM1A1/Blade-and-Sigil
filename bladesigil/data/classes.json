@@ -331,6 +331,8 @@
     },
     "thief": {
       "name": "Thief",
+      "_stealthy_comment": "stealthy: begins every fight the PARTY starts hidden in the shadows (monsters cannot see or target them until they strike) — the engine's rule for how a Blade Work rogue reaches an unaware mark",
+      "stealthy": true,
       "sprite": "assets/heroes/thief.png",
       "sprite_dead": "assets/heroes/thief_dead.png",
       "portrait": "assets/heroes/portraits/thief_portrait.png",

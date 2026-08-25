@@ -28,7 +28,24 @@ export class Battle {
     this.pendingReaction = null; // Guardian's Stand: an ally's Y/N moment
     this.taunt = null;    // Bulwark's taunt: {c, until} — monsters strike the knight
     this.fleeing = false; // parting blows allow no heroics
-    for (const ch of game.party) { ch.buffs = { hit: 0, dmg: 0 }; ch.timedBuffs = []; } // buffs last one battle
+    this.battleTraps = []; // Burglar's Set Trap: {x, y, owner, dice}
+    for (const ch of game.party) {
+      ch.buffs = { hit: 0, dmg: 0 }; // buffs last one battle
+      ch.timedBuffs = [];
+      // Stealthy classes (thief: "stealthy" in classes.json) slip ahead as
+      // the party forces a fight — they BEGIN hidden, so their opening
+      // strike always lands on the unaware (the Blade Work rogue's whole
+      // livelihood). Ambushed parties get no such grace.
+      ch.hidden = !this.ambush && ch.alive && !!ch.cls.stealthy;
+      if (ch.hidden) game.log(`${ch.name} slips into the shadows as the fight begins.`, 'good');
+    }
+    // A hero with an unmade choice fights WITHOUT the powers it unlocks —
+    // say so, or the player hunts the C menu for verbs that don't exist yet.
+    for (const owed of game.choiceQueue) {
+      if (owed.type === 'lane') game.log(`${owed.ch.name} walks no path yet — the crossroads (and every power beyond it) waits on the map.`, 'info');
+      if (owed.type === 'focus') game.log(`${owed.ch.name} has not chosen a Weapon Focus — that +1 waits on the map.`, 'info');
+      if (owed.type === 'rite') game.log(`${owed.ch.name}'s Rite is unfinished — their unique power sleeps until the ceremony is held (it begins on the map).`, 'info');
+    }
     this.parseTemplate(template);
     this.placeCombatants(foes);
     this.rollInitiative();
@@ -88,7 +105,10 @@ export class Battle {
       const spot = this.ambush && anchors.length
         ? (() => { const a = anchors[i % anchors.length]; return this.nearestOpen(a.x + 1, a.y); })()
         : take(mSpawns, { x: GRID_W - 2, y: 3 });
-      this.combatants.push({ kind: 'monster', ref: m, x: spot.x, y: spot.y, alivePos: () => m.hp > 0 });
+      // Stealth: when the PARTY forces the fight, the enemy is caught flat —
+      // every monster starts UNAWARE until its first turn (or first wound).
+      // Monsters that caught the party (ambush) were ready all along.
+      this.combatants.push({ kind: 'monster', ref: m, x: spot.x, y: spot.y, aware: this.ambush, alivePos: () => m.hp > 0 });
     });
     // Dead heroes still hold a square (a fallen body); dead monsters vanish.
   }
@@ -147,6 +167,7 @@ export class Battle {
         return;
       }
       if (c.kind === 'monster' && c.ref.hp > 0) {
+        c.aware = true; // its turn has come — the moment of surprise is over
         if (c.ref.speed > 1 && this.round % c.ref.speed !== 0) continue; // slow monsters sit out odd rounds
         this.busy = true;
         setTimeout(() => {
@@ -265,34 +286,145 @@ export class Battle {
 
   // Melee: STR. Ranged weapons (a "range" on the weapon): DEX. Buffs stack —
   // battle buffs (spells), timed buffs (Rage), and the Weapon Focus passive.
-  attackBonus(ch) { return ch.hitBase + abilityMod(ch.weapon.range ? ch.abilities.dex : ch.abilities.str) + ch.buffs.hit + timedSum(ch, 'hit'); }
-  damageBonus(ch) {
-    let bonus = ch.hitBase + abilityMod(ch.weapon.range ? ch.abilities.dex : ch.abilities.str) + ch.buffs.dmg + timedSum(ch, 'dmg') + (ch.gearDmg || 0);
-    const p = passiveOf(this.game.data, ch);
-    if (p?.id === 'weapon_focus' && ch.focusType && ch.weapon.type === `weapon_${ch.focusType}`) bonus += p.dmg ?? 1;
-    return bonus;
+  // Both rolls are built from NAMED parts so the log can show the player
+  // exactly where every point came from (a designer rule: math is reward).
+  // DESIGN RULE (user, 2026-08-24): every bonus wears the NAME of the thing
+  // that granted it — "+2 Thief +1 Blade Work", never a generic "+3 skill".
+  // Seeing the named +1 is the reward for having earned it.
+  baseParts(ch) {
+    const parts = [];
+    const lane = laneOf(this.game.data, ch);
+    const laneHit = lane?.offsets?.hit ?? 0;
+    const classHit = ch.hitBase - laneHit; // the class table's share
+    if (classHit) parts.push([classHit, ch.cls.name]);
+    if (laneHit) parts.push([laneHit, lane.name]);
+    const ab = abilityMod(ch.weapon.range ? ch.abilities.dex : ch.abilities.str);
+    if (ab) parts.push([ab, ch.weapon.range ? 'DEX' : 'STR']);
+    return parts;
   }
+
+  attackParts(ch) {
+    const parts = this.baseParts(ch);
+    if (ch.buffs.hit) parts.push([ch.buffs.hit, ch.buffs.sources?.join(' & ') || 'blessing']);
+    for (const b of ch.timedBuffs ?? []) if (b.hit) parts.push([b.hit, b.name]);
+    return parts;
+  }
+
+  // opts.vital: 'unaware' | 'flanked' when Vital Strike applies this swing.
+  damageParts(ch, opts = {}) {
+    const parts = this.baseParts(ch);
+    if (ch.buffs.dmg) parts.push([ch.buffs.dmg, ch.buffs.sources?.join(' & ') || 'blessing']);
+    for (const b of ch.timedBuffs ?? []) if (b.dmg) parts.push([b.dmg, b.name]);
+    if (ch.gearDmg) parts.push([ch.gearDmg, 'gear']);
+    const p = passiveOf(this.game.data, ch);
+    if (p?.id === 'weapon_focus' && ch.focusType && ch.weapon.type === `weapon_${ch.focusType}`) {
+      parts.push([p.dmg ?? 1, 'Weapon Focus']);
+    }
+    if (p?.id === 'vital_strike' && opts.vital) parts.push([p.dmg ?? 2, `Vital Strike, ${opts.vital}`]);
+    return parts;
+  }
+
+  sumParts(parts) { return parts.reduce((s, [v]) => s + v, 0); }
+  fmtParts(parts) { return parts.map(([v, l]) => ` ${v > 0 ? '+' : '−'}${Math.abs(v)} ${l}`).join(''); }
+
+  attackBonus(ch) { return this.sumParts(this.attackParts(ch)); }
+  damageBonus(ch) { return this.sumParts(this.damageParts(ch)); }
   heroAttacks(ch) { return ch.attacks + timedSum(ch, 'attacks'); } // Rage grants extras
 
-  // One swing (or shot). A natural 20 always hits for the weapon's maximum.
-  // Returns what happened so Rampage can chain off kills and crits.
+  // ---- Stealth & awareness (the Thief stage) ----
+  // A foe is UNAWARE of an attacker until its first turn in a fight the
+  // party started (surprise!), or whenever the attacker is hidden (Vanish).
+  isUnaware(foeC, attackerRef) { return !foeC.aware || !!attackerRef?.hidden; }
+  // A foe hemmed in by two or more living heroes is flanked.
+  isFlanked(foeC) {
+    return this.heroes().filter(h =>
+      h.ref.alive && Math.abs(h.x - foeC.x) + Math.abs(h.y - foeC.y) === 1).length >= 2;
+  }
+  // Lethality's demand: no OTHER party member beside the mark.
+  isIsolated(foeC, attackerC) {
+    return !this.heroes().some(h =>
+      h !== attackerC && h.ref.alive && Math.abs(h.x - foeC.x) + Math.abs(h.y - foeC.y) === 1);
+  }
+
+  // Does this swing trigger Assassinate? Level 10: the mark is unaware.
+  // Level 15 (Lethality): also demands the mark stand alone. Level 18: the
+  // badly wounded (below a quarter) are marks too, aware or not.
+  assassinateTriggers(c, foeC) {
+    const ch = c.ref;
+    if (!hasVerb(this.game.data, ch, 'assassinate')) return false;
+    if (this.forceAssassinate) return true; // Deathblow ignores every condition
+    if (ch.weapon.range) return false;
+    const lowHp = hasRefinement(this.game.data, ch, 'assassinate_low_hp')
+      && foeC.ref.hp <= Math.floor(foeC.ref.maxHp / 4);
+    if (!this.isUnaware(foeC, ch) && !lowHp) return false;
+    if (hasCapstone(this.game.data, ch, 'lethality') && !this.isIsolated(foeC, c)) return false;
+    return true;
+  }
+
+  // One swing (or shot). A natural 20 always hits and crits; a crit deals
+  // the weapon's maximum PLUS a fresh damage roll (the full-crit rule —
+  // a proposal, tune freely). Assassinate turns a swing on a valid mark
+  // into an automatic crit; Lethality doubles it. Vital Strike adds its
+  // bonus against the unaware and the flanked. Returns what happened so
+  // Rampage can chain and Assassinate kills can be counted.
+  // Assassinate WOULD fire, except Lethality's isolation demand blocks it.
+  // Surfaced everywhere (log + bump preview): a power that silently refuses
+  // reads as a power that doesn't work.
+  assassinateGuarded(c, foeC) {
+    const ch = c.ref;
+    return hasVerb(this.game.data, ch, 'assassinate') && !ch.weapon.range
+      && this.isUnaware(foeC, ch)
+      && hasCapstone(this.game.data, ch, 'lethality') && !this.isIsolated(foeC, c);
+  }
+
   strike(c, foeC, verb) {
     const ch = c.ref, monster = foeC.ref;
+    const assassinate = this.assassinateTriggers(c, foeC);
+    if (!assassinate && this.assassinateGuarded(c, foeC)) {
+      this.addFx(foeC.x, foeC.y, 'guarded!', '#9a94a8');
+      this.game.log(`The ${monster.name} is unaware — but an ally stands beside it, and Lethality strikes only the isolated. No Assassinate.`, 'info');
+    }
+    const wasHidden = !!ch.hidden;
+    const vital = this.isUnaware(foeC, ch) ? 'unaware' : this.isFlanked(foeC) ? 'flanked' : null;
+    ch.hidden = false;   // the strike itself steps out of the shadows
+    foeC.aware = true;   // one way or another, they know NOW
     const die = d20();
-    const crit = die === 20;
-    if (crit || die + this.attackBonus(ch) >= 10 + monster.ac) {
-      const base = crit ? maxRoll(ch.weapon.damage) : roll(ch.weapon.damage);
-      const dmg = Math.max(1, base + this.damageBonus(ch));
+    const crit = die === 20 || assassinate;
+    const atkParts = this.attackParts(ch);
+    const atkTotal = die + this.sumParts(atkParts);
+    const ac = 10 + monster.ac;
+    if (crit || atkTotal >= ac) {
+      // The full-crit rule: the weapon's maximum plus a fresh damage roll.
+      const critExtra = crit ? Math.max(0, roll(ch.weapon.damage)) : 0;
+      const base = crit ? maxRoll(ch.weapon.damage) + critExtra : roll(ch.weapon.damage);
+      const dmgParts = this.damageParts(ch, { vital });
+      let dmg = Math.max(1, base + this.sumParts(dmgParts));
+      let label = crit ? `-${dmg}!!` : `-${dmg}`;
+      let lethal = 0;
+      if (assassinate && hasCapstone(this.game.data, ch, 'lethality')) {
+        lethal = laneOf(this.game.data, ch).capstone.multiplier ?? 2;
+        dmg *= lethal;
+        label = `-${dmg}!!!`;
+      }
       monster.hp -= dmg;
-      this.addFx(foeC.x, foeC.y, crit ? `-${dmg}!!` : `-${dmg}`, crit ? '#ffd24a' : '#ff6a4a');
-      this.game.log(crit
-        ? `A perfect blow! ${ch.name} crits the ${monster.name} for ${dmg} damage!`
-        : `${ch.name} hits the ${monster.name} with ${ch.weapon.name.toLowerCase()} for ${dmg} damage.`);
-      return { hit: true, crit, kill: monster.hp <= 0 };
+      if (assassinate) this.addFx(foeC.x, foeC.y, 'ASSASSINATE!', '#b03a8e');
+      else if (vital && dmgParts.some(([, l]) => l.startsWith('Vital'))) {
+        this.addFx(foeC.x, foeC.y, vital === 'unaware' ? 'vital: unaware!' : 'vital: flanked!', '#b03a8e');
+      }
+      this.addFx(foeC.x, foeC.y, label, crit ? '#ffd24a' : '#ff6a4a');
+      // The math, spelled out: every bonus by name, so a +1 FEELS like a +1.
+      const toHit = assassinate ? 'auto-hit' : crit ? 'natural 20!' : `d20 ${die}${this.fmtParts(atkParts)} = ${atkTotal} vs AC ${ac}`;
+      const dmgMath = `${crit ? `max ${maxRoll(ch.weapon.damage)} + ${ch.weapon.damage} → ${critExtra}` : `${ch.weapon.damage} → ${base}`}${this.fmtParts(dmgParts)}${lethal ? ` = ${dmg / lethal}, ×${lethal} Lethality` : ''} = ${dmg}`;
+      this.game.log(assassinate
+        ? `${ch.name} strikes from ${wasHidden ? 'the shadows' : 'nowhere'} — ASSASSINATE! (${dmgMath}) — ${dmg} damage to the ${monster.name}!`
+        : crit
+          ? `A perfect blow! ${ch.name} crits the ${monster.name} (${toHit} · ${dmgMath}) — ${dmg} damage!`
+          : `${ch.name} hits the ${monster.name} (${toHit} · ${dmgMath}) — ${dmg} damage.`);
+      return { hit: true, crit, assassinate, kill: monster.hp <= 0 };
     }
     this.addFx(foeC.x, foeC.y, 'miss', '#9a94a8');
-    this.game.log(`${ch.name} ${verb} at the ${monster.name} and misses.`);
-    return { hit: false, crit: false, kill: false };
+    this.game.log(`${ch.name} ${verb} at the ${monster.name} and misses (d20 ${die}${this.fmtParts(atkParts)} = ${atkTotal} vs AC ${ac}).`);
+    return { hit: false, crit: false, assassinate: false, kill: false };
   }
 
   // Way of the Blade, level 10: felling a foe grants a free attack on
@@ -325,6 +457,7 @@ export class Battle {
       const res = this.strike(c, foeC, verb);
       killed = killed || res.kill;
       crit = crit || res.crit;
+      if (res.assassinate && res.kill) ch.counters.assassinateKills++;
     }
     if (monster.hp <= 0) this.slay(monster);
     // Rampage: a kill (or, refined, a crit) with a melee weapon lets the
@@ -367,10 +500,20 @@ export class Battle {
 
   // Class actives (capstones and the Rite's unique power) — listed beside
   // spells in the C menu, driven by the lane data in progression.json.
+  // Once-per-battle powers already spent by this hero.
+  spentOnce(ref, id) { return (this.onceUsed ??= new Set()).has(`${this.game.party.indexOf(ref)}:${id}`); }
+  markSpent(ref, id) { (this.onceUsed ??= new Set()).add(`${this.game.party.indexOf(ref)}:${id}`); }
+
   classActives(c) {
     const ref = c.ref;
     const lane = laneOf(this.game.data, ref);
     const out = [];
+    // Vanish (Shadows, level 10): an active verb, not a reaction.
+    if (hasVerb(this.game.data, ref, 'vanish') && !ref.hidden) {
+      const free = hasRefinement(this.game.data, ref, 'vanish_free');
+      out.push({ kind: 'active', id: 'vanish', name: lane.verb.name ?? 'Vanish', cost: 0, affordable: true,
+        description: `Melt into shadow — foes lose you until you strike.${free ? ' (Perfected: costs nothing.)' : ' Costs your whole action.'}` });
+    }
     const cap = lane?.capstone;
     if (cap && ref.level >= cap.level) {
       if (cap.id === 'rage') {
@@ -380,6 +523,11 @@ export class Battle {
       if (cap.id === 'bulwark') {
         out.push({ kind: 'active', id: 'taunt', name: 'Taunt', cost: 0, affordable: true,
           description: `Bellow a challenge — enemies strike at YOU for ${cap.taunt_rounds ?? 2} rounds.` });
+      }
+      if (cap.id === 'set_trap') {
+        out.push({ kind: 'active', id: 'set_trap', name: cap.name ?? 'Set Trap', cost: 0, affordable: true,
+          targeted: { kind: 'trap', range: cap.range ?? 3 },
+          description: `Plant a trap on a square within ${cap.range ?? 3} (${Math.max(0, Math.min(95, this.game.heroSkill(ref)))}% skill) — ${cap.dice ?? '2d6'} to the first foe on it.` });
       }
     }
     // The Rite's unique power, under the name the player gave it.
@@ -392,6 +540,16 @@ export class Battle {
       if (rite.ability.id === 'aegis' && !this.aegisSpent?.has(ref)) {
         out.push({ kind: 'active', id: 'aegis', name: ref.rite.abilityName, cost: 0, affordable: true,
           description: 'Once per battle: for a full round, every blow on any ally strikes you instead — at half force.' });
+      }
+      if (rite.ability.id === 'deathblow' && !this.spentOnce(ref, 'deathblow')) {
+        out.push({ kind: 'active', id: 'deathblow', name: ref.rite.abilityName, cost: 0, affordable: true,
+          targeted: { kind: 'deathblow', range: 1 },
+          description: 'Once per battle: a full Assassinate against any foe in reach — no matter how alert or guarded.' });
+      }
+      if (rite.ability.id === 'shadowstep' && !this.spentOnce(ref, 'shadowstep')) {
+        out.push({ kind: 'active', id: 'shadowstep', name: ref.rite.abilityName, cost: 0, affordable: true,
+          targeted: { kind: 'shadowstep', range: 6 },
+          description: 'Once per battle, freely: reappear on any square you can see — hidden.' });
       }
     }
     return out;
@@ -414,7 +572,16 @@ export class Battle {
     const list = this.abilities(c);
     const s = list[n - 1];
     if (!s) return;
-    if (s.kind === 'active') { this.mode = 'move'; this.useActive(c, s); return; }
+    if (s.kind === 'active') {
+      if (s.targeted) { // trap squares, deathblow marks, shadowstep landings
+        this.pending = { kind: s.targeted.kind, range: s.targeted.range, entry: s };
+        this.beginTargeting(s.targeted.kind === 'shadowstep');
+        return;
+      }
+      this.mode = 'move';
+      this.useActive(c, s);
+      return;
+    }
     if (!s.affordable) {
       this.addFx(c.x, c.y, 'not enough SP', '#9a94a8');
       this.game.log(`${c.ref.name} lacks the spell points for ${s.name}.`, 'info');
@@ -462,6 +629,14 @@ export class Battle {
       this.aegis = { c, until: this.round + 1 };
       this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#7fd4c8');
       this.game.log(`${ref.name} raises ${entry.name} — for this round, every blow meant for the party finds them instead.`, 'good');
+    } else if (entry.id === 'vanish') {
+      ref.hidden = true;
+      ref.counters.shadowFeats++;
+      this.addFx(c.x, c.y, 'VANISH', '#8a7ab8');
+      this.game.log(`${ref.name} melts into the shadows — the enemy blinks, and finds nothing.`, 'good');
+      // Perfected Vanish (18) costs nothing; before that, it IS the action.
+      if (!hasRefinement(this.game.data, ref, 'vanish_free')) this.endHeroTurn();
+      return;
     }
     this.endHeroTurn();
   }
@@ -562,11 +737,67 @@ export class Battle {
       if (!foe) return; // keep aiming
       this.cancelTargeting();
       audio.play('arrow');
+      c.ref.hidden = false; // loosing an arrow gives you away
       this.heroAttack(c, foe, 'shoots'); // ends the turn
       return;
     }
 
+    // Burglar's Set Trap: an empty square, a skill roll, a nasty surprise.
+    if (p.kind === 'trap') {
+      if (!this.open(x, y)) return; // needs bare floor
+      this.cancelTargeting();
+      const cap = laneOf(this.game.data, c.ref).capstone;
+      const chance = Math.max(0, Math.min(95, this.game.heroSkill(c.ref)));
+      audio.play('melee');
+      if (Math.random() * 100 < chance) {
+        this.battleTraps.push({ x, y, owner: c.ref, dice: cap.dice ?? '2d6' });
+        c.ref.counters.shadowFeats++;
+        this.addFx(x, y, 'trap set', '#d4a94e');
+        this.game.log(`${c.ref.name} plants a trap with a craftsman's touch. Someone will find it the hard way.`, 'good');
+      } else {
+        this.addFx(c.x, c.y, 'jammed!', '#9a94a8');
+        this.game.log(`${c.ref.name}'s trap mechanism jams — the moment is wasted.`, 'info');
+      }
+      this.endHeroTurn();
+      return;
+    }
+
+    // Deathblow (the Assassin's Rite): one perfect strike, no conditions.
+    if (p.kind === 'deathblow') {
+      const foeC = this.monsterAt(x, y);
+      if (!foeC) return;
+      this.cancelTargeting();
+      this.markSpent(c.ref, 'deathblow');
+      audio.play('melee');
+      this.addFx(c.x, c.y, `${p.entry.name.toUpperCase()}!`, '#b03a8e');
+      this.game.log(`${c.ref.name} unleashes ${p.entry.name} — there was never anywhere to hide from this.`, 'good');
+      this.forceAssassinate = true; // the perfect strike makes its own surprise
+      const res = this.strike(c, foeC, 'strikes');
+      this.forceAssassinate = false;
+      if (res.assassinate && res.kill) c.ref.counters.assassinateKills++;
+      if (foeC.ref.hp <= 0) this.slay(foeC.ref);
+      this.endHeroTurn();
+      return;
+    }
+
+    // Shadowstep (the Burglar's Rite): cross the room in a blink, hidden —
+    // and the night is still young (a free action).
+    if (p.kind === 'shadowstep') {
+      if (!this.open(x, y)) return; // needs an empty square
+      this.cancelTargeting();
+      this.markSpent(c.ref, 'shadowstep');
+      audio.play('spell');
+      this.addFx(c.x, c.y, `${p.entry.name.toUpperCase()}!`, '#8a7ab8');
+      c.x = x; c.y = y;
+      c.ref.hidden = true;
+      c.ref.counters.shadowFeats++;
+      this.addFx(x, y, 'from the shadows…', '#8a7ab8');
+      this.game.log(`${c.ref.name} is simply… elsewhere. The shadows keep their secret.`, 'good');
+      return; // free — the turn goes on
+    }
+
     const s = p.spell;
+    c.ref.hidden = false; // spellwork glows — the shadows can't keep you
     if (s.type === 'heal') {
       const ally = this.heroAt(x, y);
       if (!ally || !ally.ref.alive) return;
@@ -624,6 +855,7 @@ export class Battle {
         saved = d20() + bonus >= dc;
       }
       if (saved) dmg = Math.floor(dmg / 2);
+      if (t.kind === 'monster') t.aware = true; // seared awake, saved or not
       if (saved && dmg <= 0) {
         this.addFx(t.x, t.y, 'resisted', '#9a94a8');
         this.game.log(`${ref.name} shrugs off the ${s.name.toLowerCase()}.`);
@@ -657,6 +889,8 @@ export class Battle {
     for (const ch of targets) {
       ch.buffs.hit += s.hit ?? 0;
       ch.buffs.dmg += s.dmg ?? 0;
+      // The buff's NAME rides along so the combat math can credit it.
+      if (!(ch.buffs.sources ??= []).includes(s.name)) ch.buffs.sources.push(s.name);
       this.fxOn(ch, s.name, '#d4a94e');
     }
     this.game.log(`${c.ref.name} casts ${s.name}! ${s.description}.`, 'good');
@@ -686,7 +920,8 @@ export class Battle {
   }
 
   adjacentHero(c) {
-    const near = this.heroes().filter(h => h.ref.alive && Math.abs(h.x - c.x) + Math.abs(h.y - c.y) === 1);
+    // A hidden hero simply isn't there, as far as any monster knows.
+    const near = this.heroes().filter(h => h.ref.alive && !h.ref.hidden && Math.abs(h.x - c.x) + Math.abs(h.y - c.y) === 1);
     if (!near.length) return null;
     if (this.tauntActive() && near.includes(this.taunt.c)) return this.taunt.c;
     return near[Math.floor(Math.random() * near.length)];
@@ -695,7 +930,7 @@ export class Battle {
   stepToward(c) {
     // BFS to the closest square adjacent to a living hero, then take the first
     // step. A taunting knight draws every march toward himself.
-    const pool = this.tauntActive() ? [this.taunt.c] : this.heroes();
+    const pool = this.tauntActive() ? [this.taunt.c] : this.heroes().filter(h => !h.ref.hidden);
     const targets = new Set();
     for (const h of pool) {
       if (!h.ref.alive) continue;
@@ -722,7 +957,23 @@ export class Battle {
     let k = found;
     while (prev.get(k) !== c.y * GRID_W + c.x) k = prev.get(k);
     c.x = k % GRID_W; c.y = Math.floor(k / GRID_W);
+    this.checkBattleTrap(c);
     return true;
+  }
+
+  // The Burglar's handiwork: the first foe to step on a planted trap
+  // springs it — damage, and the trap is spent.
+  checkBattleTrap(c) {
+    const trap = this.battleTraps.find(t => t.x === c.x && t.y === c.y);
+    if (!trap) return;
+    this.battleTraps = this.battleTraps.filter(t => t !== trap);
+    const dmg = Math.max(1, roll(trap.dice));
+    c.ref.hp -= dmg;
+    c.aware = true;
+    audio.play('melee');
+    this.addFx(c.x, c.y, `TRAP! -${dmg}`, '#e0912f');
+    this.game.log(`The ${c.ref.name} steps on ${trap.owner.name}'s trap — it springs shut for ${dmg} damage!`, 'good');
+    if (c.ref.hp <= 0) this.slay(c.ref);
   }
 
   // A hero's AC in the moment: sheet AC, timed buffs (Rage's recklessness),
@@ -749,8 +1000,10 @@ export class Battle {
   monsterAttack(m, target) {
     const tc = this.combatants.find(cc => cc.ref === target);
     const ac = tc?.kind === 'hero' ? this.heroAcOf(tc) : target.ac;
-    if (d20() + m.to_hit >= ac) {
+    const die = d20();
+    if (die + m.to_hit >= ac) {
       const dmg = Math.max(1, roll(m.damage));
+      this.lastMonsterRoll = `d20 ${die} +${m.to_hit} = ${die + m.to_hit} vs AC ${ac}`;
       // Aegis (the Rite): the raised guard takes the blow at half force —
       // no question asked, that's what the round was bought for.
       const aegisC = tc?.kind === 'hero' && !this.fleeing ? this.aegisGuard(target) : null;
@@ -770,23 +1023,26 @@ export class Battle {
       this.applyMonsterHit(m, target, dmg);
     } else {
       this.fxOn(target, 'miss', '#9a94a8');
-      this.game.log(`The ${m.name} lunges at ${target.name} but misses.`);
+      this.game.log(`The ${m.name} lunges at ${target.name} but misses (d20 ${die} +${m.to_hit} = ${die + m.to_hit} vs AC ${ac}).`);
     }
   }
 
   applyMonsterHit(m, target, dmg) {
     // Braced Stance (Way of the Shield): a shield in hand blunts every hit.
     const p = passiveOf(this.game.data, target);
-    if (p?.id === 'braced_stance' && this.game.hasShield(target)) dmg = Math.max(0, dmg - (p.reduce ?? 1));
+    const braced = p?.id === 'braced_stance' && this.game.hasShield(target) ? (p.reduce ?? 1) : 0;
+    if (braced) dmg = Math.max(0, dmg - braced);
+    const rollText = this.lastMonsterRoll ? `${this.lastMonsterRoll}${braced ? ` · shield turns ${braced} aside` : ''}` : (braced ? `shield turns ${braced} aside` : '');
+    this.lastMonsterRoll = null; // redirected blows (Aegis, the Stand) skip the roll text next time
     audio.play('melee');
     if (dmg <= 0) {
       this.fxOn(target, 'blocked', '#9a94a8');
-      this.game.log(`The ${m.name} strikes ${target.name} — the shield takes it all.`);
+      this.game.log(`The ${m.name} strikes ${target.name} — the shield takes it all${rollText ? ` (${rollText})` : ''}.`);
       return;
     }
     target.hp -= dmg;
     this.fxOn(target, `-${dmg}`, '#ff6a4a');
-    this.game.log(`The ${m.name} strikes ${target.name} for ${dmg} damage!`);
+    this.game.log(`The ${m.name} strikes ${target.name} for ${dmg} damage${rollText ? ` (${rollText})` : ''}!`);
     if (target.hp <= 0) {
       target.hp = 0;
       target.alive = false;
@@ -805,6 +1061,7 @@ export class Battle {
     this.pendingReaction = null;
     this.mode = 'move';
     if (accept) {
+      this.lastMonsterRoll = null; // the blow never lands as rolled
       const g = r.guardian;
       let cost = hasRefinement(this.game.data, g, 'stand_half_cost') ? Math.ceil(r.dmg / 2) : r.dmg;
       const p = passiveOf(this.game.data, g);
@@ -904,6 +1161,7 @@ export class Battle {
     for (const ch of this.game.party) {
       ch.conditions = ch.conditions.filter(c => this.game.conditionDef(c.id)?.lingers);
       ch.timedBuffs = []; // Rage and its kin gutter out with the fight
+      ch.hidden = false;  // shadows are for battlefields
     }
   }
 

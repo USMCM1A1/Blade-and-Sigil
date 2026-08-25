@@ -196,6 +196,22 @@
       "value": 150,
       "description": "A cord of grim keepsakes from a hundred rampages. +1 damage on every hit."
     },
+    "assassins_hood": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Blade Work — rename/retune freely",
+      "name": "Assassin's Hood",
+      "type": "helm",
+      "dmg": 1,
+      "value": 150,
+      "description": "A soft black cowl that has watched a great many last moments. +1 damage on every hit."
+    },
+    "ghostwalk_boots": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Shadows — rename/retune freely",
+      "name": "Ghostwalk Boots",
+      "type": "boots",
+      "ac": 1,
+      "value": 150,
+      "description": "Boots soled with something that never quite touches the floor."
+    },
     "oathkeepers_band": {
       "_comment": "CONTENT FLAG: Rite tier-2 trinket, Way of the Shield — rename/retune freely",
       "name": "Oathkeeper's Band",

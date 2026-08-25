@@ -7,12 +7,12 @@
 
 import { DataError } from './loader.js';
 
-const PASSIVES = ['weapon_focus', 'braced_stance'];
-const VERBS = ['rampage', 'guardians_stand'];
-const CAPSTONES = ['rage', 'bulwark'];
-const REFINEMENTS = ['rampage_crits', 'stand_half_cost'];
-const RITE_ABILITIES = ['whirlwind', 'aegis'];
-const TRACKED_STATS = ['rampageKills', 'standSaves'];
+const PASSIVES = ['weapon_focus', 'braced_stance', 'vital_strike', 'keen_senses'];
+const VERBS = ['rampage', 'guardians_stand', 'assassinate', 'vanish'];
+const CAPSTONES = ['rage', 'bulwark', 'lethality', 'set_trap'];
+const REFINEMENTS = ['rampage_crits', 'stand_half_cost', 'assassinate_low_hp', 'vanish_free'];
+const RITE_ABILITIES = ['whirlwind', 'aegis', 'deathblow', 'shadowstep'];
+const TRACKED_STATS = ['rampageKills', 'standSaves', 'assassinateKills', 'shadowFeats'];
 
 export const WEAPON_CATEGORIES = ['light_blade', 'med_blade', 'heavy_blade', 'light_blunt', 'med_blunt', 'heavy_blunt', 'bow'];
 

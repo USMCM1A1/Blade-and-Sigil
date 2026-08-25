@@ -51,6 +51,52 @@
           }
         }
       ]
+    },
+    "thief": {
+      "_comment": "Doc v3 Thief. STEALTH TERMS the engine provides: a foe is UNAWARE until it has taken its first turn in a battle THE PARTY STARTED (bumping them — ambushes give no surprise), or when the attacker is HIDDEN (Vanish). A foe beside two or more heroes is FLANKED. Numbers here (vital_strike dmg, keen_senses bonus, lethality multiplier, trap dice, detect offsets) are all proposals — tune freely.",
+      "fork_level": 5,
+      "lanes": [
+        {
+          "id": "blade_work",
+          "name": "Blade Work",
+          "archetype": "Assassin",
+          "blurb": "Every mark has a seam. Find it, and open it.",
+          "offsets": { "hit": 1, "detect": -5 },
+          "passive": { "id": "vital_strike", "dmg": 2 },
+          "verb": { "id": "assassinate", "level": 10, "name": "Assassinate", "blurb": "A strike against an unaware foe is an automatic critical hit." },
+          "capstone": { "id": "lethality", "level": 15, "name": "Lethality", "multiplier": 2, "blurb": "Assassinate now deals double damage — but only against a mark no other party member stands beside. The kill belongs to you alone." },
+          "refinement": { "id": "assassinate_low_hp", "level": 18, "blurb": "Assassinate now also triggers against any foe below a quarter of its health — the dying are never safe." },
+          "rite": {
+            "ability": { "id": "deathblow", "name": "Deathblow", "blurb": "Once per battle: a single perfect strike — a full Assassinate against any foe in reach, no matter how alert or how guarded.", "_comment": "CONTENT FLAG: placeholder design — rename and retune freely" },
+            "tracked": "assassinateKills",
+            "tiers": [
+              { "min": 0, "title": "the Quiet" },
+              { "min": 5, "title": "Knife in the Dark", "trinket": "assassins_hood" },
+              { "min": 15, "title": "Death's Whisper", "dungeon": "An assassination contract — one guarded mark, reached unseen", "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build" }
+            ]
+          }
+        },
+        {
+          "id": "shadows",
+          "name": "Shadows",
+          "archetype": "Burglar",
+          "blurb": "Locks, walls, eyes — all of them have gaps. Be the gap.",
+          "offsets": { "ac": 1, "detect": 5 },
+          "passive": { "id": "keen_senses", "bonus": 10 },
+          "verb": { "id": "vanish", "level": 10, "name": "Vanish", "blurb": "Melt into shadow mid-battle: foes lose you utterly until you strike. Costs your whole action." },
+          "capstone": { "id": "set_trap", "level": 15, "name": "Set Trap", "dice": "2d6", "range": 3, "blurb": "Plant a mechanical trap on a nearby square, using your trap-working skill. The first foe to step on it regrets it." },
+          "refinement": { "id": "vanish_free", "level": 18, "blurb": "Vanish no longer costs your action — disappear and still act in the same breath." },
+          "rite": {
+            "ability": { "id": "shadowstep", "name": "Shadowstep", "blurb": "Once per battle, freely: melt into darkness and reappear on any square you can see — hidden.", "_comment": "CONTENT FLAG: placeholder design — rename and retune freely" },
+            "tracked": "shadowFeats",
+            "tiers": [
+              { "min": 0, "title": "the Light-Fingered" },
+              { "min": 5, "title": "the Ghost", "trinket": "ghostwalk_boots" },
+              { "min": 15, "title": "the Name Unspoken", "dungeon": "A vault heist thick with locks, wards, and traps", "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build" }
+            ]
+          }
+        }
+      ]
     }
   }
 }

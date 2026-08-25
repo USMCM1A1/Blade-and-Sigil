@@ -37,7 +37,8 @@
       },
       "traits": [
         "Bonus to thief skills"
-      ]
+      ],
+      "detect_bonus": 5
     },
     "dwarf": {
       "name": "Dwarf",

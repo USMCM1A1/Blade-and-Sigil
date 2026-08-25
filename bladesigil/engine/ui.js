@@ -42,12 +42,15 @@ function fmtOffsets(off = {}) {
   if (off.hit) parts.push(`${off.hit > 0 ? '+' : ''}${off.hit} hit & damage`);
   if (off.ac) parts.push(`${off.ac > 0 ? '+' : ''}${off.ac} AC`);
   if (off.sp) parts.push(`${off.sp > 0 ? '+' : ''}${off.sp} spell points`);
+  if (off.detect) parts.push(`${off.detect > 0 ? '+' : ''}${off.detect}% detection`);
   return parts.join(', ');
 }
 
 function passiveBlurb(p) {
   if (p.id === 'weapon_focus') return `Weapon Focus: +${p.dmg ?? 1} damage with a weapon type you choose`;
   if (p.id === 'braced_stance') return `Braced Stance: −${p.reduce ?? 1} damage from every hit while a shield is worn`;
+  if (p.id === 'vital_strike') return `Vital Strike: +${p.dmg ?? 2} damage against unaware or flanked foes`;
+  if (p.id === 'keen_senses') return `Keen Senses: +${p.bonus ?? 10}% to detect traps, secret doors, and trap work`;
   return p.id;
 }
 
@@ -209,7 +212,12 @@ function renderRite(game, choice, after) {
     const tier = riteTier(game.data, ch);
     const tierDef = rite.tiers[tier];
     const stat = ch.counters?.[rite.tracked] ?? 0;
-    const statLabel = { rampageKills: 'foes felled in Rampage', standSaves: "blows taken for allies at Guardian's Stand" }[rite.tracked] ?? rite.tracked;
+    const statLabel = {
+      rampageKills: 'foes felled in Rampage',
+      standSaves: "blows taken for allies at Guardian's Stand",
+      assassinateKills: 'marks slain by Assassinate',
+      shadowFeats: 'vanishings and traps sprung from the shadows',
+    }[rite.tracked] ?? rite.tracked;
     const rewards = [
       tierDef.trinket ? `the Rite leaves a gift: ${game.itemDef(tierDef.trinket)?.name ?? tierDef.trinket}` : null,
       tierDef.dungeon ? `and word of a place only such a legend may enter: ${tierDef.dungeon.toLowerCase()}` : null,
@@ -298,8 +306,9 @@ function renderPlaytest(game) {
       <button data-counters="15">+15</button>
     </div>
     <div class="eq-sec" style="margin-top:16px">Summon a fight${inDungeon ? '' : ' <span class="pt-warn">— dungeon only (you are in town)</span>'}</div>
-    <p class="pt-note">Real monsters with real stakes: they appear beside the party and
-    attack at once, they grant XP, and if you flee they stay on the map.</p>
+    <p class="pt-note">Real monsters with real stakes: they grant XP, and if you flee they
+    stay on the map. Summons count as a fight YOU started — the monsters begin
+    <b>unaware</b> (💤), so stealth and Assassinate are testable here.</p>
     ${monsters.map(([id, m]) => `
       <div class="eq-pool-item">
         <span class="eq-pool-name">${m.name}
@@ -328,6 +337,7 @@ function renderPlaytest(game) {
   for (const b of body.querySelectorAll('[data-fight]')) {
     b.onclick = () => {
       if (game.debugFight(b.dataset.fight, Number(b.dataset.count))) togglePlaytest(game, false);
+      else if (game.choiceQueue.length) togglePlaytest(game, false); // let the owed choice pop instead
     };
   }
 }
@@ -646,6 +656,10 @@ const POWER_HOW = {
   guardians_stand: "It's a reaction: when a blow is about to land on an ally, the battle pauses and asks. Y takes the hit yourself; N lets it fall.",
   rage: 'Open the C menu in battle and choose it — trade your guard for fury.',
   bulwark: 'Always on: allies standing beside you gain armor. And Taunt joins the C menu — bellow, and enemies come for YOU.',
+  assassinate: 'It happens on its own: strike a foe marked "unaware" (start fights yourself, or Vanish first) and the blow is an automatic critical.',
+  vanish: 'Open the C menu in battle and choose it — you disappear, monsters lose you entirely, and your next strike lands as an Assassinate.',
+  lethality: 'Automatic, but demanding: Assassinate now doubles its damage, and only triggers when no other party member stands beside the mark.',
+  set_trap: 'Joins the C menu: aim at a nearby empty square and roll your trap skill. The first monster to step there springs it.',
 };
 
 function renderMilestoneCard(game, ch, m) {
@@ -725,7 +739,12 @@ function renderPath(game, ch) {
       }
       // The tracked deed that will one day weigh the Title.
       if (lane.verb && ch.level >= lane.verb.level) {
-        const label = { rampageKills: 'Foes felled in Rampage', standSaves: 'Blows taken for allies' }[lane.rite.tracked] ?? lane.rite.tracked;
+        const label = {
+          rampageKills: 'Foes felled in Rampage',
+          standSaves: 'Blows taken for allies',
+          assassinateKills: 'Marks slain by Assassinate',
+          shadowFeats: 'Vanishes & traps set',
+        }[lane.rite.tracked] ?? lane.rite.tracked;
         rows += `<div class="eq-power tally"><b>${label}</b><span>${ch.counters?.[lane.rite.tracked] ?? 0}${ch.rite ? '' : ' — deeds weigh the Title at level 20'}</span></div>`;
       }
     }
