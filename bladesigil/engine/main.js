@@ -5,6 +5,7 @@ import { Game } from './game.js';
 import { Renderer, preloadImages } from './render.js';
 import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding, maybeOpenChoice, choiceOpen, choicePick, togglePlaytest, playtestOpen, levelupOpen, dismissLevelup } from './ui.js';
 import { validateProgression } from './progression.js';
+import { validateMagic } from './magic.js';
 import { choosePartyDef } from './creation.js';
 import * as audio from './audio.js';
 
@@ -31,6 +32,7 @@ async function boot() {
 
   const data = { classes, races, monsters, party, level, tactics, spells, conditions, items, town, dungeon, progression, arenaTemplate };
   validateProgression(data); // friendly errors for progression.json typos
+  validateMagic(data);       // …and for spells.json / scroll items
   const partyDef = await choosePartyDef(data);
   const game = new Game({ ...data, party: { ...party, party: partyDef } });
 
@@ -117,6 +119,8 @@ async function boot() {
       // attack), C casts, F shoots, Space/Enter ends the turn, Esc flees.
       if (b.mode === 'menu') {
         if (/^[1-9]$/.test(e.key)) b.chooseSpell(Number(e.key));
+        else if (MOVES[e.key] && MOVES[e.key][1]) { e.preventDefault(); b.menuMove(MOVES[e.key][1]); }
+        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); b.chooseSpell((b.menuSel ?? 0) + 1); }
         else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') b.mode = 'move';
         return;
       }

@@ -1,5 +1,5 @@
 {
-  "_comment": "All items. CONSUMABLES: effect 'heal' rolls 'dice' as HP; 'cure' removes the condition in 'cures'. GEAR goes on the paper doll (E key) — types map to slots: weapon_<category> and shield -> the two hands ('hands': 2 on a weapon claims both), armor_light/med/heavy -> body, helm -> head, boots -> feet, jewelry_ring -> one of two ring slots, jewelry_neck -> necklace. Weapon categories: light_blade/med_blade/heavy_blade/light_blunt/med_blunt/heavy_blunt/bow (weapons need 'damage', bows also 'range'). ANY worn piece may carry 'ac', 'sp', and/or 'dmg' (+damage on every hit) — they all stack. Class permissions live in classes.json (weapon_types/armor_types/shields); helms, boots, and jewelry fit anyone. 'value' is the gold price for the Phase 4 shops. SUPPLIES: type 'supply' items (rations) are camp fuel, not potions — 'max_carry' caps how many the party can haul. Add items freely!",
+  "_comment": "All items. CONSUMABLES: effect 'heal' rolls 'dice' as HP; 'cure' removes the condition in 'cures'. GEAR goes on the paper doll (E key) — types map to slots: weapon_<category> and shield -> the two hands ('hands': 2 on a weapon claims both), armor_light/med/heavy -> body, helm -> head, boots -> feet, jewelry_ring -> one of two ring slots, jewelry_neck -> necklace. Weapon categories: light_blade/med_blade/heavy_blade/light_blunt/med_blunt/heavy_blunt/bow (weapons need 'damage', bows also 'range'). ANY worn piece may carry 'ac', 'sp', and/or 'dmg' (+damage on every hit) — they all stack. Class permissions live in classes.json (weapon_types/armor_types/shields); helms, boots, and jewelry fit anyone. 'value' is the gold price for the Phase 4 shops. SUPPLIES: type 'supply' items (rations) are camp fuel, not potions — 'max_carry' caps how many the party can haul. Add items freely! FINESSE (magic-v2 session ruling): 'finesse': true on a weapon lets the wielder aim and damage with the BETTER of STR or DEX — set on light blades. SCROLLS (magic v2): type 'scroll' with 'spell' (an id from spells.json) — a Wizard-lane hero copies it into their spellbook from the character sheet (the scroll is consumed); anyone else can only sell it. RITE TRINKETS: tier-2 Rite rewards; plain worn gear otherwise.",
   "items": {
     "health_potion": {
       "name": "Health Potion",
@@ -50,7 +50,8 @@
       "type": "weapon_light_blade",
       "damage": "1d4",
       "value": 20,
-      "description": "Quick, quiet, and easily hidden."
+      "description": "Quick, quiet, and easily hidden.",
+      "finesse": true
     },
     "longbow": {
       "name": "Longbow",
@@ -87,7 +88,8 @@
       "type": "weapon_light_blade",
       "damage": "1d4-1",
       "value": 5,
-      "description": "More tetanus than threat, but it fits the hand."
+      "description": "More tetanus than threat, but it fits the hand.",
+      "finesse": true
     },
     "splintered_longbow": {
       "name": "Splintered Longbow",
@@ -124,7 +126,8 @@
       "type": "weapon_light_blade",
       "damage": "1d4",
       "value": 20,
-      "description": "A plain blade for a plain purpose."
+      "description": "A plain blade for a plain purpose.",
+      "finesse": true
     },
     "iron_mace": {
       "name": "Iron Mace",
@@ -219,6 +222,55 @@
       "ac": 1,
       "value": 150,
       "description": "An iron band engraved with the names of everyone it has kept alive."
+    },
+    "scroll_witchfire": {
+      "name": "Scroll of Witchfire",
+      "type": "scroll",
+      "spell": "witchfire",
+      "value": 120,
+      "description": "Green clinging flame in cramped handwriting — spellbook lore for a Wizard"
+    },
+    "scroll_starfall": {
+      "name": "Scroll of Starfall",
+      "type": "scroll",
+      "spell": "starfall",
+      "value": 300,
+      "description": "A night sky pressed flat — spellbook lore for a Wizard"
+    },
+    "scroll_fireball": {
+      "name": "Scroll of Fireball",
+      "type": "scroll",
+      "spell": "fireball",
+      "value": 150,
+      "description": "The classic, transcribed — a Wizard-lane mage can copy it in early"
+    },
+    "grimoire_chain": {
+      "name": "Grimoire Chain",
+      "type": "jewelry_neck",
+      "sp": 2,
+      "value": 150,
+      "description": "A closed book on a silver chain — the Rite leaves it with keepers of pages (+2 SP)"
+    },
+    "stormheart_ring": {
+      "name": "Stormheart Ring",
+      "type": "jewelry_ring",
+      "sp": 2,
+      "value": 150,
+      "description": "A ring with a storm inside — the Rite leaves it with storm-vessels (+2 SP)"
+    },
+    "chaplet_of_grace": {
+      "name": "Chaplet of Grace",
+      "type": "jewelry_neck",
+      "sp": 2,
+      "value": 150,
+      "description": "Woven white blossoms that never wilt — the Rite leaves it with shepherds of the fallen (+2 SP)"
+    },
+    "zealots_torc": {
+      "name": "Zealot's Torc",
+      "type": "jewelry_neck",
+      "dmg": 1,
+      "value": 150,
+      "description": "A twisted iron collar, warm to the touch — the Rite leaves it with swords of the faith (+1 damage)"
     }
   }
 }

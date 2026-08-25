@@ -488,8 +488,10 @@ export class Renderer {
         } else if (p.spell) {
           const s = p.spell;
           if (s.auto) odds = ' · never misses';
-          else if (s.save) {
-            const dc = 10 + s.level + abilityMod(a.ref.abilities[s.stat]);
+          else if (s.save || s.type === 'afflict') {
+            // Insight and Overcast raise the bar — the preview shows the real DC.
+            const dc = 10 + s.level + abilityMod(a.ref.abilities[s.stat])
+              + (a.ref.insight?.dc ?? 0) + (s.dc_bonus ?? 0);
             const failSave = (dc - (tgt.ref.save || 0) - 1) / 20;
             odds = ` · save DC ${dc} — ${pct(failSave)} for full ${s.type === 'afflict' ? 'effect' : 'damage'}`;
           }
@@ -506,7 +508,7 @@ export class Renderer {
       const acts = b.classActives(a);
       const hasSpells = b.castables(a).length > 0;
       if (acts.length) {
-        const names = acts.slice(0, 2).map(s => s.name).join(', ');
+        const names = acts.slice(0, 2).map(s => s.hint ?? s.name).join(', ');
         cHint = `C — ${names}${acts.length > 2 ? ' +more' : ''}${hasSpells ? ' & spells' : ''} · `;
       } else if (hasSpells) {
         cHint = 'C — spells · ';
@@ -517,10 +519,16 @@ export class Renderer {
       : `arrows — move & bump to attack · ${cHint}${a?.kind === 'hero' && b.canShoot(a) ? 'F — shoot · ' : ''}${a?.kind === 'hero' && this.game.heldItems().length ? 'I — item · ' : ''}Space — end turn · Esc — flee`;
     ctx.fillText(hints, W / 2, H - 20);
 
-    // Abilities menu overlay (spells + class battle arts).
+    // Abilities menu overlay (spells + class battle arts). A high-level
+    // caster's list outgrows nine digits, so the menu scrolls: arrows walk a
+    // highlight, Enter casts it, digits still snap to the first nine.
     if (b.mode === 'menu' && a?.kind === 'hero') {
-      const list = b.abilities(a);
-      const mw = 380, mh = 70 + list.length * 44;
+      const full = b.abilities(a);
+      const sel = Math.min(b.menuSel ?? 0, full.length - 1);
+      const maxRows = Math.max(3, Math.min(full.length, Math.floor((H - 150) / 44)));
+      const start = Math.max(0, Math.min(sel - Math.floor(maxRows / 2), full.length - maxRows));
+      const list = full.slice(start, start + maxRows);
+      const mw = 460, mh = 70 + list.length * 44;
       const mx = (W - mw) / 2, my = (H - mh) / 2;
       ctx.fillStyle = 'rgba(10,10,16,0.92)';
       ctx.fillRect(mx, my, mw, mh);
@@ -531,21 +539,28 @@ export class Renderer {
       ctx.font = 'bold 17px Georgia';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.fillText(`${a.ref.name}'s abilities${a.ref.maxSp ? ` — ${a.ref.sp} SP` : ''}`, mx + mw / 2, my + 12);
+      ctx.fillText(`${a.ref.name}'s abilities${a.ref.maxSp ? ` — ${a.ref.sp} SP` : ''}${start > 0 ? ' ▲' : ''}${start + maxRows < full.length ? ' ▼' : ''}`, mx + mw / 2, my + 12);
       list.forEach((s, i) => {
+        const idx = start + i;
         const ly = my + 48 + i * 44;
+        if (idx === sel) {
+          ctx.fillStyle = 'rgba(212,169,78,0.16)';
+          ctx.fillRect(mx + 8, ly - 6, mw - 16, 42);
+        }
         ctx.textAlign = 'left';
-        ctx.fillStyle = s.affordable ? '#cfc4a6' : '#66605a';
+        ctx.fillStyle = s.affordable ? (idx === sel ? '#ffe9b8' : '#cfc4a6') : '#66605a';
         ctx.font = 'bold 14px Georgia';
-        ctx.fillText(`${i + 1}.  ${s.name}  —  ${s.cost ? `${s.cost} SP` : 'free'}${s.range ? ` · range ${s.range}` : ''}${s.area ? ` · burst ${s.area}` : ''}`, mx + 20, ly);
+        const key = idx < 9 ? `${idx + 1}.` : ' ·';
+        const lvlTag = s.level ? `L${s.level} · ` : '';
+        ctx.fillText(`${key}  ${s.name}  —  ${lvlTag}${s.cost ? `${s.cost} SP` : 'free'}${s.range ? ` · range ${s.range}` : ''}${s.area ? ` · burst ${s.area}` : ''}`, mx + 20, ly);
         ctx.font = 'italic 11.5px Georgia';
         ctx.fillStyle = s.affordable ? '#8a8a99' : '#55504c';
-        ctx.fillText(s.description, mx + 38, ly + 17);
+        ctx.fillText(s.description.length > 76 ? s.description.slice(0, 74) + '…' : s.description, mx + 38, ly + 17);
       });
       ctx.textAlign = 'center';
       ctx.fillStyle = '#8a8a99';
       ctx.font = '12px Georgia';
-      ctx.fillText('press a number to cast · Esc to close', mx + mw / 2, my + mh - 22);
+      ctx.fillText('↑↓ choose · Enter or number — cast · Esc — close', mx + mw / 2, my + mh - 22);
     }
 
     // Item menu overlay — same skin as the spell menu.

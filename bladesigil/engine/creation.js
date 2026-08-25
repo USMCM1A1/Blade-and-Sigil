@@ -4,6 +4,7 @@
 // shape as data/party.json; created parties are saved in the browser.
 
 import { abilityMod } from './rules.js';
+import { spellPointsFor } from './magic.js';
 
 const SAVE_KEY = 'bs_party';
 const PARTY_SIZE = 4;
@@ -115,7 +116,7 @@ export function choosePartyDef(data) {
                     ${allowed.map(([id, c]) => `
                       <button class="cr-choice ${id === state.class ? 'picked' : ''}" data-class="${id}">
                         <b>${c.name}</b>
-                        <span>d${c.hp_die} hits · ${weap(id).name} ${weap(id).damage}${c.spell_points[0] ? ` · ${c.spell_points[0]} spell points` : ''}</span>
+                        <span>d${c.hp_die} hits · ${weap(id).name} ${weap(id).damage}${spellPointsFor(c, 1) ? ` · ${spellPointsFor(c, 1)} spell points` : ''}</span>
                       </button>`).join('')}
                   </div>
                 </div>
@@ -141,7 +142,7 @@ export function choosePartyDef(data) {
                   <div class="cr-preview">
                     <img src="${cls.sprite}" alt="${cls.name}">
                     <div>${race.name} ${cls.name}<br>
-                      <span class="cr-dim">HP ${hp} · AC ${ac} · to-hit ${fmtMod(hit)}${cls.spell_points[0] ? ` · SP ${cls.spell_points[0]}` : ''}</span>
+                      <span class="cr-dim">HP ${hp} · AC ${ac} · to-hit ${fmtMod(hit)}${spellPointsFor(cls, 1) ? ` · SP ${spellPointsFor(cls, 1)}` : ''}</span>
                     </div>
                   </div>
                 </div>

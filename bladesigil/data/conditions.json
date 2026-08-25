@@ -19,6 +19,14 @@
       "color": "#7ec850",
       "description": "Venom in the blood — ticks in battle and on the march"
     },
+    "exhaustion": {
+      "name": "Exhausted",
+      "effect": "skip",
+      "lingers": false,
+      "save": "con",
+      "color": "#c8b88a",
+      "description": "Utterly spent — the next turn is lost (channeling backlash and the like)"
+    },
     "paralysis": {
       "name": "Paralyzed",
       "effect": "skip",

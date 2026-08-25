@@ -1,5 +1,5 @@
 {
-  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. hit_bonus applies to attack AND damage rolls. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules. 'detect': per-level % chance (design doc tables, thief & archer) to notice secret doors and traps — the party uses its best detector, +5% per point of DEX modifier, +race detect_bonus. 'disarms': true lets the class defuse a DETECTED trap by stepping onto it (thieves only, per the doc).",
+  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. SPELL POINTS (magic v2, doc formula): casters use \"spell_points\": {\"base\": N, \"multiplier\": M} — max SP = base + (level x multiplier x 3), so a Wizard (4, 1.0) has 7 SP at level 1 and 64 at level 20. A legacy per-level array still works; classes with neither have no magic. hit_bonus applies to attack AND damage rolls. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules. 'detect': per-level % chance (design doc tables, thief & archer) to notice secret doors and traps — the party uses its best detector, +5% per point of DEX modifier, +race detect_bonus. 'disarms': true lets the class defuse a DETECTED trap by stepping onto it (thieves only, per the doc).",
   "classes": {
     "warrior": {
       "name": "Warrior",
@@ -86,28 +86,6 @@
         3,
         4,
         4
-      ],
-      "spell_points": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
       ]
     },
     "priest": {
@@ -197,28 +175,10 @@
         2,
         2
       ],
-      "spell_points": [
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
-        20,
-        21,
-        22,
-        23
-      ]
+      "spell_points": {
+        "base": 3,
+        "multiplier": 0.8
+      }
     },
     "wizard": {
       "name": "Wizard",
@@ -306,28 +266,10 @@
         1,
         1
       ],
-      "spell_points": [
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
-        20,
-        21,
-        22,
-        23
-      ]
+      "spell_points": {
+        "base": 4,
+        "multiplier": 1.0
+      }
     },
     "thief": {
       "name": "Thief",
@@ -343,8 +285,26 @@
       "starting_weapon": "rusty_dagger",
       "disarms": true,
       "detect": [
-        5, 5, 10, 10, 10, 20, 20, 20, 30, 30,
-        30, 40, 40, 40, 50, 50, 50, 60, 70, 80
+        5,
+        5,
+        10,
+        10,
+        10,
+        20,
+        20,
+        20,
+        30,
+        30,
+        30,
+        40,
+        40,
+        40,
+        50,
+        50,
+        50,
+        60,
+        70,
+        80
       ],
       "weapon_types": [
         "light_blade",
@@ -422,28 +382,6 @@
         2,
         2,
         2
-      ],
-      "spell_points": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
       ]
     },
     "archer": {
@@ -457,8 +395,26 @@
       ],
       "starting_weapon": "splintered_longbow",
       "detect": [
-        5, 5, 10, 10, 10, 20, 20, 20, 30, 30,
-        30, 40, 40, 40, 50, 50, 50, 50, 50, 50
+        5,
+        5,
+        10,
+        10,
+        10,
+        20,
+        20,
+        20,
+        30,
+        30,
+        30,
+        40,
+        40,
+        40,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
       ],
       "weapon_types": [
         "any"
@@ -533,28 +489,6 @@
         3,
         4,
         4
-      ],
-      "spell_points": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
       ]
     },
     "spellblade": {
@@ -640,28 +574,10 @@
         2,
         2
       ],
-      "spell_points": [
-        2,
-        2,
-        3,
-        3,
-        3,
-        4,
-        4,
-        4,
-        5,
-        5,
-        5,
-        6,
-        6,
-        6,
-        7,
-        7,
-        7,
-        8,
-        9,
-        10
-      ]
+      "spell_points": {
+        "base": 2,
+        "multiplier": 0.5
+      }
     },
     "summoner": {
       "name": "Summoner",

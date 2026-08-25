@@ -6,13 +6,20 @@
 // themselves are applied in game.js (stat offsets) and battle.js (abilities).
 
 import { DataError } from './loader.js';
+import { spellPicksOwed } from './magic.js';
 
-const PASSIVES = ['weapon_focus', 'braced_stance', 'vital_strike', 'keen_senses'];
-const VERBS = ['rampage', 'guardians_stand', 'assassinate', 'vanish'];
-const CAPSTONES = ['rage', 'bulwark', 'lethality', 'set_trap'];
-const REFINEMENTS = ['rampage_crits', 'stand_half_cost', 'assassinate_low_hp', 'vanish_free'];
-const RITE_ABILITIES = ['whirlwind', 'aegis', 'deathblow', 'shadowstep'];
-const TRACKED_STATS = ['rampageKills', 'standSaves', 'assassinateKills', 'shadowFeats'];
+const PASSIVES = ['weapon_focus', 'braced_stance', 'vital_strike', 'keen_senses',
+  'prepared_mind', 'overchannel', 'blessed_hands', 'sacred_weapon'];
+const VERBS = ['rampage', 'guardians_stand', 'assassinate', 'vanish',
+  'arcane_insight', 'overcast', 'mercy', 'zealous_strike'];
+const CAPSTONES = ['rage', 'bulwark', 'lethality', 'set_trap',
+  'archmage', 'twin_surge', 'miracle', 'divine_inspiration'];
+const REFINEMENTS = ['rampage_crits', 'stand_half_cost', 'assassinate_low_hp', 'vanish_free',
+  'insight_double', 'overcast_cheap', 'mercy_cures', 'zealous_immunity'];
+const RITE_ABILITIES = ['whirlwind', 'aegis', 'deathblow', 'shadowstep',
+  'final_word', 'maelstrom', 'sanctuary', 'judgment'];
+const TRACKED_STATS = ['rampageKills', 'standSaves', 'assassinateKills', 'shadowFeats',
+  'bookCasts', 'overcasts', 'mercySaves', 'zealousStrikes'];
 
 export const WEAPON_CATEGORIES = ['light_blade', 'med_blade', 'heavy_blade', 'light_blunt', 'med_blunt', 'heavy_blunt', 'bow'];
 
@@ -163,6 +170,10 @@ export function pendingChoices(data, ch) {
   if (ch.level >= prog.fork_level && !ch.lane) out.push({ type: 'lane', ch, prog });
   const passive = passiveOf(data, ch);
   if (passive?.id === 'weapon_focus' && !ch.focusType) out.push({ type: 'focus', ch });
+  // The Sorcerer's narrow gift: each unlocked spell level owes its picks.
+  for (const owed of spellPicksOwed(data, ch)) {
+    for (let i = 0; i < owed.remaining; i++) out.push({ type: 'spell', ch, level: owed.level });
+  }
   // The Level 20 Rite: owed once the lane is walked and the pinnacle reached.
   const lane = laneOf(data, ch);
   if (lane?.rite && ch.level >= 20 && !ch.rite) out.push({ type: 'rite', ch, lane });

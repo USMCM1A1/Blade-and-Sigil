@@ -1,5 +1,5 @@
 {
-  "_comment": "Class Progression (design doc v3): each class here gets a hard FORK at 'fork_level' into two lanes; classes absent from this file simply level along their base tables. Each lane: 'name' + 'archetype' (the name shown from capstone level on), 'blurb' (shown on the choice card), 'offsets' (permanent adds to the class table: hit = to-hit AND damage, ac = armor class), 'passive' (always-on, from the passive list below), 'verb' (the signature action gained at its 'level'), 'capstone' (gained at its 'level'; numbers tunable), 'refinement' (upgrades the verb at its 'level'), and 'rite' (the Level 20 Rite, see below). PASSIVES: weapon_focus (+dmg with a chosen weapon category — the player picks which at the fork), braced_stance (-'reduce' damage taken per hit while a shield is worn). VERBS: rampage (a kill grants a free attack on an adjacent foe), guardians_stand (when an ally is about to be hit, take the blow instead — asked via Y/N). CAPSTONES: rage (timed self-buff: hit/dmg/ac/extra_attacks for 'rounds'), bulwark (allies adjacent to the hero get +'aura_ac' AC, plus a Taunt action: enemies target the hero for 'taunt_rounds'). REFINEMENTS: rampage_crits (rampage also triggers on a natural 20), stand_half_cost (guardian's stand costs only half the redirected damage). TESTING TIP: the Playtest Bench (P) banks XP and bumps playstyle counters — the fastest road to any milestone.",
+  "_comment": "Class Progression (design doc v3): each class here gets a hard FORK at 'fork_level' into two lanes; classes absent from this file simply level along their base tables. Each lane: 'name' + 'archetype' (the name shown from capstone level on), 'blurb' (shown on the choice card), 'offsets' (permanent adds to the class table: hit = to-hit AND damage, ac = armor class, sp = spell points, detect = trap/secret %), 'passive' (always-on, from the passive list below), 'verb' (the signature action gained at its 'level'), 'capstone' (gained at its 'level'; numbers tunable), 'refinement' (upgrades the verb at its 'level'), and 'rite' (the Level 20 Rite, see below). PASSIVES: weapon_focus (+dmg with a chosen weapon category — the player picks which at the fork), braced_stance (-'reduce' damage taken per hit while a shield is worn), vital_strike, keen_senses, prepared_mind (the Wizard lane's spellbook: only prepared spells are castable; slots = 'slots_base' + max spell level; re-pick freely at each rest), overchannel (the Sorcerer lane: every cast costs 'discount' less SP, floor 1; knows only 'known_per_level' spells per spell level, picked on unlock), blessed_hands (+'heal' HP on every heal spell), sacred_weapon (+'dmg' divine damage on weapon hits). VERBS: rampage, guardians_stand, assassinate, vanish, arcane_insight (once per battle, your action: choose +'hit' to-hit, +'dc' save DC, or +'dmg' spell damage for the rest of the fight), overcast (toggle: pay 'cost_mult'x SP to cast a spell one level higher — +'extra_dice' damage/healing, +'dc_bonus' DC), mercy (free reaction: an ally cut to 0 HP immediately rises with 'dice' + WIS HP), zealous_strike (toggle: each landed melee hit spends 'cost' SP for +'dice' divine damage and 'heal' self-healing). CAPSTONES: rage, bulwark, lethality, set_trap, archmage (once per rest: cast ANY spellbook spell, prepared or not, for ALL remaining SP), twin_surge (once per rest: a spell resolves twice, then you are Exhausted a round), miracle (once per rest, ALL remaining SP, 'min_sp' minimum: the living are fully healed, the fallen rise at half), divine_inspiration (ALL remaining SP, 'min_sp' minimum: +'hit'/+'dmg'/+'ac' for 'rounds' rounds). REFINEMENTS: rampage_crits, stand_half_cost, assassinate_low_hp, vanish_free, insight_double (Arcane Insight grants TWO bonus types), overcast_cheap (Overcast costs 1.5x, rounded up), mercy_cures (Mercy also cures one condition), zealous_immunity (a Zealous Strike grants immunity to conditions until your next turn). TESTING TIP: the Playtest Bench (P) banks XP and bumps playstyle counters — the fastest road to any milestone.",
   "_rite_comment": "THE LEVEL 20 RITE (doc v3). 'sigil' lists the shared 8x8x8 vocabulary — every hero draws from the same pool. Per lane, 'rite' has: 'ability' (the unique capstone verb — engine knows 'whirlwind' and 'aegis'; name/numbers are CONTENT FLAGS, rename and retune freely), 'tracked' (which playstyle counter gates the title: rampageKills or standSaves), and 'tiers' — three entries, low to high: 'min' (counter needed; thresholds are proposals, doc says TBD pending playtesting) and 'title' (offered wording; the player may re-word it but keeps the tier). Tier 2 grants 'trinket' (an item id); tier 3 also records the lane's vignette-dungeon unlock (the dungeon itself is a later build).",
   "sigil": {
     "shapes": ["Blade", "Shield", "Flame", "Wing", "Star", "Eye", "Serpent", "Tree"],
@@ -93,6 +93,98 @@
               { "min": 0, "title": "the Light-Fingered" },
               { "min": 5, "title": "the Ghost", "trinket": "ghostwalk_boots" },
               { "min": 15, "title": "the Name Unspoken", "dungeon": "A vault heist thick with locks, wards, and traps", "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build" }
+            ]
+          }
+        }
+      ]
+    },
+    "wizard": {
+      "_comment": "Doc v3 Wizard: broad-and-scarce (spellbook) vs narrow-and-abundant (raw talent). Numbers here (sp offsets, insight bonuses, overcast dice, prepared slots, known-per-level) are proposals — tune freely. The Sorcerer archetype name 'Stormcaller' is the designer's call (2026-08-24); the capstone verb name 'Stormsurge' is a CONTENT FLAG.",
+      "fork_level": 5,
+      "lanes": [
+        {
+          "id": "wizard",
+          "name": "The Spellbook",
+          "archetype": "Archmage",
+          "blurb": "Power is a library. Own more of it than anyone alive — but ration each day's pages.",
+          "offsets": { "sp": -3 },
+          "passive": { "id": "prepared_mind", "slots_base": 3 },
+          "verb": { "id": "arcane_insight", "level": 10, "name": "Arcane Insight", "hit": 2, "dc": 1, "dmg": 2, "blurb": "Once per battle, spend your action reading the fight: choose a bonus — to-hit, save DC, or spell damage — and keep it for the rest of the encounter." },
+          "capstone": { "id": "archmage", "level": 15, "name": "Archmage's Reach", "blurb": "Once per rest: cast ANY spell written anywhere in your book — prepared or not — for every spell point you have left. An all-in gamble." },
+          "refinement": { "id": "insight_double", "level": 18, "blurb": "Arcane Insight now grants TWO bonus types at once — still one activation per battle." },
+          "rite": {
+            "ability": { "id": "final_word", "name": "The Final Word", "blurb": "Once per battle: your next spell may come from anywhere in the book — and costs nothing at all.", "_comment": "CONTENT FLAG: placeholder design — rename and retune freely" },
+            "tracked": "bookCasts",
+            "tiers": [
+              { "min": 0, "title": "the Studied" },
+              { "min": 5, "title": "Keeper of Pages", "trinket": "grimoire_chain" },
+              { "min": 15, "title": "the Living Library", "dungeon": "A lost archive sealed behind magical wards", "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build" }
+            ]
+          }
+        },
+        {
+          "id": "sorcerer",
+          "name": "The Raw Gift",
+          "archetype": "Stormcaller",
+          "blurb": "Power is blood. Know fewer spells — and never run dry when it matters.",
+          "offsets": { "sp": 3 },
+          "passive": { "id": "overchannel", "discount": 1, "known_per_level": 2 },
+          "verb": { "id": "overcast", "level": 10, "name": "Overcast", "cost_mult": 2, "extra_dice": "2d6", "dc_bonus": 1, "blurb": "Pay double spell points to cast a spell as if one level higher: +2d6 to its dice and +1 to its save DC." },
+          "capstone": { "id": "twin_surge", "level": 15, "name": "Stormsurge", "blurb": "Once per rest: a spell you cast resolves TWICE in immediate succession — then the channeling leaves you Exhausted for a round.", "_comment": "CONTENT FLAG: verb name is a placeholder — rename freely" },
+          "refinement": { "id": "overcast_cheap", "level": 18, "blurb": "Overcast's price falls from double to one-and-a-half spell points, rounded up." },
+          "rite": {
+            "ability": { "id": "maelstrom", "name": "Maelstrom", "blurb": "Once per battle: your next damage spell ignores its range and area — it strikes EVERY foe on the field.", "_comment": "CONTENT FLAG: placeholder design — rename and retune freely" },
+            "tracked": "overcasts",
+            "tiers": [
+              { "min": 0, "title": "the Spark" },
+              { "min": 5, "title": "Storm-Vessel", "trinket": "stormheart_ring" },
+              { "min": 15, "title": "the Tempest Incarnate", "dungeon": "A raw magical convergence zone, unstable and hungry", "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build" }
+            ]
+          }
+        }
+      ]
+    },
+    "priest": {
+      "_comment": "Doc v3 Priest: mend the many (Cleric) vs smite as one (Templar). Numbers here (offsets, blessed_hands heal, zealous cost/dice, Divine Inspiration's +3/+3/+3 for 3 rounds costing all SP — the designer's call, 2026-08-24) are otherwise proposals — tune freely. Divine Call from the base table remains untouched by the fork (doc) and is not yet an engine feature.",
+      "fork_level": 5,
+      "lanes": [
+        {
+          "id": "cleric",
+          "name": "The Shepherd's Crook",
+          "archetype": "Prelate",
+          "blurb": "No one dies while you draw breath. Mend more, strike softer.",
+          "offsets": { "hit": -1, "sp": 2 },
+          "passive": { "id": "blessed_hands", "heal": 2 },
+          "verb": { "id": "mercy", "level": 10, "name": "Mercy", "dice": "1d8", "blurb": "A free reaction, every time: the instant an ally is cut down to 0 HP, they rise again with 1d8 + your WIS in hit points." },
+          "capstone": { "id": "miracle", "level": 15, "name": "Miracle", "min_sp": 5, "blurb": "Once per rest: every spell point you have left, spent at once — the living are healed to full, and the fallen rise at half health. An all-in gamble." },
+          "refinement": { "id": "mercy_cures", "level": 18, "blurb": "Mercy now also cures one affliction on the ally it lifts." },
+          "rite": {
+            "ability": { "id": "sanctuary", "name": "Sanctuary", "blurb": "Once per battle, freely: until your next turn, no ally can be brought below 1 HP. Death itself waits outside.", "_comment": "CONTENT FLAG: placeholder design — rename and retune freely" },
+            "tracked": "mercySaves",
+            "tiers": [
+              { "min": 0, "title": "the Gentle" },
+              { "min": 5, "title": "Shepherd of the Fallen", "trinket": "chaplet_of_grace" },
+              { "min": 15, "title": "the Miracle-Worker", "dungeon": "A sanctified ruin overrun by undead — restore the shrine", "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build" }
+            ]
+          }
+        },
+        {
+          "id": "templar",
+          "name": "The Drawn Sword",
+          "archetype": "Knight Templar",
+          "blurb": "Faith is a weapon. Strike harder, carry fewer prayers.",
+          "offsets": { "hit": 1, "sp": -2 },
+          "passive": { "id": "sacred_weapon", "dmg": 1 },
+          "verb": { "id": "zealous_strike", "level": 10, "name": "Zealous Strike", "cost": 3, "dice": "2d6", "heal": "1d6", "blurb": "A toggle, free to flip: while burning, every melee hit you land spends 3 spell points for +2d6 divine damage — and heals you 1d6." },
+          "capstone": { "id": "divine_inspiration", "level": 15, "name": "Divine Inspiration", "hit": 3, "dmg": 3, "ac": 3, "rounds": 3, "min_sp": 5, "blurb": "Every spell point you have left, spent at once: +3 to hit, +3 damage, +3 AC for 3 rounds. Briefly, heaven fights in your armor." },
+          "refinement": { "id": "zealous_immunity", "level": 18, "blurb": "A landed Zealous Strike now also grants immunity to afflictions until your next turn." },
+          "rite": {
+            "ability": { "id": "judgment", "name": "Judgment", "blurb": "Once per battle: a single strike that cannot miss — an automatic critical — and every point of its damage returns to you as healing.", "_comment": "CONTENT FLAG: placeholder design — rename and retune freely" },
+            "tracked": "zealousStrikes",
+            "tiers": [
+              { "min": 0, "title": "the Devout" },
+              { "min": 5, "title": "Sword of the Faith", "trinket": "zealots_torc" },
+              { "min": 15, "title": "Heaven's Wrath", "dungeon": "A trial of faith — a solo gauntlet under a self-imposed vow", "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build" }
             ]
           }
         }

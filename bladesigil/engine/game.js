@@ -5,6 +5,7 @@ import { DataError } from './loader.js';
 import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
 import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier } from './progression.js';
+import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots } from './magic.js';
 import * as audio from './audio.js';
 
 const VISION_RADIUS = 6.5;
@@ -42,16 +43,73 @@ export class Game {
   displayClass(ch) { return displayClass(this.data, ch); }
   focusOptions(ch) { return focusOptions(this.data, ch); }
 
+  // ---- Magic v2 (engine/magic.js holds the rules) ----
+  castableSpells(ch) { return castableSpells(this.data, ch); }
+  spellCost(ch, s) { return spellCost(this.data, ch, s); }
+
+  // A full night's rest: once-per-rest powers return, and Prepared Mind's
+  // re-pick window opens (it closes again when the next battle begins).
+  // An AMBUSHED camp grants neither — the night was never finished.
+  afterFullRest() {
+    for (const ch of this.party) {
+      if (!ch.alive) continue;
+      ch.spentRest = {};
+      if (magicModel(this.data, ch) === 'spellbook') {
+        ch.prepFresh = true;
+        this.log(`${ch.name}'s mind is clear — prepared spells may be re-picked on the character sheet (C) until the next fight.`, 'info');
+      }
+    }
+  }
+
+  // Copy a scroll into a Wizard-lane hero's spellbook. The scroll burns.
+  copyScroll(id, ch) {
+    const def = this.itemDef(id);
+    if (!def || def.type !== 'scroll' || !(this.inventory[id] > 0)) return false;
+    const spell = this.data.spells.spells[def.spell];
+    if (!spell) {
+      this.log(`${def.name} names a spell ("${def.spell}") that isn't in spells.json — nothing to copy.`, 'info');
+      return false;
+    }
+    if (!ch.alive) { this.log(`${ch.name} is beyond study.`, 'info'); return false; }
+    if (magicModel(this.data, ch) !== 'spellbook') {
+      this.log(`Only a spellbook can hold a scroll's lore — and ${ch.name} keeps none. (The Wizard's Spellbook lane copies scrolls; anyone can sell them.)`, 'info');
+      return false;
+    }
+    if (ch.spellbook.includes(def.spell)) {
+      this.log(`${spell.name} is already inked in ${ch.name}'s book.`, 'info');
+      return false;
+    }
+    this.inventory[id]--;
+    ch.spellbook.push(def.spell);
+    audio.play('spell');
+    this.log(`${ch.name} copies ${spell.name} into the spellbook — the scroll crumbles as the ink takes.${spell.level > maxSpellLevel(ch.level) ? ` (A level-${spell.level} spell: castable at character level ${[0, 1, 4, 8, 12, 16][spell.level]}.)` : ' Prepare it at any rest.'}`, 'good');
+    return true;
+  }
+
   // The player walked a path (or picked a focus). Hard lock — no take-backs.
   applyChoice(choice, value) {
     const ch = choice.ch;
     if (choice.type === 'lane') {
       ch.lane = value;
       const lane = laneOf(this.data, ch);
-      this.log(`${ch.name} walks the ${lane.name}. There is no turning back.`, 'good');
+      this.log(`${ch.name} walks ${/^the /i.test(lane.name) ? lane.name : `the ${lane.name}`}. There is no turning back.`, 'good');
+      // A caster lane opens its magic on the spot: the Wizard's book fills
+      // with every spell of their training; the Sorcerer will pick theirs.
+      const model = magicModel(this.data, ch);
+      if (model === 'spellbook') {
+        refreshSpellbook(this.data, ch);
+        this.log(`A spellbook opens in ${ch.name}'s hands — ${ch.spellbook.length} spells inked, ${preparedSlots(this.data, ch)} prepared at a time (re-pick at any rest).`, 'good');
+      } else if (model === 'known') {
+        this.log(`${ch.name}'s magic runs in the blood now — fewer spells, deeper wells. Choose them.`, 'good');
+      }
     } else if (choice.type === 'focus') {
       ch.focusType = value;
       this.log(`${ch.name}'s hands know the ${value.replace('_', ' ')} now — Weapon Focus (+1 damage with it).`, 'good');
+    } else if (choice.type === 'spell') {
+      // The Sorcerer's pick: one spell, known forever.
+      (ch.knownSpells ??= []).push(value);
+      const s = this.data.spells.spells[value];
+      this.log(`${ch.name} seizes ${s?.name ?? value} — it is in the blood now, never to be unlearned.`, 'good');
     }
     audio.play('victory');
     this.refreshDerived(ch); // lane offsets land immediately
@@ -190,6 +248,7 @@ export class Game {
     }
     audio.play('victory');
     this.log(`The party sleeps soundly at the inn. Wounds mend and spirits return. (−${price} gold)`, 'good');
+    this.afterFullRest();
     return true;
   }
 
@@ -276,8 +335,16 @@ export class Game {
       lane: def.lane ?? null,
       focusType: def.focus ?? null,
       timedBuffs: [],
-      counters: { rampageKills: 0, standSaves: 0, assassinateKills: 0, shadowFeats: 0 },
+      counters: { rampageKills: 0, standSaves: 0, assassinateKills: 0, shadowFeats: 0,
+        bookCasts: 0, overcasts: 0, mercySaves: 0, zealousStrikes: 0 },
       rite: null, // filled by the Level 20 Rite: {abilityName, sigil, title, tier}
+      // Magic v2: the Wizard lane's book & daily preparation, the Sorcerer
+      // lane's fixed repertoire, and the once-per-rest powers already spent.
+      spellbook: [],
+      prepared: [],
+      knownSpells: [],
+      spentRest: {},   // {archmage: true, miracle: true, ...} — cleared by a full rest
+      prepFresh: false, // Prepared Mind: the re-pick window a rest opens
       // The paper doll: item ids from items.json. Hands hold weapons or a
       // shield; a hero always keeps at least one weapon in hand.
       equipment: {
@@ -289,6 +356,9 @@ export class Game {
       conditions: [], // {id, rounds, mapCounter} — see data/conditions.json
       alive: true,
     };
+    // A hero built already walking a caster lane (premade parties, saved
+    // parties, bench jumps) opens their book / repertoire on the spot.
+    refreshSpellbook(this.data, ch);
     this.refreshDerived(ch);
     ch.sp = ch.maxSp;
     return ch;
@@ -308,7 +378,9 @@ export class Game {
     ch.attacks = ch.cls.attacks_per_round[lvlIdx];
     ch.ac = 10 + ch.cls.ac_bonus[lvlIdx] + abilityMod(ch.abilities.dex) + (off.ac ?? 0)
       + pieces.reduce((sum, d) => sum + (d.ac || 0), 0);
-    const newMax = ch.cls.spell_points[lvlIdx] + (off.sp ?? 0) + pieces.reduce((sum, d) => sum + (d.sp || 0), 0);
+    // Magic v2: the doc's SP formula (or a legacy array) + lane lean + gear.
+    const newMax = Math.max(0, spellPointsFor(ch.cls, ch.level) + (off.sp ?? 0)
+      + pieces.reduce((sum, d) => sum + (d.sp || 0), 0));
     if (newMax > ch.maxSp) ch.sp += newMax - ch.maxSp; // a found ring's points are ready to use
     ch.maxSp = newMax;
     ch.sp = Math.min(ch.sp, ch.maxSp);
@@ -354,11 +426,19 @@ export class Game {
     if (!this.canLevel(ch)) return null;
     const before = { maxHp: ch.maxHp, hitBase: ch.hitBase, attacks: ch.attacks, ac: ch.ac, maxSp: ch.maxSp };
     ch.xp -= this.xpToLevel(ch);
+    const tierBefore = maxSpellLevel(ch.level);
     ch.level++;
+    const newTier = maxSpellLevel(ch.level) > tierBefore ? maxSpellLevel(ch.level) : 0;
     const conMod = abilityMod(ch.abilities.con);
     const { rolled, rerolled, gain: hpGain } = this.rollHp(ch.cls, conMod);
     ch.maxHp += hpGain;
     ch.hp += hpGain; // the surge of a new level heals what it grants
+    // A new spell level unlocked: the Wizard-lane book grows its own pages;
+    // the Sorcerer's picks arrive via refreshChoices below.
+    const newPages = refreshSpellbook(this.data, ch);
+    if (newPages.length) {
+      this.log(`New pages write themselves into ${ch.name}'s spellbook: ${newPages.map(id => this.data.spells.spells[id]?.name ?? id).join(', ')}.`, 'good');
+    }
     this.refreshDerived(ch); // hit/attacks/AC/spell points follow the tables (+ lane offsets)
     this.refreshChoices();   // fork levels owe a choice (pops once back on the map)
     audio.play('victory');
@@ -371,6 +451,9 @@ export class Game {
     // teaser, the kind drives the full narrated card that follows it.
     const milestones = [];
     const prog = classProg(this.data, ch);
+    if (newTier > 1 && spellPointsFor(ch.cls, ch.level) > 0) {
+      milestones.push({ kind: 'spelltier', tier: newTier, text: `Deeper magic: level-${newTier} spells are within reach!` });
+    }
     if (prog && ch.level === prog.fork_level && !ch.lane) {
       milestones.push({ kind: 'fork', text: `The ${ch.cls.name}'s road forks here.` });
     }
@@ -713,6 +796,7 @@ export class Game {
     audio.play('victory');
     const healed = this.party.some((ch, i) => ch.hp !== before[i]);
     this.log(`The party makes camp and rests (−${mouths} rations). ${healed ? 'Wounds mend and spirits return.' : 'Spirits return.'}`, 'good');
+    this.afterFullRest();
     // A watch of camp time passes AFTER the healing — lingering poison
     // ticks through the night, so cure it before you sleep.
     this.advanceTime(50);
@@ -762,8 +846,14 @@ export class Game {
       ch.level = n;
       ch.xp = 0;
       const prog = classProg(this.data, ch);
-      if (prog && n < prog.fork_level) { ch.lane = null; ch.focusType = null; }
+      if (prog && n < prog.fork_level) {
+        ch.lane = null; ch.focusType = null;
+        ch.spellbook = []; ch.prepared = []; ch.knownSpells = []; // un-walk the caster lanes too
+      }
       if (n < 20) ch.rite = null; // dropping below the pinnacle un-runs the Rite (re-testable)
+      ch.spentRest = {}; // the jump is a fresh day — once-per-rest powers return
+      refreshSpellbook(this.data, ch); // a Wizard-lane book grows into the new level
+      if (magicModel(this.data, ch) === 'spellbook') ch.prepFresh = true;
       // Same HP rule as real play: max die at level 1, rolled (rerolling
       // ones) for every level after — simulated fresh for the jump.
       const conMod = abilityMod(ch.abilities.con);
@@ -861,6 +951,7 @@ export class Game {
       buffs: { ...ch.buffs },
       conditions: ch.conditions.map(c => ({ ...c })),
       counters: { ...ch.counters }, // sparring feats don't count toward titles
+      spentRest: { ...ch.spentRest }, // arena previews of once-per-rest powers are free
     }));
     this.arena = true;
     const dummies = Object.entries(this.data.monsters.monsters).map(([id, def]) => ({
@@ -880,6 +971,8 @@ export class Game {
       ch.conditions = s.conditions;
       ch.timedBuffs = []; // Rage and its kin are battle-scoped — nothing leaves the ring
       ch.counters = s.counters;
+      ch.spentRest = s.spentRest;
+      ch.insight = null; // Arcane Insight is battle-scoped
     });
     this.arena = false;
     this.arenaSnapshot = null;
