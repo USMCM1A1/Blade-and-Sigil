@@ -91,6 +91,11 @@ async function boot() {
   }
 
   document.addEventListener('keydown', e => {
+    // Typing is typing: while a text field has focus (the Rite's naming and
+    // title steps, any future input), NO game shortcut fires — an "h" in
+    // "the" must never summon the help screen. The fields' own Enter
+    // handlers still work; they listen on the input itself.
+    if (e.target.matches?.('input, textarea, select')) return;
     if (e.key === 'h' || e.key === 'H' || e.key === '?') {
       e.preventDefault();
       toggleHelp();

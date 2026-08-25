@@ -555,7 +555,15 @@ function renderEquipment(game) {
     tabs.appendChild(btn);
   });
 
-  document.getElementById('eq-name').textContent = ch.rite ? `${ch.name} ${ch.rite.title}` : ch.name;
+  // The Rite-completed wear their sigil WITH the name — the mark of legend
+  // belongs at the top of the sheet, not filed under a list of powers.
+  const nameEl = document.getElementById('eq-name');
+  if (ch.rite) {
+    nameEl.innerHTML = `<canvas class="eq-name-sigil" width="52" height="52"></canvas><span>${ch.name} ${ch.rite.title}</span>`;
+    drawSigil(game, nameEl.querySelector('canvas'), ch.rite.sigil, 52);
+  } else {
+    nameEl.textContent = ch.name;
+  }
   document.getElementById('eq-stats').textContent =
     `Level ${ch.level} ${ch.race.name} ${game.displayClass(ch)} · AC ${ch.ac} · ${ch.weapon.name} ${ch.weapon.damage}${ch.maxSp ? ` · SP ${ch.sp}/${ch.maxSp}` : ''}`;
 
@@ -838,11 +846,7 @@ function renderPath(game, ch) {
     if (lane.rite) {
       if (ch.rite) {
         rows += row(true, ch.rite.abilityName, `${lane.rite.ability.blurb ?? ''}`, 'the Rite');
-        rows += `<div class="eq-power eq-sigil-row">
-          <canvas class="eq-sigil-canvas" width="64" height="64"></canvas>
-          <div><b>Sigil: the ${ch.rite.sigil.modifier} ${ch.rite.sigil.shape}</b>
-          <span>Wrought in ${ch.rite.sigil.color.toLowerCase()}. Known to all as ${ch.name} ${ch.rite.title} (tier ${ch.rite.tier + 1}).</span></div>
-        </div>`;
+        rows += row(true, `Sigil: the ${ch.rite.sigil.modifier} ${ch.rite.sigil.shape}`, `Wrought in ${ch.rite.sigil.color.toLowerCase()} — worn beside the name above. Known to all as ${ch.name} ${ch.rite.title} (tier ${ch.rite.tier + 1}).`);
       } else {
         rows += row(false, 'The Rite', 'At the height of mortal skill, something answers.', ch.level >= 20 ? 'awaits!' : 'at level 20');
       }
@@ -863,8 +867,6 @@ function renderPath(game, ch) {
     }
   }
   panel.innerHTML = `<div class="eq-sec">Path &amp; powers</div>${rows}`;
-  const sigilCanvas = panel.querySelector('.eq-sigil-canvas');
-  if (sigilCanvas && ch.rite) drawSigil(game, sigilCanvas, ch.rite.sigil, 64);
 }
 
 // ---- Magic on the character sheet (magic v2) ----
