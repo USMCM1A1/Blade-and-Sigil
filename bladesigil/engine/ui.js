@@ -152,6 +152,56 @@ function renderChoice(game, choice, after) {
   }
 }
 
+// ---- Sigil art: the Rite's emblem made visible ----
+// Layers from data/progression.json "sigil_art": the shape image under the
+// modifier image, both tinted the sigil's color. A missing word or file
+// falls back to words-only (drawSigil resolves false; callers keep text).
+const sigilImgCache = new Map();
+function sigilImg(src) {
+  if (!sigilImgCache.has(src)) {
+    sigilImgCache.set(src, new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    }));
+  }
+  return sigilImgCache.get(src);
+}
+
+async function drawSigil(game, canvas, sigil, size = 72) {
+  const art = game.data.progression.sigil_art;
+  if (!art || !canvas || !sigil) return false;
+  const shapeSrc = art.shapes?.[sigil.shape];
+  const modSrc = art.modifiers?.[sigil.modifier];
+  const hex = art.colors?.[sigil.color] ?? '#cfc4a6';
+  if (!shapeSrc || !modSrc) return false;
+  const [shape, mod] = await Promise.all([sigilImg(shapeSrc), sigilImg(modSrc)]);
+  if (!shape || !mod) return false;
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const tinted = img => {
+    const off = document.createElement('canvas');
+    off.width = off.height = size;
+    const c2 = off.getContext('2d');
+    c2.drawImage(img, 0, 0, size, size);
+    c2.globalCompositeOperation = 'source-in';
+    c2.fillStyle = hex;
+    c2.fillRect(0, 0, size, size);
+    return off;
+  };
+  // Dark tints (void-black on a dark panel) get a pale breath behind them.
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  if (0.299 * r + 0.587 * g + 0.114 * b < 90) {
+    ctx.filter = 'drop-shadow(0 0 3px rgba(216,206,176,0.55))';
+  }
+  ctx.drawImage(tinted(shape), 0, 0);
+  ctx.drawImage(tinted(mod), 0, 0);
+  ctx.filter = 'none';
+  canvas.classList.add('rt-sigil-drawn');
+  return true;
+}
+
 // ---- The Level 20 Rite: a four-step ceremony (design doc v3) ----
 // I. the unique power revealed · II. the Naming (free text) · III. the Sigil
 // (three drawn combinations, or hand-pick each part) · IV. the Title (the
@@ -207,12 +257,15 @@ function renderRite(game, choice, after) {
       <div class="cr-step">The Rite — III. The Sigil</div>
       <p class="rt-text">An emblem to mark banners and legend. Three visions rise — choose one, or shape your own:</p>
       <div class="cr-choices">
-        ${draws.map((s, i) => `<button class="cr-choice" data-draw="${i}"><b>${i + 1}. ${sigilText(s)}</b></button>`).join('')}
+        ${draws.map((s, i) => `<button class="cr-choice rt-sigil-choice" data-draw="${i}">
+          <canvas class="rt-sigil" width="72" height="72"></canvas>
+          <b>${i + 1}. ${sigilText(s)}</b></button>`).join('')}
         <button class="cr-choice" data-handpick><b>4. None of these — I will shape it myself</b></button>
       </div>`);
-    for (const b of root.querySelectorAll('[data-draw]')) {
+    root.querySelectorAll('[data-draw]').forEach((b, i) => {
+      drawSigil(game, b.querySelector('canvas'), draws[i]); // the vision, made visible
       b.onclick = () => { state.sigil = draws[Number(b.dataset.draw)]; stepTitle(); };
-    }
+    });
     root.querySelector('[data-handpick]').onclick = stepHandpick;
   };
 
@@ -223,18 +276,21 @@ function renderRite(game, choice, after) {
     shell(`
       <div class="cr-step">The Rite — III. The Sigil</div>
       <p class="rt-text">Then shape it, piece by piece:</p>
+      <canvas class="rt-sigil rt-sigil-live" width="96" height="96"></canvas>
       ${sel('rt-shape', 'Base shape', vocab.shapes)}
       ${sel('rt-mod', 'Bearing', vocab.modifiers)}
       ${sel('rt-color', 'Wrought in', vocab.colors)}
       <button class="rt-next">So it is drawn</button>`);
-    root.querySelector('.rt-next').onclick = () => {
-      state.sigil = {
-        shape: root.querySelector('#rt-shape').value,
-        modifier: root.querySelector('#rt-mod').value,
-        color: root.querySelector('#rt-color').value,
-      };
-      stepTitle();
-    };
+    const current = () => ({
+      shape: root.querySelector('#rt-shape').value,
+      modifier: root.querySelector('#rt-mod').value,
+      color: root.querySelector('#rt-color').value,
+    });
+    // The emblem redraws live as each piece is chosen.
+    const preview = () => drawSigil(game, root.querySelector('.rt-sigil-live'), current(), 96);
+    for (const id of ['rt-shape', 'rt-mod', 'rt-color']) root.querySelector(`#${id}`).onchange = preview;
+    preview();
+    root.querySelector('.rt-next').onclick = () => { state.sigil = current(); stepTitle(); };
   };
 
   const stepTitle = () => {
@@ -257,10 +313,12 @@ function renderRite(game, choice, after) {
     ].filter(Boolean).join('; ');
     shell(`
       <div class="cr-step">The Rite — IV. The Title</div>
+      <canvas class="rt-sigil rt-sigil-live" width="96" height="96"></canvas>
       <p class="rt-text">The deeds are already written: <b>${stat}</b> ${statLabel}. The world has settled on what to call such a ${choice.lane.archetype ?? ch.cls.name} — though ${ch.name} may bend the wording:</p>
       <input id="rt-title" type="text" maxlength="40" value="${tierDef.title.replace(/"/g, '&quot;')}">
       <p class="rt-text rt-dim">Tier ${tier + 1} of 3${rewards ? ` — ${rewards}.` : ' — title and sigil alone; greater deeds earn greater rewards.'}</p>
       <button class="rt-next">Complete the Rite</button>`);
+    drawSigil(game, root.querySelector('.rt-sigil-live'), state.sigil, 96);
     const input = root.querySelector('#rt-title');
     const complete = () => {
       const title = input.value.trim() || tierDef.title;
@@ -780,7 +838,11 @@ function renderPath(game, ch) {
     if (lane.rite) {
       if (ch.rite) {
         rows += row(true, ch.rite.abilityName, `${lane.rite.ability.blurb ?? ''}`, 'the Rite');
-        rows += row(true, `Sigil: the ${ch.rite.sigil.modifier} ${ch.rite.sigil.shape}`, `Wrought in ${ch.rite.sigil.color.toLowerCase()}. Known to all as ${ch.name} ${ch.rite.title} (tier ${ch.rite.tier + 1}).`);
+        rows += `<div class="eq-power eq-sigil-row">
+          <canvas class="eq-sigil-canvas" width="64" height="64"></canvas>
+          <div><b>Sigil: the ${ch.rite.sigil.modifier} ${ch.rite.sigil.shape}</b>
+          <span>Wrought in ${ch.rite.sigil.color.toLowerCase()}. Known to all as ${ch.name} ${ch.rite.title} (tier ${ch.rite.tier + 1}).</span></div>
+        </div>`;
       } else {
         rows += row(false, 'The Rite', 'At the height of mortal skill, something answers.', ch.level >= 20 ? 'awaits!' : 'at level 20');
       }
@@ -801,6 +863,8 @@ function renderPath(game, ch) {
     }
   }
   panel.innerHTML = `<div class="eq-sec">Path &amp; powers</div>${rows}`;
+  const sigilCanvas = panel.querySelector('.eq-sigil-canvas');
+  if (sigilCanvas && ch.rite) drawSigil(game, sigilCanvas, ch.rite.sigil, 64);
 }
 
 // ---- Magic on the character sheet (magic v2) ----

@@ -414,6 +414,13 @@
   }
   #choice input[type="text"]:focus { outline: none; border-color: var(--gold); }
   .rt-next { display: block; margin: 6px auto 0; border-color: var(--gold) !important; color: var(--gold) !important; padding: 9px 30px !important; }
+  .rt-sigil { display: none; image-rendering: auto; }
+  .rt-sigil.rt-sigil-drawn { display: block; }
+  .rt-sigil-choice { display: flex; align-items: center; gap: 14px; }
+  .rt-sigil-choice canvas { flex-shrink: 0; }
+  .rt-sigil-live.rt-sigil-drawn { margin: 0 auto 12px; }
+  .eq-sigil-row { display: flex; align-items: center; gap: 10px; }
+  .eq-sigil-row canvas { flex-shrink: 0; }
   .rt-sel { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .rt-sel b { color: var(--dim); font-variant: small-caps; letter-spacing: 1px; font-size: 12px; width: 110px; }
   .rt-sel select {

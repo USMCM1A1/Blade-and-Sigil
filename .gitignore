@@ -1,3 +1,4 @@
+*.pyc
 .DS_Store
 __pycache__/
-*.pyc
+bladesigil/tools/gemini_key.txt
