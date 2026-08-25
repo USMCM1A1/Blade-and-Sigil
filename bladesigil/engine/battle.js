@@ -25,6 +25,7 @@ export class Battle {
     this.pending = null;  // the spell or shot being aimed
     this.cursor = null;   // targeting crosshair {x, y}
     this.fx = [];         // floating combat text: {x, y, text, color, born}
+    this.spellFx = [];    // animated spell visuals: bolts, beams, bursts, sparkles
     this.busy = false;    // true while a monster acts (player input locked)
     this.pendingReaction = null; // Guardian's Stand: an ally's Y/N moment
     this.taunt = null;    // Bulwark's taunt: {c, until} — monsters strike the knight
@@ -294,8 +295,10 @@ export class Battle {
   }
 
   // Floating combat text, drawn by the renderer right on the battlefield.
-  addFx(x, y, text, color) {
-    this.fx.push({ x, y, text, color, born: performance.now() });
+  // `delay` (ms) holds the text back — damage numbers land AT impact, after
+  // the bolt has crossed the field, never before it.
+  addFx(x, y, text, color, delay = 0) {
+    this.fx.push({ x, y, text, color, born: performance.now() + delay });
   }
 
   fxOn(ref, text, color) {
@@ -1080,6 +1083,67 @@ export class Battle {
     this.endHeroTurn();
   }
 
+  // ---- Spell visuals ----
+  // Every cast draws its geometry: a dart that TRAVELS the line, a beam that
+  // CONNECTS caster and target, a burst that washes exactly the squares it
+  // caught, sparkles that rise from the mended. The look lives in
+  // spells.json "fx" ({kind, color, burst}); these defaults cover any spell
+  // without one. Returns the milliseconds until IMPACT so the numbers can
+  // arrive with the blow.
+  defaultFx(s) {
+    if (s.type === 'heal') return { kind: 'sparkle', color: '#6ad46a' };
+    if (s.type === 'buff') return { kind: 'sparkle', color: '#d4a94e' };
+    if (s.type === 'afflict') return { kind: 'wisp', color: '#8a7ab8' };
+    return s.area ? { kind: 'bolt', color: '#ff9a3a', burst: 'fire' } : { kind: 'bolt', color: '#ffb04a' };
+  }
+
+  emitSpellFx(c, s, x, y) {
+    const fx = { ...this.defaultFx(s), ...(s.fx ?? {}) };
+    const now = performance.now();
+    const from = { x: c.x, y: c.y }, to = { x, y };
+    let impact = 0;
+    if (fx.kind === 'bolt' && (from.x !== to.x || from.y !== to.y)) {
+      const dur = Math.min(420, 140 + Math.hypot(to.x - from.x, to.y - from.y) * 42);
+      this.spellFx.push({ kind: 'bolt', from, to, color: fx.color, born: now, dur });
+      impact = dur;
+    } else if (fx.kind === 'lightning') {
+      // The jag is rolled ONCE so every frame draws the same crack.
+      const steps = Math.max(4, Math.round(Math.hypot(to.x - from.x, to.y - from.y) * 2));
+      const points = Array.from({ length: steps + 1 }, (_, i) => {
+        const t = i / steps;
+        const mid = i > 0 && i < steps;
+        return {
+          x: from.x + (to.x - from.x) * t + (mid ? (Math.random() - 0.5) * 0.7 : 0),
+          y: from.y + (to.y - from.y) * t + (mid ? (Math.random() - 0.5) * 0.7 : 0),
+        };
+      });
+      this.spellFx.push({ kind: 'lightning', from, to, points, color: fx.color, born: now, dur: 380 });
+      impact = 90;
+    } else if (fx.kind === 'beam') {
+      this.spellFx.push({ kind: 'beam', from, to, color: fx.color, born: now, dur: 340 });
+      impact = 90;
+    } else if (fx.kind === 'sparkle' || fx.kind === 'wisp') {
+      this.particleFx(x, y, fx.kind, fx.color);
+    }
+    if (fx.burst || fx.kind === 'burst') {
+      this.spellFx.push({
+        kind: 'burst', to, area: s.area ?? 0, sprite: fx.burst ?? 'fire',
+        color: fx.color, born: now + impact, dur: 460,
+      });
+    }
+    return impact;
+  }
+
+  particleFx(x, y, kind, color) {
+    const parts = Array.from({ length: 7 }, () => ({
+      dx: (Math.random() - 0.5) * 0.9,
+      rise: 0.25 + Math.random() * 0.5,
+      scale: 0.45 + Math.random() * 0.55,
+      phase: Math.random() * 0.35,
+    }));
+    this.spellFx.push({ kind, to: { x, y }, parts, color, born: performance.now(), dur: 750 });
+  }
+
   // Pay for a cast (and settle the flags & tracked deeds that ride along).
   spendSpell(ref, s) {
     if (s.free) { ref.finalWordArmed = false; this.markSpent(ref, 'final_word'); }
@@ -1100,6 +1164,8 @@ export class Battle {
     const statMod = abilityMod(ch.abilities[s.stat]);
     const fmtStat = statMod ? ` ${statMod > 0 ? '+' : '−'}${Math.abs(statMod)} ${statName}` : '';
     const over = s.overcast ? laneOf(this.game.data, ch).verb : null;
+    // The spell's geometry plays out; numbers wait for the moment of impact.
+    const impact = this.emitSpellFx(c, s, x, y);
 
     if (s.type === 'heal') {
       const ally = this.heroAt(x, y);
@@ -1112,7 +1178,7 @@ export class Battle {
       if (over) { const extra = roll(over.extra_dice ?? '2d6'); amount += extra; math += ` +${over.extra_dice ?? '2d6'} → ${extra} ${over.name ?? 'Overcast'}`; }
       const healed = Math.min(amount, ally.ref.maxHp - ally.ref.hp);
       ally.ref.hp += healed;
-      this.addFx(x, y, `+${healed}`, '#6ad46a');
+      this.addFx(x, y, `+${healed}`, '#6ad46a', impact);
       this.game.log(`${ally.ref.name} recovers ${healed} HP (${math}${healed < amount ? ' — capped at full' : ''}).`, 'good');
       return;
     }
@@ -1172,19 +1238,19 @@ export class Battle {
       if (saved) dmg = Math.floor(dmg / 2);
       if (t.kind === 'monster') t.aware = true; // seared awake, saved or not
       if (saved && dmg <= 0) {
-        this.addFx(t.x, t.y, 'resisted', '#9a94a8');
+        this.addFx(t.x, t.y, 'resisted', '#9a94a8', impact);
         this.game.log(`${ref.name} shrugs off the ${s.name.toLowerCase()} (${math}${saveText}).`);
         continue;
       }
       ref.hp -= dmg;
-      this.addFx(t.x, t.y, `-${dmg}`, saved ? '#d8c06a' : '#ffb04a');
+      this.addFx(t.x, t.y, `-${dmg}`, saved ? '#d8c06a' : '#ffb04a', impact);
       this.game.log(saved
         ? `${ref.name} twists aside — only ${dmg} damage (${math}, halved${saveText}).`
         : `${ref.name} is seared for ${dmg} damage (${math}${saveText})!`);
       if (ref.hp > 0 && s.condition && !saved) {
         this.game.applyCondition(ref, s.condition.id, s.condition.rounds);
         const cdef = this.game.conditionDef(s.condition.id);
-        if (cdef) this.addFx(t.x, t.y, cdef.name + '!', cdef.color);
+        if (cdef) this.addFx(t.x, t.y, cdef.name + '!', cdef.color, impact);
       }
       if (t.kind === 'monster' && ref.hp <= 0) this.slay(ref);
       if (t.kind === 'hero' && ref.hp <= 0) this.downHero(ref);
@@ -1201,6 +1267,8 @@ export class Battle {
       // The buff's NAME rides along so the combat math can credit it.
       if (!(ch.buffs.sources ??= []).includes(s.name)) ch.buffs.sources.push(s.name);
       this.fxOn(ch, s.name, '#d4a94e');
+      const tc = this.combatants.find(cc => cc.ref === ch);
+      if (tc) this.particleFx(tc.x, tc.y, 'sparkle', s.fx?.color ?? '#d4a94e');
     }
     this.game.log(`${c.ref.name} casts ${s.name}! ${s.description}.`, 'good');
     this.endHeroTurn();

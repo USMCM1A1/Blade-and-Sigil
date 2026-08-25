@@ -405,11 +405,17 @@ export class Renderer {
       ctx.restore();
     }
 
+    // Animated spell visuals: bolts crossing the field, beams and lightning
+    // connecting caster to target, bursts washing the squares they caught,
+    // sparkles rising from the mended. Drawn UNDER the floating numbers.
+    this.drawSpellFx(ctx, b, ox, oy, CELL);
+
     // Floating combat text: rises and fades over a second, so hits, heals,
     // and misses read right on the battlefield instead of only in the log.
     const now = performance.now();
     b.fx = b.fx.filter(f => now - f.born < 1100);
     for (const f of b.fx) {
+      if (now < f.born) continue; // holding for impact (the bolt is mid-air)
       const age = (now - f.born) / 1100;
       ctx.save();
       ctx.globalAlpha = 1 - age * age;
@@ -621,6 +627,118 @@ export class Renderer {
     if (b.ending && performance.now() - b.endedAt > 700) {
       this.drawBanner(b.ending === 'victory' ? 'VICTORY!' : 'THE PARTY HAS FALLEN',
         b.ending === 'victory' ? COLORS.stairs : '#b03535');
+    }
+  }
+
+  // ---- Spell visuals ----
+  // Sprites are white-on-transparent (the art pipeline's tintable layers);
+  // each (sprite, color) pair is tinted once and cached. A sprite that
+  // hasn't loaded yet (or is missing) falls back to a plain glow.
+  fxSprite(key, color) {
+    const paths = {
+      dart: 'assets/fx/fx_dart.png', fire: 'assets/fx/fx_burst_fire.png',
+      frost: 'assets/fx/fx_burst_frost.png', holy: 'assets/fx/fx_burst_holy.png',
+      sparkle: 'assets/fx/fx_spark.png', wisp: 'assets/fx/fx_wisp.png',
+    };
+    const src = paths[key];
+    if (!src) return null;
+    this.fxImages ??= {};
+    this.fxTinted ??= new Map();
+    if (!(src in this.fxImages)) {
+      this.fxImages[src] = null;
+      const img = new Image();
+      img.onload = () => { this.fxImages[src] = img; };
+      img.src = src;
+    }
+    const img = this.fxImages[src];
+    if (!img) return null;
+    const ck = `${key}|${color}`;
+    if (!this.fxTinted.has(ck)) {
+      const off = document.createElement('canvas');
+      off.width = img.width; off.height = img.height;
+      const c2 = off.getContext('2d');
+      c2.drawImage(img, 0, 0);
+      c2.globalCompositeOperation = 'source-in';
+      c2.fillStyle = color;
+      c2.fillRect(0, 0, off.width, off.height);
+      this.fxTinted.set(ck, off);
+    }
+    return this.fxTinted.get(ck);
+  }
+
+  drawSpellFx(ctx, b, ox, oy, CELL) {
+    const now = performance.now();
+    b.spellFx = (b.spellFx ?? []).filter(f => now < f.born + f.dur);
+    const center = p => [ox + p.x * CELL + CELL / 2, oy + p.y * CELL + CELL / 2];
+    for (const f of b.spellFx) {
+      if (now < f.born) continue; // chained bursts wait for their bolt
+      const t = (now - f.born) / f.dur;
+      ctx.save();
+      if (f.kind === 'bolt') {
+        const [x0, y0] = center(f.from), [x1, y1] = center(f.to);
+        const px = x0 + (x1 - x0) * t, py = y0 + (y1 - y0) * t;
+        const ang = Math.atan2(y1 - y0, x1 - x0);
+        ctx.translate(px, py);
+        ctx.rotate(ang);
+        ctx.shadowColor = f.color;
+        ctx.shadowBlur = 14;
+        const spr = this.fxSprite('dart', f.color);
+        const s = CELL * 0.62;
+        if (spr) ctx.drawImage(spr, -s / 2, -s / 2, s, s);
+        else { ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(0, 0, CELL * 0.14, 0, Math.PI * 2); ctx.fill(); }
+      } else if (f.kind === 'beam' || f.kind === 'lightning') {
+        const alpha = (1 - t) * (f.kind === 'lightning' ? 0.65 + 0.35 * Math.sin(now / 22) : 1);
+        ctx.globalAlpha = Math.max(0, alpha);
+        const pts = f.kind === 'lightning' ? f.points : [f.from, f.to];
+        ctx.shadowColor = f.color;
+        ctx.shadowBlur = 12;
+        for (const [width, style] of [[CELL * 0.13, f.color], [CELL * 0.045, '#ffffff']]) {
+          ctx.strokeStyle = style;
+          ctx.lineWidth = width;
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          pts.forEach((p, i) => {
+            const [px, py] = center(p);
+            i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+          });
+          ctx.stroke();
+        }
+      } else if (f.kind === 'burst') {
+        // Wash exactly the squares the spell caught, then bloom the sprite.
+        const fade = 1 - t;
+        ctx.globalAlpha = 0.3 * fade;
+        ctx.fillStyle = f.color;
+        for (let y = 0; y < b.grid.length; y++) {
+          for (let x = 0; x < b.grid[0].length; x++) {
+            if (Math.max(Math.abs(x - f.to.x), Math.abs(y - f.to.y)) <= f.area && b.grid[y][x] !== '#') {
+              ctx.fillRect(ox + x * CELL, oy + y * CELL, CELL, CELL);
+            }
+          }
+        }
+        const [cx, cy] = center(f.to);
+        const r = (f.area + 0.65) * CELL * Math.min(1, t * 1.6);
+        ctx.globalAlpha = Math.min(1, fade * 1.4);
+        ctx.shadowColor = f.color;
+        ctx.shadowBlur = 18;
+        const spr = this.fxSprite(f.sprite, f.color);
+        if (spr) ctx.drawImage(spr, cx - r, cy - r, r * 2, r * 2);
+        else { ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(cx, cy, r * 0.8, 0, Math.PI * 2); ctx.fill(); }
+      } else if (f.kind === 'sparkle' || f.kind === 'wisp') {
+        const [cx, cy] = center(f.to);
+        const spr = this.fxSprite(f.kind, f.color);
+        for (const p of f.parts) {
+          const pt = Math.min(1, Math.max(0, t - p.phase) / (1 - p.phase));
+          if (pt <= 0 || pt >= 1) continue;
+          ctx.globalAlpha = (1 - pt) * 0.95;
+          const px = cx + p.dx * CELL;
+          const py = cy + CELL * 0.2 - p.rise * CELL * pt;
+          const s = CELL * 0.34 * p.scale;
+          if (spr) ctx.drawImage(spr, px - s / 2, py - s / 2, s, s);
+          else { ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(px, py, s * 0.25, 0, Math.PI * 2); ctx.fill(); }
+        }
+      }
+      ctx.restore();
     }
   }
 

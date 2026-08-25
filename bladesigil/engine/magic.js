@@ -56,6 +56,15 @@ export function validateMagic(data) {
     if (s.condition && !data.conditions.conditions[s.condition.id]) {
       throw new DataError(where, `Condition "${s.condition.id}" isn't in conditions.json. Valid: ${Object.keys(data.conditions.conditions).join(', ')}`);
     }
+    if (s.fx) {
+      const kinds = ['bolt', 'beam', 'lightning', 'burst', 'sparkle', 'wisp'];
+      if (s.fx.kind && !kinds.includes(s.fx.kind)) {
+        throw new DataError(where, `fx "kind" must be one of: ${kinds.join(', ')}.`);
+      }
+      if (s.fx.burst && !['fire', 'frost', 'holy'].includes(s.fx.burst)) {
+        throw new DataError(where, `fx "burst" must be fire, frost, or holy (the sprites in assets/fx/).`);
+      }
+    }
   }
   for (const [id, it] of Object.entries(data.items.items)) {
     if (it.type === 'scroll' && !data.spells.spells[it.spell]) {

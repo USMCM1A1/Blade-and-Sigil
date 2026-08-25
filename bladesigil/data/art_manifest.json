@@ -4,25 +4,193 @@
   "styles": {
     "sigil_shape": "A heraldic emblem for a fantasy RPG sigil system: a single bold flat symbol in PURE WHITE on a PURE BLACK background. Woodcut / coat-of-arms stencil style, thick confident silhouette with simple interior cut lines, perfectly centered, filling about 70% of a square frame. No color, no gradients, no text, no border, nothing else in the frame. The subject:",
     "sigil_bearing": "A heraldic OVERLAY layer for a fantasy RPG sigil system, designed to be composited OVER a separate central emblem: PURE WHITE linework on a PURE BLACK background, woodcut style, bold and simple. CRITICAL: the CENTER of the frame must stay almost entirely black/empty so the emblem beneath shows through — this layer lives at the edges, top, or as thin lines crossing the middle. No color, no text, no central object. The overlay:",
-    "monster_card": "A fantasy RPG monster illustration in the style of a dark painted card: dramatic lighting, muted dungeon palette, the creature framed as a full scene with a simple dark stone background, painterly detail, no text, no border, square composition."
+    "monster_card": "A fantasy RPG monster illustration in the style of a dark painted card: dramatic lighting, muted dungeon palette, the creature framed as a full scene with a simple dark stone background, painterly detail, no text, no border, square composition.",
+    "fx_sprite": "A spell-effect sprite for a fantasy RPG battle: a single glowing element in PURE WHITE on a PURE BLACK background, soft luminous edges, bold simple readable silhouette, centered, filling most of a square frame. No color, no text, no border, nothing else. The element:"
   },
   "assets": [
-    { "id": "sigil_shape_blade",   "style": "sigil_shape", "prompt": "a straight double-edged longsword, point upward.", "out": "assets/sigils/shape_blade.png",   "size": 256, "post": "alpha" },
-    { "id": "sigil_shape_shield",  "style": "sigil_shape", "prompt": "a tall heater shield, seen straight on.", "out": "assets/sigils/shape_shield.png",  "size": 256, "post": "alpha" },
-    { "id": "sigil_shape_flame",   "style": "sigil_shape", "prompt": "a single rising flame with three tongues of fire.", "out": "assets/sigils/shape_flame.png",   "size": 256, "post": "alpha" },
-    { "id": "sigil_shape_wing",    "style": "sigil_shape", "prompt": "a single outstretched feathered wing, tip pointing up and outward.", "out": "assets/sigils/shape_wing.png",    "size": 256, "post": "alpha" },
-    { "id": "sigil_shape_star",    "style": "sigil_shape", "prompt": "an eight-pointed star with long and short rays alternating.", "out": "assets/sigils/shape_star.png",    "size": 256, "post": "alpha" },
-    { "id": "sigil_shape_eye",     "style": "sigil_shape", "prompt": "an open unblinking eye with a round iris.", "out": "assets/sigils/shape_eye.png",     "size": 256, "post": "alpha" },
-    { "id": "sigil_shape_serpent", "style": "sigil_shape", "prompt": "a serpent coiled in an S-curve, head raised to strike.", "out": "assets/sigils/shape_serpent.png", "size": 256, "post": "alpha" },
-    { "id": "sigil_shape_tree",    "style": "sigil_shape", "prompt": "an oak tree with a broad crown and visible roots.", "out": "assets/sigils/shape_tree.png",    "size": 256, "post": "alpha" },
-    { "id": "sigil_bearing_crowned",  "style": "sigil_bearing", "prompt": "a royal crown floating in the top fifth of the frame, centered horizontally.", "out": "assets/sigils/bearing_crowned.png",  "size": 256, "post": "alpha" },
-    { "id": "sigil_bearing_broken",   "style": "sigil_bearing", "prompt": "a single jagged lightning-like crack running diagonally through the whole frame, thin white line.", "out": "assets/sigils/bearing_broken.png",   "size": 256, "post": "alpha" },
-    { "id": "sigil_bearing_chained",  "style": "sigil_bearing", "prompt": "two lengths of heavy chain crossing the frame diagonally, corner to corner, like an X.", "out": "assets/sigils/bearing_chained.png",  "size": 256, "post": "alpha" },
-    { "id": "sigil_bearing_thorns",   "style": "sigil_bearing", "prompt": "a circular wreath of thorned briar vines hugging the edges of the frame, center empty.", "out": "assets/sigils/bearing_thorns.png",   "size": 256, "post": "alpha" },
-    { "id": "sigil_bearing_split",    "style": "sigil_bearing", "prompt": "a single clean vertical dividing line through the exact center, with the two halves of the frame subtly offset at the break.", "out": "assets/sigils/bearing_split.png",    "size": 256, "post": "alpha" },
-    { "id": "sigil_bearing_ascendant","style": "sigil_bearing", "prompt": "three small arrows or chevrons rising along the bottom edge of the frame, pointing upward.", "out": "assets/sigils/bearing_ascendant.png","size": 256, "post": "alpha" },
-    { "id": "sigil_bearing_shrouded", "style": "sigil_bearing", "prompt": "wisps of mist or a torn veil drifting inward from the left and right edges, faint thin lines, center clear.", "out": "assets/sigils/bearing_shrouded.png", "size": 256, "post": "alpha" },
-    { "id": "sigil_bearing_radiant",  "style": "sigil_bearing", "prompt": "thin rays of light bursting outward from behind the center toward all four edges, the center itself empty.", "out": "assets/sigils/bearing_radiant.png",  "size": 256, "post": "alpha" },
-    { "id": "example_monster_skeleton_king", "style": "monster_card", "prompt": "EXAMPLE ENTRY, edit or delete: a skeletal king on a broken throne, tattered purple robes, iron crown, eyes burning green.", "out": "assets/_originals/gen/example_skeleton_king.png", "size": 1024, "skip": true }
+    {
+      "id": "sigil_shape_blade",
+      "style": "sigil_shape",
+      "prompt": "a straight double-edged longsword, point upward.",
+      "out": "assets/sigils/shape_blade.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_shape_shield",
+      "style": "sigil_shape",
+      "prompt": "a tall heater shield, seen straight on.",
+      "out": "assets/sigils/shape_shield.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_shape_flame",
+      "style": "sigil_shape",
+      "prompt": "a single rising flame with three tongues of fire.",
+      "out": "assets/sigils/shape_flame.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_shape_wing",
+      "style": "sigil_shape",
+      "prompt": "a single outstretched feathered wing, tip pointing up and outward.",
+      "out": "assets/sigils/shape_wing.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_shape_star",
+      "style": "sigil_shape",
+      "prompt": "an eight-pointed star with long and short rays alternating.",
+      "out": "assets/sigils/shape_star.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_shape_eye",
+      "style": "sigil_shape",
+      "prompt": "an open unblinking eye with a round iris.",
+      "out": "assets/sigils/shape_eye.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_shape_serpent",
+      "style": "sigil_shape",
+      "prompt": "a serpent coiled in an S-curve, head raised to strike.",
+      "out": "assets/sigils/shape_serpent.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_shape_tree",
+      "style": "sigil_shape",
+      "prompt": "an oak tree with a broad crown and visible roots.",
+      "out": "assets/sigils/shape_tree.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_bearing_crowned",
+      "style": "sigil_bearing",
+      "prompt": "a royal crown floating in the top fifth of the frame, centered horizontally.",
+      "out": "assets/sigils/bearing_crowned.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_bearing_broken",
+      "style": "sigil_bearing",
+      "prompt": "a single jagged lightning-like crack running diagonally through the whole frame, thin white line.",
+      "out": "assets/sigils/bearing_broken.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_bearing_chained",
+      "style": "sigil_bearing",
+      "prompt": "two lengths of heavy chain crossing the frame diagonally, corner to corner, like an X.",
+      "out": "assets/sigils/bearing_chained.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_bearing_thorns",
+      "style": "sigil_bearing",
+      "prompt": "a circular wreath of thorned briar vines hugging the edges of the frame, center empty.",
+      "out": "assets/sigils/bearing_thorns.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_bearing_split",
+      "style": "sigil_bearing",
+      "prompt": "a single clean vertical dividing line through the exact center, with the two halves of the frame subtly offset at the break.",
+      "out": "assets/sigils/bearing_split.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_bearing_ascendant",
+      "style": "sigil_bearing",
+      "prompt": "three small arrows or chevrons rising along the bottom edge of the frame, pointing upward.",
+      "out": "assets/sigils/bearing_ascendant.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_bearing_shrouded",
+      "style": "sigil_bearing",
+      "prompt": "wisps of mist or a torn veil drifting inward from the left and right edges, faint thin lines, center clear.",
+      "out": "assets/sigils/bearing_shrouded.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "sigil_bearing_radiant",
+      "style": "sigil_bearing",
+      "prompt": "thin rays of light bursting outward from behind the center toward all four edges, the center itself empty.",
+      "out": "assets/sigils/bearing_radiant.png",
+      "size": 256,
+      "post": "alpha"
+    },
+    {
+      "id": "example_monster_skeleton_king",
+      "style": "monster_card",
+      "prompt": "EXAMPLE ENTRY, edit or delete: a skeletal king on a broken throne, tattered purple robes, iron crown, eyes burning green.",
+      "out": "assets/_originals/gen/example_skeleton_king.png",
+      "size": 1024,
+      "skip": true
+    },
+    {
+      "id": "fx_dart",
+      "style": "fx_sprite",
+      "prompt": "a small comet-like dart of energy streaking toward the RIGHT — a bright teardrop head with a short tapering trail behind it.",
+      "out": "assets/fx/fx_dart.png",
+      "size": 128,
+      "post": "alpha"
+    },
+    {
+      "id": "fx_burst_fire",
+      "style": "fx_sprite",
+      "prompt": "an explosive burst of licking flames radiating outward from the center in all directions.",
+      "out": "assets/fx/fx_burst_fire.png",
+      "size": 128,
+      "post": "alpha"
+    },
+    {
+      "id": "fx_burst_frost",
+      "style": "fx_sprite",
+      "prompt": "a burst of jagged ice shards and frost spikes radiating outward from the center.",
+      "out": "assets/fx/fx_burst_frost.png",
+      "size": 128,
+      "post": "alpha"
+    },
+    {
+      "id": "fx_burst_holy",
+      "style": "fx_sprite",
+      "prompt": "a radiant sunburst of clean straight light rays shining outward from the center.",
+      "out": "assets/fx/fx_burst_holy.png",
+      "size": 128,
+      "post": "alpha"
+    },
+    {
+      "id": "fx_spark",
+      "style": "fx_sprite",
+      "prompt": "a single elegant four-pointed star glint, like light catching a jewel.",
+      "out": "assets/fx/fx_spark.png",
+      "size": 128,
+      "post": "alpha"
+    },
+    {
+      "id": "fx_wisp",
+      "style": "fx_sprite",
+      "prompt": "a single curling wisp of smoke rising and twisting, delicate and thin.",
+      "out": "assets/fx/fx_wisp.png",
+      "size": 128,
+      "post": "alpha"
+    }
   ]
 }

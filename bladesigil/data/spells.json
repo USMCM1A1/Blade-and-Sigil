@@ -1,22 +1,30 @@
 {
-  "_comment": "MAGIC v2 (design doc v3). Every spell has a 'level' 1-5; its COST IS COMPUTED by the engine (level x 2 + 1 = 3/5/7/9/11 SP) so a cost can never desync from a level — do not add a 'cost' field. WHO can cast: 'classes' (ids from classes.json), gated by character level (spell level 1 at char levels 1-3, 2 at 4-7, 3 at 8-11, 4 at 12-15, 5 at 16-20). Fields: stat = ability whose modifier boosts the spell (int = arcane, wis = divine); type = damage | heal | buff | afflict; range/area in battle squares (area 1 = a 3x3 burst, area 2 = 5x5). Damage spells never miss: each target rolls a save (d20 + bonus vs DC 10 + spell level + caster's stat mod) — 'save' names the resisting ability; success = half damage. auto = true means no save at all. Buffs last the battle: 'hit' adds to attack rolls, 'dmg' to damage; targets = self | allies. 'condition': {id, rounds} lands on targets that FAIL their save. type 'afflict' = no damage, just the condition (save or suffer). 'rare': true = scroll-only lore — nobody learns it from training; only a Wizard-lane spellbook can copy it in from a scroll (items.json 'scroll' items name a spell id). DAMAGE GUIDELINE (doc): ~2d6 per spell level. All spells below level 1 are new CONTENT-FLAG drafts — rename, retune, add, and cut freely!",
+  "_comment": "MAGIC v2 (design doc v3). Every spell has a 'level' 1-5; its COST IS COMPUTED by the engine (level x 2 + 1 = 3/5/7/9/11 SP) so a cost can never desync from a level — do not add a 'cost' field. WHO can cast: 'classes' (ids from classes.json), gated by character level (spell level 1 at char levels 1-3, 2 at 4-7, 3 at 8-11, 4 at 12-15, 5 at 16-20). Fields: stat = ability whose modifier boosts the spell (int = arcane, wis = divine); type = damage | heal | buff | afflict; range/area in battle squares (area 1 = a 3x3 burst, area 2 = 5x5). Damage spells never miss: each target rolls a save (d20 + bonus vs DC 10 + spell level + caster's stat mod) — 'save' names the resisting ability; success = half damage. auto = true means no save at all. Buffs last the battle: 'hit' adds to attack rolls, 'dmg' to damage; targets = self | allies. 'condition': {id, rounds} lands on targets that FAIL their save. type 'afflict' = no damage, just the condition (save or suffer). 'rare': true = scroll-only lore — nobody learns it from training; only a Wizard-lane spellbook can copy it in from a scroll (items.json 'scroll' items name a spell id). DAMAGE GUIDELINE (doc): ~2d6 per spell level. All spells below level 1 are new CONTENT-FLAG drafts — rename, retune, add, and cut freely! VISUALS: optional \"fx\" per spell — {\"kind\": bolt (a dart travels caster→target) | beam (a straight ray connects them) | lightning (a jagged crack) | burst (no travel — the blast just blooms at the target, washing every square it caught) | sparkle | wisp, \"color\": any hex, \"burst\": fire | frost | holy (adds that blast sprite at impact — bolts and beams may carry one)}. Spells without fx get sensible defaults by type. Sprites live in assets/fx/ (regenerate via the art manifest).",
   "spells": {
     "magic_missile": {
       "name": "Magic Missile",
       "level": 1,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "1d4+1",
       "range": 4,
       "area": 0,
       "auto": true,
-      "description": "A dart of force that never misses"
+      "description": "A dart of force that never misses",
+      "fx": {
+        "kind": "bolt",
+        "color": "#9fc8ff"
+      }
     },
     "lesser_fireball": {
       "name": "Lesser Fireball",
       "level": 1,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "3d6",
@@ -24,172 +32,281 @@
       "area": 1,
       "description": "A burst of flame — it does not spare your friends!",
       "save": "dex",
-      "condition": { "id": "burning", "rounds": 2 }
+      "condition": {
+        "id": "burning",
+        "rounds": 2
+      },
+      "fx": {
+        "kind": "bolt",
+        "color": "#ff9a3a",
+        "burst": "fire"
+      }
     },
     "poison_dart": {
       "name": "Poison Dart",
       "level": 1,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "1d3",
       "range": 5,
       "area": 0,
       "save": "con",
-      "condition": { "id": "poison", "rounds": 3 },
-      "description": "A sliver of venom — the wound is small, the poison is not"
+      "condition": {
+        "id": "poison",
+        "rounds": 3
+      },
+      "description": "A sliver of venom — the wound is small, the poison is not",
+      "fx": {
+        "kind": "bolt",
+        "color": "#7ec850"
+      }
     },
     "frost_lance": {
       "name": "Frost Lance",
       "level": 2,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "4d6",
       "range": 6,
       "area": 0,
       "save": "con",
-      "description": "A spear of killing cold for a single foe"
+      "description": "A spear of killing cold for a single foe",
+      "fx": {
+        "kind": "bolt",
+        "color": "#a8e0f0"
+      }
     },
     "paralyze": {
       "name": "Paralyze",
       "level": 2,
-      "classes": ["wizard", "priest"],
+      "classes": [
+        "wizard",
+        "priest"
+      ],
       "stat": "int",
       "type": "afflict",
       "range": 3,
       "area": 0,
-      "condition": { "id": "paralysis", "rounds": 2 },
-      "description": "Lock a creature's limbs — it loses its next two turns"
+      "condition": {
+        "id": "paralysis",
+        "rounds": 2
+      },
+      "description": "Lock a creature's limbs — it loses its next two turns",
+      "fx": {
+        "kind": "wisp",
+        "color": "#8fb8e8"
+      }
     },
     "witchfire": {
       "name": "Witchfire",
       "level": 2,
       "rare": true,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "3d6",
       "range": 6,
       "area": 1,
       "save": "dex",
-      "condition": { "id": "burning", "rounds": 3 },
-      "description": "Green flame that clings and clings — scroll-lore, found not taught"
+      "condition": {
+        "id": "burning",
+        "rounds": 3
+      },
+      "description": "Green flame that clings and clings — scroll-lore, found not taught",
+      "fx": {
+        "kind": "bolt",
+        "color": "#7ee87e",
+        "burst": "fire"
+      }
     },
     "fireball": {
       "name": "Fireball",
       "level": 3,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "6d6",
       "range": 7,
       "area": 1,
       "save": "dex",
-      "condition": { "id": "burning", "rounds": 2 },
-      "description": "The real thing — a roaring sphere of flame"
+      "condition": {
+        "id": "burning",
+        "rounds": 2
+      },
+      "description": "The real thing — a roaring sphere of flame",
+      "fx": {
+        "kind": "bolt",
+        "color": "#ff8c3a",
+        "burst": "fire"
+      }
     },
     "lightning_bolt": {
       "name": "Lightning Bolt",
       "level": 3,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "7d6",
       "range": 8,
       "area": 0,
       "save": "dex",
-      "description": "A crack of sky-fire for one unlucky foe"
+      "description": "A crack of sky-fire for one unlucky foe",
+      "fx": {
+        "kind": "lightning",
+        "color": "#cfe6ff"
+      }
     },
     "ice_storm": {
       "name": "Ice Storm",
       "level": 4,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "8d6",
       "range": 7,
       "area": 1,
       "save": "con",
-      "description": "Hail like fists — a battering burst of frost"
+      "description": "Hail like fists — a battering burst of frost",
+      "fx": {
+        "kind": "burst",
+        "color": "#a8e0f0",
+        "burst": "frost"
+      }
     },
     "arcane_ruin": {
       "name": "Arcane Ruin",
       "level": 4,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "9d6",
       "range": 8,
       "area": 0,
       "save": "wis",
-      "description": "Unmaking, aimed — one target's very substance rebels"
+      "description": "Unmaking, aimed — one target's very substance rebels",
+      "fx": {
+        "kind": "beam",
+        "color": "#b08fe8"
+      }
     },
     "starfall": {
       "name": "Starfall",
       "level": 4,
       "rare": true,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "9d6",
       "range": 8,
       "area": 2,
       "save": "dex",
-      "description": "A piece of the night sky, called down — scroll-lore, found not taught"
+      "description": "A piece of the night sky, called down — scroll-lore, found not taught",
+      "fx": {
+        "kind": "burst",
+        "color": "#e8e2d0",
+        "burst": "holy"
+      }
     },
     "meteor_swarm": {
       "name": "Meteor Swarm",
       "level": 5,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "10d6",
       "range": 8,
       "area": 2,
       "save": "dex",
-      "condition": { "id": "burning", "rounds": 2 },
-      "description": "Burning stones from a torn sky, across a great burst"
+      "condition": {
+        "id": "burning",
+        "rounds": 2
+      },
+      "description": "Burning stones from a torn sky, across a great burst",
+      "fx": {
+        "kind": "bolt",
+        "color": "#ff8c3a",
+        "burst": "fire"
+      }
     },
     "disintegrate": {
       "name": "Disintegrate",
       "level": 5,
-      "classes": ["wizard"],
+      "classes": [
+        "wizard"
+      ],
       "stat": "int",
       "type": "damage",
       "dice": "12d6",
       "range": 6,
       "area": 0,
       "save": "con",
-      "description": "A thin green ray. What it touches, mostly, stops being"
+      "description": "A thin green ray. What it touches, mostly, stops being",
+      "fx": {
+        "kind": "beam",
+        "color": "#7ee87e"
+      }
     },
     "cure_light_wounds": {
       "name": "Cure Light Wounds",
       "level": 1,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "heal",
       "dice": "1d8",
       "range": 3,
       "area": 0,
-      "description": "Mends the wounds of one living ally"
+      "description": "Mends the wounds of one living ally",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#6ad46a"
+      }
     },
     "holy_bolt": {
       "name": "Holy Bolt",
       "level": 1,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "damage",
       "dice": "2d6",
       "range": 5,
       "area": 0,
       "description": "A lance of searing light",
-      "save": "wis"
+      "save": "wis",
+      "fx": {
+        "kind": "beam",
+        "color": "#ffe9a8"
+      }
     },
     "bless": {
       "name": "Bless",
       "level": 1,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "buff",
       "hit": 1,
@@ -197,35 +314,53 @@
       "targets": "allies",
       "range": 0,
       "area": 0,
-      "description": "The whole party strikes truer (+1 to hit this battle)"
+      "description": "The whole party strikes truer (+1 to hit this battle)",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#d4a94e"
+      }
     },
     "cure_serious_wounds": {
       "name": "Cure Serious Wounds",
       "level": 2,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "heal",
       "dice": "2d8",
       "range": 3,
       "area": 0,
-      "description": "Closes wounds that would scar a lesser blessing"
+      "description": "Closes wounds that would scar a lesser blessing",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#6ad46a"
+      }
     },
     "searing_ray": {
       "name": "Searing Ray",
       "level": 2,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "damage",
       "dice": "4d6",
       "range": 6,
       "area": 0,
       "save": "wis",
-      "description": "Focused daylight, hot enough to judge"
+      "description": "Focused daylight, hot enough to judge",
+      "fx": {
+        "kind": "beam",
+        "color": "#ffd24a"
+      }
     },
     "battle_hymn": {
       "name": "Battle Hymn",
       "level": 2,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "buff",
       "hit": 0,
@@ -233,12 +368,18 @@
       "targets": "allies",
       "range": 0,
       "area": 0,
-      "description": "A marching song with teeth (+1 damage for the party this battle)"
+      "description": "A marching song with teeth (+1 damage for the party this battle)",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#e0912f"
+      }
     },
     "prayer": {
       "name": "Prayer",
       "level": 3,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "buff",
       "hit": 1,
@@ -246,71 +387,112 @@
       "targets": "allies",
       "range": 0,
       "area": 0,
-      "description": "The party fights as if watched over (+1 hit, +1 damage this battle)"
+      "description": "The party fights as if watched over (+1 hit, +1 damage this battle)",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#ffe9a8"
+      }
     },
     "pillar_of_light": {
       "name": "Pillar of Light",
       "level": 3,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "damage",
       "dice": "6d6",
       "range": 6,
       "area": 0,
       "save": "wis",
-      "description": "A column of noon falls on one foe"
+      "description": "A column of noon falls on one foe",
+      "fx": {
+        "kind": "beam",
+        "color": "#fff3c8"
+      }
     },
     "cure_critical_wounds": {
       "name": "Cure Critical Wounds",
       "level": 4,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "heal",
       "dice": "4d8",
       "range": 4,
       "area": 0,
-      "description": "Calls an ally back from death's doorstep"
+      "description": "Calls an ally back from death's doorstep",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#6ad46a"
+      }
     },
     "wrath_of_heaven": {
       "name": "Wrath of Heaven",
       "level": 4,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "damage",
       "dice": "8d6",
       "range": 6,
       "area": 1,
       "save": "wis",
-      "description": "The sky opens. It is not pleased"
+      "description": "The sky opens. It is not pleased",
+      "fx": {
+        "kind": "burst",
+        "color": "#ffe9a8",
+        "burst": "holy"
+      }
     },
     "great_restoration": {
       "name": "Great Restoration",
       "level": 5,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "heal",
       "dice": "8d8",
       "range": 4,
       "area": 0,
-      "description": "Near-total renewal for one ally — flesh remembers its best day"
+      "description": "Near-total renewal for one ally — flesh remembers its best day",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#8fe8b0"
+      }
     },
     "holy_word": {
       "name": "Holy Word",
       "level": 5,
-      "classes": ["priest"],
+      "classes": [
+        "priest"
+      ],
       "stat": "wis",
       "type": "damage",
       "dice": "10d6",
       "range": 5,
       "area": 0,
       "save": "wis",
-      "condition": { "id": "paralysis", "rounds": 1 },
-      "description": "A syllable of the first language. Few remain standing to hear its echo"
+      "condition": {
+        "id": "paralysis",
+        "rounds": 1
+      },
+      "description": "A syllable of the first language. Few remain standing to hear its echo",
+      "fx": {
+        "kind": "burst",
+        "color": "#fff3c8",
+        "burst": "holy"
+      }
     },
     "wicked_weapon": {
       "name": "Wicked Weapon",
       "level": 1,
-      "classes": ["spellblade"],
+      "classes": [
+        "spellblade"
+      ],
       "stat": "int",
       "type": "buff",
       "hit": 1,
@@ -318,7 +500,11 @@
       "targets": "self",
       "range": 0,
       "area": 0,
-      "description": "The blade hungers (+1 hit, +2 damage this battle)"
+      "description": "The blade hungers (+1 hit, +2 damage this battle)",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#b08fe8"
+      }
     }
   }
 }
