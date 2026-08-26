@@ -1,101 +1,969 @@
 {
-  "_comment": "The endless dungeon (Phase 5). Floors are generated from these five TIERS — each covers a span of floor depths and says what spawns there. 'styles': 'rooms' (halls and corridors) or 'caves' (twisting caverns; caves have no doors). 'monsters': id -> weight (higher = more common; ids from monsters.json). 'monster_count'/'chest_count'/'trap_count'/'secret_doors': dice strings rolled per floor. 'traps': which trap ids (from 'traps' below) this tier uses. 'rest_ambush': camp-attack chance. Floors deeper than the last tier keep using it. TRAPS: 'dice' damage, 'save' ability + 'dc' for half, optional 'condition' on a failed save. The BOSS floor is hand-drawn here — same format as a level file — and unlocks when every hero is level 20. Edit freely!",
-  "floor_size": { "w": [38, 46], "h": [22, 28] },
+  "_comment": "The endless dungeon (Phase 5). Floors are generated from these TIERS (2026-08-26: one per floor 1-20, the designer's monster-by-level list; floors 21+ reuse floor 20's) \u2014 each covers a span of floor depths and says what spawns there. 'styles': 'rooms' (halls and corridors) or 'caves' (twisting caverns; caves have no doors). 'monsters': id -> weight (higher = more common; ids from monsters.json). 'monster_count'/'chest_count'/'trap_count'/'secret_doors': dice strings rolled per floor. 'traps': which trap ids (from 'traps' below) this tier uses. 'rest_ambush': camp-attack chance. Floors deeper than the last tier keep using it. TRAPS: 'dice' damage, 'save' ability + 'dc' for half, optional 'condition' on a failed save. The BOSS floor is hand-drawn here \u2014 same format as a level file \u2014 and unlocks when every hero is level 20. Edit freely!",
+  "floor_size": {
+    "w": [
+      38,
+      46
+    ],
+    "h": [
+      22,
+      28
+    ]
+  },
   "tiers": [
     {
-      "floors": [1, 4],
+      "floors": [
+        1,
+        1
+      ],
       "name": "The Vermin Warrens",
-      "styles": ["rooms", "caves"],
-      "monsters": { "giant_rat": 3, "goblin": 3, "skeleton": 1 },
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "giant_rat": 3,
+        "skeleton": 2
+      },
       "monster_count": "2d3+2",
       "chest_count": "1d3",
       "chest_gold": "3d20+20",
       "chest_items": [
-        { "id": "health_potion", "chance": 0.5 },
-        { "id": "antidote_potion", "chance": 0.3 },
-        { "id": "rations", "chance": 0.4 }
+        {
+          "id": "health_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.3
+        },
+        {
+          "id": "rations",
+          "chance": 0.4
+        }
       ],
-      "traps": ["spike_pit"],
+      "traps": [
+        "spike_pit"
+      ],
       "trap_count": "1d2-1",
       "secret_doors": "1d2-1",
       "rest_ambush": 0.25
     },
     {
-      "floors": [5, 8],
+      "floors": [
+        2,
+        2
+      ],
+      "name": "The Vermin Warrens",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "giant_rat": 3,
+        "skeleton": 2,
+        "goblin": 1
+      },
+      "monster_count": "2d3+2",
+      "chest_count": "1d3",
+      "chest_gold": "3d20+20",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.3
+        },
+        {
+          "id": "rations",
+          "chance": 0.4
+        }
+      ],
+      "traps": [
+        "spike_pit"
+      ],
+      "trap_count": "1d2-1",
+      "secret_doors": "1d2-1",
+      "rest_ambush": 0.25
+    },
+    {
+      "floors": [
+        3,
+        3
+      ],
+      "name": "The Vermin Warrens",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "skeleton": 3,
+        "goblin": 2,
+        "large_spider": 1
+      },
+      "monster_count": "2d3+2",
+      "chest_count": "1d3",
+      "chest_gold": "3d20+20",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.3
+        },
+        {
+          "id": "rations",
+          "chance": 0.4
+        }
+      ],
+      "traps": [
+        "spike_pit"
+      ],
+      "trap_count": "1d2-1",
+      "secret_doors": "1d2-1",
+      "rest_ambush": 0.25
+    },
+    {
+      "floors": [
+        4,
+        4
+      ],
+      "name": "The Vermin Warrens",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "goblin": 3,
+        "large_spider": 2,
+        "orc": 1
+      },
+      "monster_count": "2d3+2",
+      "chest_count": "1d3",
+      "chest_gold": "3d20+20",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.3
+        },
+        {
+          "id": "rations",
+          "chance": 0.4
+        }
+      ],
+      "traps": [
+        "spike_pit"
+      ],
+      "trap_count": "1d2-1",
+      "secret_doors": "1d2-1",
+      "rest_ambush": 0.25
+    },
+    {
+      "floors": [
+        5,
+        5
+      ],
       "name": "The Bone Galleries",
-      "styles": ["rooms", "caves"],
-      "monsters": { "goblin": 3, "skeleton": 3, "orc": 2 },
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "large_spider": 3,
+        "orc": 2,
+        "zombie": 1
+      },
       "monster_count": "2d4+3",
       "chest_count": "1d3",
       "chest_gold": "5d20+40",
       "chest_items": [
-        { "id": "health_potion", "chance": 0.6 },
-        { "id": "antidote_potion", "chance": 0.35 },
-        { "id": "rations", "chance": 0.4 },
-        { "id": "longsword", "chance": 0.1 },
-        { "id": "wooden_shield", "chance": 0.1 }
+        {
+          "id": "health_potion",
+          "chance": 0.6
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.35
+        },
+        {
+          "id": "rations",
+          "chance": 0.4
+        },
+        {
+          "id": "longsword",
+          "chance": 0.1
+        },
+        {
+          "id": "wooden_shield",
+          "chance": 0.1
+        }
       ],
-      "traps": ["spike_pit", "dart_trap"],
+      "traps": [
+        "spike_pit",
+        "dart_trap"
+      ],
       "trap_count": "1d3-1",
       "secret_doors": "1d2-1",
       "rest_ambush": 0.3
     },
     {
-      "floors": [9, 12],
+      "floors": [
+        6,
+        6
+      ],
+      "name": "The Bone Galleries",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "large_spider": 3,
+        "orc": 3,
+        "zombie": 2,
+        "hobgoblin": 2,
+        "ghoul": 1,
+        "animated_sword": 1
+      },
+      "monster_count": "2d4+3",
+      "chest_count": "1d3",
+      "chest_gold": "5d20+40",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.6
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.35
+        },
+        {
+          "id": "rations",
+          "chance": 0.4
+        },
+        {
+          "id": "longsword",
+          "chance": 0.1
+        },
+        {
+          "id": "wooden_shield",
+          "chance": 0.1
+        }
+      ],
+      "traps": [
+        "spike_pit",
+        "dart_trap"
+      ],
+      "trap_count": "1d3-1",
+      "secret_doors": "1d2-1",
+      "rest_ambush": 0.3
+    },
+    {
+      "floors": [
+        7,
+        7
+      ],
+      "name": "The Bone Galleries",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "orc": 3,
+        "zombie": 3,
+        "hobgoblin": 2,
+        "mephit": 2,
+        "ghoul": 1
+      },
+      "monster_count": "2d4+3",
+      "chest_count": "1d3",
+      "chest_gold": "5d20+40",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.6
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.35
+        },
+        {
+          "id": "rations",
+          "chance": 0.4
+        },
+        {
+          "id": "longsword",
+          "chance": 0.1
+        },
+        {
+          "id": "wooden_shield",
+          "chance": 0.1
+        }
+      ],
+      "traps": [
+        "spike_pit",
+        "dart_trap"
+      ],
+      "trap_count": "1d3-1",
+      "secret_doors": "1d2-1",
+      "rest_ambush": 0.3
+    },
+    {
+      "floors": [
+        8,
+        8
+      ],
+      "name": "The Bone Galleries",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "bugbear": 3,
+        "mephit": 3,
+        "wight": 2,
+        "monstrous_spider": 2,
+        "gelatinous_cube": 1,
+        "black_pudding": 1
+      },
+      "monster_count": "2d4+3",
+      "chest_count": "1d3",
+      "chest_gold": "5d20+40",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.6
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.35
+        },
+        {
+          "id": "rations",
+          "chance": 0.4
+        },
+        {
+          "id": "longsword",
+          "chance": 0.1
+        },
+        {
+          "id": "wooden_shield",
+          "chance": 0.1
+        }
+      ],
+      "traps": [
+        "spike_pit",
+        "dart_trap"
+      ],
+      "trap_count": "1d3-1",
+      "secret_doors": "1d2-1",
+      "rest_ambush": 0.3
+    },
+    {
+      "floors": [
+        9,
+        9
+      ],
       "name": "The Sunless Deep",
-      "styles": ["rooms", "caves"],
-      "monsters": { "skeleton": 3, "orc": 3 },
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "mephit": 3,
+        "wight": 3,
+        "bugbear": 2,
+        "shadow": 2,
+        "monstrous_spider": 1,
+        "animated_armor": 1
+      },
       "monster_count": "2d4+5",
       "chest_count": "1d3+1",
       "chest_gold": "8d20+80",
       "chest_items": [
-        { "id": "health_potion", "chance": 0.7 },
-        { "id": "antidote_potion", "chance": 0.4 },
-        { "id": "rations", "chance": 0.45 },
-        { "id": "ring_mail", "chance": 0.12 },
-        { "id": "spell_ring", "chance": 0.08 }
+        {
+          "id": "health_potion",
+          "chance": 0.7
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.4
+        },
+        {
+          "id": "rations",
+          "chance": 0.45
+        },
+        {
+          "id": "ring_mail",
+          "chance": 0.12
+        },
+        {
+          "id": "spell_ring",
+          "chance": 0.08
+        }
       ],
-      "traps": ["dart_trap", "flame_jet"],
+      "traps": [
+        "dart_trap",
+        "flame_jet"
+      ],
       "trap_count": "1d3",
       "secret_doors": "1d3-1",
       "rest_ambush": 0.35
     },
     {
-      "floors": [13, 16],
+      "floors": [
+        10,
+        10
+      ],
+      "name": "The Sunless Deep",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "wight": 3,
+        "troll": 3,
+        "shadow": 3,
+        "elemental_small": 2,
+        "animated_armor": 2,
+        "succubus": 1,
+        "red_slaad": 1
+      },
+      "monster_count": "2d4+5",
+      "chest_count": "1d3+1",
+      "chest_gold": "8d20+80",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.7
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.4
+        },
+        {
+          "id": "rations",
+          "chance": 0.45
+        },
+        {
+          "id": "ring_mail",
+          "chance": 0.12
+        },
+        {
+          "id": "spell_ring",
+          "chance": 0.08
+        }
+      ],
+      "traps": [
+        "dart_trap",
+        "flame_jet"
+      ],
+      "trap_count": "1d3",
+      "secret_doors": "1d3-1",
+      "rest_ambush": 0.35
+    },
+    {
+      "floors": [
+        11,
+        11
+      ],
+      "name": "The Sunless Deep",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "wight": 3,
+        "troll": 3,
+        "shadow": 2,
+        "elemental_small": 2,
+        "black_pudding": 1,
+        "blue_slaad": 1
+      },
+      "monster_count": "2d4+5",
+      "chest_count": "1d3+1",
+      "chest_gold": "8d20+80",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.7
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.4
+        },
+        {
+          "id": "rations",
+          "chance": 0.45
+        },
+        {
+          "id": "ring_mail",
+          "chance": 0.12
+        },
+        {
+          "id": "spell_ring",
+          "chance": 0.08
+        }
+      ],
+      "traps": [
+        "dart_trap",
+        "flame_jet"
+      ],
+      "trap_count": "1d3",
+      "secret_doors": "1d3-1",
+      "rest_ambush": 0.35
+    },
+    {
+      "floors": [
+        12,
+        12
+      ],
+      "name": "The Sunless Deep",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "spectre": 3,
+        "illithid": 3,
+        "elemental_medium": 3,
+        "flesh_golem": 2,
+        "black_pudding": 2,
+        "incubus": 1,
+        "green_slaad": 1
+      },
+      "monster_count": "2d4+5",
+      "chest_count": "1d3+1",
+      "chest_gold": "8d20+80",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.7
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.4
+        },
+        {
+          "id": "rations",
+          "chance": 0.45
+        },
+        {
+          "id": "ring_mail",
+          "chance": 0.12
+        },
+        {
+          "id": "spell_ring",
+          "chance": 0.08
+        }
+      ],
+      "traps": [
+        "dart_trap",
+        "flame_jet"
+      ],
+      "trap_count": "1d3",
+      "secret_doors": "1d3-1",
+      "rest_ambush": 0.35
+    },
+    {
+      "floors": [
+        13,
+        13
+      ],
       "name": "The Screaming Halls",
-      "styles": ["rooms", "caves"],
-      "monsters": { "skeleton": 2, "orc": 3 },
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "spectre": 3,
+        "illithid": 3,
+        "elemental_medium": 2,
+        "vampire": 2,
+        "grey_slaad": 1
+      },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
       "chest_gold": "10d20+150",
       "chest_items": [
-        { "id": "health_potion", "chance": 0.8 },
-        { "id": "antidote_potion", "chance": 0.5 },
-        { "id": "rations", "chance": 0.5 },
-        { "id": "chain_mail", "chance": 0.12 },
-        { "id": "warding_amulet", "chance": 0.1 }
+        {
+          "id": "health_potion",
+          "chance": 0.8
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "rations",
+          "chance": 0.5
+        },
+        {
+          "id": "chain_mail",
+          "chance": 0.12
+        },
+        {
+          "id": "warding_amulet",
+          "chance": 0.1
+        }
       ],
-      "traps": ["flame_jet", "crushing_block"],
+      "traps": [
+        "flame_jet",
+        "crushing_block"
+      ],
       "trap_count": "1d3",
       "secret_doors": "1d3-1",
       "rest_ambush": 0.4
     },
     {
-      "floors": [17, 20],
+      "floors": [
+        14,
+        14
+      ],
+      "name": "The Screaming Halls",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "mummy": 3,
+        "elemental_large": 3,
+        "beholder": 2,
+        "clay_golem": 2,
+        "drider": 1,
+        "dao": 1
+      },
+      "monster_count": "3d4+6",
+      "chest_count": "1d3+1",
+      "chest_gold": "10d20+150",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.8
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "rations",
+          "chance": 0.5
+        },
+        {
+          "id": "chain_mail",
+          "chance": 0.12
+        },
+        {
+          "id": "warding_amulet",
+          "chance": 0.1
+        }
+      ],
+      "traps": [
+        "flame_jet",
+        "crushing_block"
+      ],
+      "trap_count": "1d3",
+      "secret_doors": "1d3-1",
+      "rest_ambush": 0.4
+    },
+    {
+      "floors": [
+        15,
+        15
+      ],
+      "name": "The Screaming Halls",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "mummy": 3,
+        "alhoon": 3,
+        "elemental_large": 2,
+        "beholder": 2,
+        "death_slaad": 1,
+        "djinn": 1
+      },
+      "monster_count": "3d4+6",
+      "chest_count": "1d3+1",
+      "chest_gold": "10d20+150",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.8
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "rations",
+          "chance": 0.5
+        },
+        {
+          "id": "chain_mail",
+          "chance": 0.12
+        },
+        {
+          "id": "warding_amulet",
+          "chance": 0.1
+        }
+      ],
+      "traps": [
+        "flame_jet",
+        "crushing_block"
+      ],
+      "trap_count": "1d3",
+      "secret_doors": "1d3-1",
+      "rest_ambush": 0.4
+    },
+    {
+      "floors": [
+        16,
+        16
+      ],
+      "name": "The Screaming Halls",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "death_knight": 3,
+        "alhoon": 3,
+        "iron_golem": 2,
+        "efreet": 1
+      },
+      "monster_count": "3d4+6",
+      "chest_count": "1d3+1",
+      "chest_gold": "10d20+150",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.8
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "rations",
+          "chance": 0.5
+        },
+        {
+          "id": "chain_mail",
+          "chance": 0.12
+        },
+        {
+          "id": "warding_amulet",
+          "chance": 0.1
+        }
+      ],
+      "traps": [
+        "flame_jet",
+        "crushing_block"
+      ],
+      "trap_count": "1d3",
+      "secret_doors": "1d3-1",
+      "rest_ambush": 0.4
+    },
+    {
+      "floors": [
+        17,
+        17
+      ],
       "name": "The Abyssal Vaults",
-      "styles": ["rooms", "caves"],
-      "monsters": { "orc": 3, "skeleton": 1 },
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "death_knight": 3,
+        "mummy_lord": 3,
+        "drow_priestess": 2,
+        "drow_blademaster": 2,
+        "white_slaad": 1
+      },
       "monster_count": "3d4+8",
       "chest_count": "2d3",
       "chest_gold": "12d20+250",
       "chest_items": [
-        { "id": "health_potion", "chance": 0.9 },
-        { "id": "antidote_potion", "chance": 0.5 },
-        { "id": "rations", "chance": 0.5 },
-        { "id": "elven_blade", "chance": 0.1 },
-        { "id": "spell_ring", "chance": 0.15 }
+        {
+          "id": "health_potion",
+          "chance": 0.9
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "rations",
+          "chance": 0.5
+        },
+        {
+          "id": "elven_blade",
+          "chance": 0.1
+        },
+        {
+          "id": "spell_ring",
+          "chance": 0.15
+        }
       ],
-      "traps": ["crushing_block", "soul_fire"],
+      "traps": [
+        "crushing_block",
+        "soul_fire"
+      ],
+      "trap_count": "1d4",
+      "secret_doors": "1d3",
+      "rest_ambush": 0.45
+    },
+    {
+      "floors": [
+        18,
+        18
+      ],
+      "name": "The Abyssal Vaults",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "vampire_lord": 3,
+        "mad_wizard": 2,
+        "undead_beholder": 1
+      },
+      "monster_count": "3d4+8",
+      "chest_count": "2d3",
+      "chest_gold": "12d20+250",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.9
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "rations",
+          "chance": 0.5
+        },
+        {
+          "id": "elven_blade",
+          "chance": 0.1
+        },
+        {
+          "id": "spell_ring",
+          "chance": 0.15
+        }
+      ],
+      "traps": [
+        "crushing_block",
+        "soul_fire"
+      ],
+      "trap_count": "1d4",
+      "secret_doors": "1d3",
+      "rest_ambush": 0.45
+    },
+    {
+      "floors": [
+        19,
+        19
+      ],
+      "name": "The Abyssal Vaults",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "lich": 3,
+        "black_slaad": 2,
+        "efreeti_lord": 1
+      },
+      "monster_count": "3d4+8",
+      "chest_count": "2d3",
+      "chest_gold": "12d20+250",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.9
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "rations",
+          "chance": 0.5
+        },
+        {
+          "id": "elven_blade",
+          "chance": 0.1
+        },
+        {
+          "id": "spell_ring",
+          "chance": 0.15
+        }
+      ],
+      "traps": [
+        "crushing_block",
+        "soul_fire"
+      ],
+      "trap_count": "1d4",
+      "secret_doors": "1d3",
+      "rest_ambush": 0.45
+    },
+    {
+      "floors": [
+        20,
+        20
+      ],
+      "name": "The Abyssal Vaults",
+      "styles": [
+        "rooms",
+        "caves"
+      ],
+      "monsters": {
+        "pit_fiend": 3,
+        "slaad_lord": 3,
+        "elder_brain": 2,
+        "red_dragon": 1
+      },
+      "monster_count": "3d4+8",
+      "chest_count": "2d3",
+      "chest_gold": "12d20+250",
+      "chest_items": [
+        {
+          "id": "health_potion",
+          "chance": 0.9
+        },
+        {
+          "id": "antidote_potion",
+          "chance": 0.5
+        },
+        {
+          "id": "rations",
+          "chance": 0.5
+        },
+        {
+          "id": "elven_blade",
+          "chance": 0.1
+        },
+        {
+          "id": "spell_ring",
+          "chance": 0.15
+        }
+      ],
+      "traps": [
+        "crushing_block",
+        "soul_fire"
+      ],
       "trap_count": "1d4",
       "secret_doors": "1d3",
       "rest_ambush": 0.45
@@ -113,14 +981,20 @@
       "dice": "1d4",
       "save": "dex",
       "dc": 13,
-      "condition": { "id": "poison", "rounds": 3 }
+      "condition": {
+        "id": "poison",
+        "rounds": 3
+      }
     },
     "flame_jet": {
       "name": "Flame Jet",
       "dice": "2d6",
       "save": "dex",
       "dc": 14,
-      "condition": { "id": "burning", "rounds": 2 }
+      "condition": {
+        "id": "burning",
+        "rounds": 2
+      }
     },
     "crushing_block": {
       "name": "Crushing Block",
@@ -133,7 +1007,10 @@
       "dice": "4d6",
       "save": "wis",
       "dc": 16,
-      "condition": { "id": "burning", "rounds": 3 }
+      "condition": {
+        "id": "burning",
+        "rounds": 3
+      }
     }
   },
   "boss": {
@@ -142,8 +1019,13 @@
     "chest_gold": "20d20+500",
     "chest_items": [],
     "rest_ambush": 0,
-    "tactics": ["room"],
-    "legend": { "B": "dread_sovereign", "o": "orc" },
+    "tactics": [
+      "room"
+    ],
+    "legend": {
+      "B": "dread_sovereign",
+      "o": "orc"
+    },
     "map": [
       "#####################",
       "#####...........#####",

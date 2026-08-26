@@ -5,6 +5,21 @@
 import { abilityMod } from './rules.js';
 import { classProg, laneOf, riteTier } from './progression.js';
 import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed } from './magic.js';
+import * as audio from './audio.js';
+
+// Every UI button clicks (designer's pick 2026-08-26: GAM_09) — except where
+// the moment already has its own voice (one sound means one thing): the
+// spellbook's prepare/set-aside/copy buttons speak as the book, and the whole
+// leveling flow (the Level Up button, the #choice fork/pick/Rite modals, the
+// #levelup summary & milestone cards) speaks only as leveling/the Rite —
+// designer's ruling 2026-08-26: "it should not be both".
+document.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b || b.disabled) return;
+  if (b.id === 'eq-levelup' || b.closest('#choice') || b.closest('#levelup')) return;
+  if (b.dataset.prep || b.dataset.unprep || b.dataset.copy) audio.play('spellbook');
+  else audio.play('button_click');
+});
 
 // A one-line designer-friendly summary of what a piece of gear does.
 function gearStats(def) {
@@ -444,6 +459,7 @@ export function closeBuilding() {
 
 export function openBuilding(game, kind) {
   document.getElementById('building').style.display = 'block';
+  if (kind === 'shop') audio.play('shop'); // the bell rings as you ENTER (2026-08-26); buying plays 'purchase'
   renderBuilding(game, kind);
 }
 

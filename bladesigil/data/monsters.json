@@ -1,10 +1,10 @@
 {
-  "_comment": "Phase 1 starter bestiary. 'ac' is the monster's armor bonus: attackers must roll d20 + bonuses >= 10 + ac to hit. 'damage' is a dice string. 'xp' is awarded to each party member on a kill. 'speed': how many player turns pass between monster moves (1 = every turn, 2 = every other turn). 'save': the monster's saving-throw bonus against spells (d20 + save vs the spell's DC; success = half damage). 'inflicts': {condition, rounds, dc} \u2014 on a hit, the victim saves (d20 + ability mod vs dc) or gains the condition.",
+  "_comment": "The bestiary. Stats for the 52 monsters added 2026-08-26 are Claude's PROPOSALS scaled from the original rat/goblin/skeleton/orc curve \u2014 retune freely! 'slow' monsters have speed 2 (act on even rounds). 'inflicts' rides a hit: condition id from conditions.json, rounds, save DC. Sprites in assets/enemies/gen/ come from the art pipeline (data/art_manifest.json + tools/genart.py); a missing image just renders empty. NOTE: troll regeneration and undead level drain are NOT mechanics yet \u2014 flags for future design.",
   "monsters": {
     "giant_rat": {
       "name": "Giant Rat",
-      "sprite": "assets/enemies/giant_rat.jpg",
-      "sprite_dead": "assets/enemies/giant_rat_dead.png",
+      "sprite": "assets/enemies/gen/giant_rat.png",
+      "sprite_dead": "assets/enemies/gen/giant_rat_dead.png",
       "hp": 6,
       "ac": 2,
       "to_hit": 1,
@@ -20,8 +20,8 @@
     },
     "goblin": {
       "name": "Goblin",
-      "sprite": "assets/enemies/goblin.png",
-      "sprite_dead": "assets/enemies/goblin_dead.png",
+      "sprite": "assets/enemies/gen/goblin.png",
+      "sprite_dead": "assets/enemies/gen/goblin_dead.png",
       "hp": 8,
       "ac": 3,
       "to_hit": 1,
@@ -32,8 +32,8 @@
     },
     "skeleton": {
       "name": "Skeleton",
-      "sprite": "assets/enemies/skel_01.png",
-      "sprite_dead": "assets/enemies/skel_01_dead.png",
+      "sprite": "assets/enemies/gen/skeleton.png",
+      "sprite_dead": "assets/enemies/gen/skeleton_dead.png",
       "hp": 10,
       "ac": 4,
       "to_hit": 2,
@@ -43,7 +43,7 @@
       "save": 0
     },
     "dread_sovereign": {
-      "_comment": "PLACEHOLDER final boss (Phase 5) — designer: rename, restat, and commission art! Reached only when every hero is level 20.",
+      "_comment": "PLACEHOLDER final boss (Phase 5) \u2014 designer: rename, restat, and commission art! Reached only when every hero is level 20.",
       "name": "Dread Sovereign",
       "sprite": "assets/enemies/orc.jpg",
       "sprite_dead": "assets/enemies/orc_dead.png",
@@ -71,6 +71,775 @@
       "speed": 1,
       "xp": 25,
       "save": 2
+    },
+    "large_spider": {
+      "name": "Large Spider",
+      "sprite": "assets/enemies/gen/large_spider.png",
+      "sprite_dead": "assets/enemies/gen/large_spider_dead.png",
+      "hp": 12,
+      "ac": 3,
+      "to_hit": 2,
+      "damage": "1d6",
+      "speed": 1,
+      "xp": 16,
+      "save": 1,
+      "inflicts": {
+        "condition": "poison",
+        "rounds": 3,
+        "dc": 12
+      }
+    },
+    "zombie": {
+      "name": "Zombie",
+      "sprite": "assets/enemies/gen/zombie.png",
+      "sprite_dead": "assets/enemies/gen/zombie_dead.png",
+      "hp": 24,
+      "ac": 3,
+      "to_hit": 3,
+      "damage": "1d6+2",
+      "speed": 2,
+      "xp": 40,
+      "save": 1
+    },
+    "hobgoblin": {
+      "name": "Hobgoblin",
+      "sprite": "assets/enemies/gen/hobgoblin.png",
+      "sprite_dead": "assets/enemies/gen/hobgoblin_dead.png",
+      "hp": 24,
+      "ac": 5,
+      "to_hit": 4,
+      "damage": "1d8+1",
+      "speed": 1,
+      "xp": 55,
+      "save": 2
+    },
+    "ghoul": {
+      "name": "Ghoul",
+      "sprite": "assets/enemies/gen/ghoul.png",
+      "sprite_dead": "assets/enemies/gen/ghoul_dead.png",
+      "hp": 22,
+      "ac": 4,
+      "to_hit": 4,
+      "damage": "1d6+1",
+      "speed": 1,
+      "xp": 60,
+      "save": 2,
+      "inflicts": {
+        "condition": "paralysis",
+        "rounds": 1,
+        "dc": 13
+      }
+    },
+    "animated_sword": {
+      "name": "Animated Sword",
+      "sprite": "assets/enemies/gen/animated_sword.png",
+      "sprite_dead": "assets/enemies/gen/animated_sword_dead.png",
+      "hp": 16,
+      "ac": 6,
+      "to_hit": 5,
+      "damage": "1d8",
+      "speed": 1,
+      "xp": 55,
+      "save": 2
+    },
+    "mephit": {
+      "name": "Mephit",
+      "sprite": "assets/enemies/gen/mephit.png",
+      "sprite_dead": "assets/enemies/gen/mephit_dead.png",
+      "hp": 20,
+      "ac": 5,
+      "to_hit": 4,
+      "damage": "1d6+2",
+      "speed": 1,
+      "xp": 70,
+      "save": 3,
+      "inflicts": {
+        "condition": "burning",
+        "rounds": 2,
+        "dc": 12
+      }
+    },
+    "bugbear": {
+      "name": "Bugbear",
+      "sprite": "assets/enemies/gen/bugbear.png",
+      "sprite_dead": "assets/enemies/gen/bugbear_dead.png",
+      "hp": 36,
+      "ac": 5,
+      "to_hit": 5,
+      "damage": "2d6",
+      "speed": 1,
+      "xp": 95,
+      "save": 3
+    },
+    "wight": {
+      "name": "Wight",
+      "sprite": "assets/enemies/gen/wight.png",
+      "sprite_dead": "assets/enemies/gen/wight_dead.png",
+      "hp": 30,
+      "ac": 5,
+      "to_hit": 5,
+      "damage": "1d8+2",
+      "speed": 1,
+      "xp": 100,
+      "save": 4,
+      "inflicts": {
+        "condition": "exhaustion",
+        "rounds": 2,
+        "dc": 13
+      }
+    },
+    "monstrous_spider": {
+      "name": "Monstrous Spider",
+      "sprite": "assets/enemies/gen/monstrous_spider.png",
+      "sprite_dead": "assets/enemies/gen/monstrous_spider_dead.png",
+      "hp": 32,
+      "ac": 5,
+      "to_hit": 5,
+      "damage": "2d6",
+      "speed": 1,
+      "xp": 100,
+      "save": 3,
+      "inflicts": {
+        "condition": "poison",
+        "rounds": 3,
+        "dc": 14
+      }
+    },
+    "gelatinous_cube": {
+      "name": "Gelatinous Cube",
+      "sprite": "assets/enemies/gen/gelatinous_cube.png",
+      "sprite_dead": "assets/enemies/gen/gelatinous_cube_dead.png",
+      "hp": 45,
+      "ac": 3,
+      "to_hit": 4,
+      "damage": "2d6",
+      "speed": 2,
+      "xp": 105,
+      "save": 2,
+      "inflicts": {
+        "condition": "paralysis",
+        "rounds": 1,
+        "dc": 14
+      }
+    },
+    "black_pudding": {
+      "name": "Black Pudding",
+      "sprite": "assets/enemies/gen/black_pudding.png",
+      "sprite_dead": "assets/enemies/gen/black_pudding_dead.png",
+      "hp": 42,
+      "ac": 3,
+      "to_hit": 4,
+      "damage": "2d6",
+      "speed": 2,
+      "xp": 105,
+      "save": 2,
+      "inflicts": {
+        "condition": "poison",
+        "rounds": 3,
+        "dc": 13
+      }
+    },
+    "shadow": {
+      "name": "Shadow",
+      "sprite": "assets/enemies/gen/shadow.png",
+      "sprite_dead": "assets/enemies/gen/shadow_dead.png",
+      "hp": 26,
+      "ac": 6,
+      "to_hit": 6,
+      "damage": "2d6",
+      "speed": 1,
+      "xp": 120,
+      "save": 4,
+      "inflicts": {
+        "condition": "exhaustion",
+        "rounds": 2,
+        "dc": 14
+      }
+    },
+    "animated_armor": {
+      "name": "Animated Armor",
+      "sprite": "assets/enemies/gen/animated_armor.png",
+      "sprite_dead": "assets/enemies/gen/animated_armor_dead.png",
+      "hp": 40,
+      "ac": 7,
+      "to_hit": 5,
+      "damage": "2d6+1",
+      "speed": 1,
+      "xp": 120,
+      "save": 3
+    },
+    "troll": {
+      "name": "Troll",
+      "sprite": "assets/enemies/gen/troll.png",
+      "sprite_dead": "assets/enemies/gen/troll_dead.png",
+      "hp": 55,
+      "ac": 5,
+      "to_hit": 6,
+      "damage": "2d6+2",
+      "speed": 1,
+      "xp": 160,
+      "save": 4
+    },
+    "elemental_small": {
+      "name": "Lesser Elemental",
+      "sprite": "assets/enemies/gen/elemental_small.png",
+      "sprite_dead": "assets/enemies/gen/elemental_small_dead.png",
+      "hp": 38,
+      "ac": 6,
+      "to_hit": 6,
+      "damage": "2d6+2",
+      "speed": 1,
+      "xp": 150,
+      "save": 4
+    },
+    "succubus": {
+      "name": "Succubus",
+      "sprite": "assets/enemies/gen/succubus.png",
+      "sprite_dead": "assets/enemies/gen/succubus_dead.png",
+      "hp": 34,
+      "ac": 6,
+      "to_hit": 6,
+      "damage": "2d6+1",
+      "speed": 1,
+      "xp": 155,
+      "save": 5,
+      "inflicts": {
+        "condition": "exhaustion",
+        "rounds": 2,
+        "dc": 14
+      }
+    },
+    "red_slaad": {
+      "name": "Red Slaad",
+      "sprite": "assets/enemies/gen/red_slaad.png",
+      "sprite_dead": "assets/enemies/gen/red_slaad_dead.png",
+      "hp": 45,
+      "ac": 6,
+      "to_hit": 6,
+      "damage": "2d6+2",
+      "speed": 1,
+      "xp": 160,
+      "save": 4
+    },
+    "blue_slaad": {
+      "name": "Blue Slaad",
+      "sprite": "assets/enemies/gen/blue_slaad.png",
+      "sprite_dead": "assets/enemies/gen/blue_slaad_dead.png",
+      "hp": 50,
+      "ac": 6,
+      "to_hit": 6,
+      "damage": "2d6+2",
+      "speed": 1,
+      "xp": 185,
+      "save": 4
+    },
+    "spectre": {
+      "name": "Spectre",
+      "sprite": "assets/enemies/gen/spectre.png",
+      "sprite_dead": "assets/enemies/gen/spectre_dead.png",
+      "hp": 38,
+      "ac": 7,
+      "to_hit": 8,
+      "damage": "2d8+2",
+      "speed": 1,
+      "xp": 220,
+      "save": 6,
+      "inflicts": {
+        "condition": "exhaustion",
+        "rounds": 2,
+        "dc": 15
+      }
+    },
+    "illithid": {
+      "name": "Illithid",
+      "sprite": "assets/enemies/gen/illithid.png",
+      "sprite_dead": "assets/enemies/gen/illithid_dead.png",
+      "hp": 38,
+      "ac": 6,
+      "to_hit": 7,
+      "damage": "2d8+2",
+      "speed": 1,
+      "xp": 225,
+      "save": 6,
+      "inflicts": {
+        "condition": "paralysis",
+        "rounds": 1,
+        "dc": 15
+      }
+    },
+    "elemental_medium": {
+      "name": "Elemental",
+      "sprite": "assets/enemies/gen/elemental_medium.png",
+      "sprite_dead": "assets/enemies/gen/elemental_medium_dead.png",
+      "hp": 50,
+      "ac": 7,
+      "to_hit": 7,
+      "damage": "2d8+2",
+      "speed": 1,
+      "xp": 215,
+      "save": 5
+    },
+    "flesh_golem": {
+      "name": "Flesh Golem",
+      "sprite": "assets/enemies/gen/flesh_golem.png",
+      "sprite_dead": "assets/enemies/gen/flesh_golem_dead.png",
+      "hp": 65,
+      "ac": 6,
+      "to_hit": 6,
+      "damage": "2d8+3",
+      "speed": 2,
+      "xp": 220,
+      "save": 4
+    },
+    "incubus": {
+      "name": "Incubus",
+      "sprite": "assets/enemies/gen/incubus.png",
+      "sprite_dead": "assets/enemies/gen/incubus_dead.png",
+      "hp": 42,
+      "ac": 7,
+      "to_hit": 7,
+      "damage": "2d8+1",
+      "speed": 1,
+      "xp": 215,
+      "save": 6,
+      "inflicts": {
+        "condition": "exhaustion",
+        "rounds": 2,
+        "dc": 15
+      }
+    },
+    "green_slaad": {
+      "name": "Green Slaad",
+      "sprite": "assets/enemies/gen/green_slaad.png",
+      "sprite_dead": "assets/enemies/gen/green_slaad_dead.png",
+      "hp": 52,
+      "ac": 7,
+      "to_hit": 7,
+      "damage": "2d8+2",
+      "speed": 1,
+      "xp": 220,
+      "save": 5
+    },
+    "vampire": {
+      "name": "Vampire",
+      "sprite": "assets/enemies/gen/vampire.png",
+      "sprite_dead": "assets/enemies/gen/vampire_dead.png",
+      "hp": 48,
+      "ac": 8,
+      "to_hit": 8,
+      "damage": "2d8+3",
+      "speed": 1,
+      "xp": 260,
+      "save": 6,
+      "inflicts": {
+        "condition": "exhaustion",
+        "rounds": 2,
+        "dc": 15
+      }
+    },
+    "grey_slaad": {
+      "name": "Grey Slaad",
+      "sprite": "assets/enemies/gen/grey_slaad.png",
+      "sprite_dead": "assets/enemies/gen/grey_slaad_dead.png",
+      "hp": 55,
+      "ac": 7,
+      "to_hit": 8,
+      "damage": "2d8+3",
+      "speed": 1,
+      "xp": 260,
+      "save": 6
+    },
+    "mummy": {
+      "name": "Mummy",
+      "sprite": "assets/enemies/gen/mummy.png",
+      "sprite_dead": "assets/enemies/gen/mummy_dead.png",
+      "hp": 60,
+      "ac": 7,
+      "to_hit": 8,
+      "damage": "3d6+2",
+      "speed": 2,
+      "xp": 295,
+      "save": 6,
+      "inflicts": {
+        "condition": "poison",
+        "rounds": 3,
+        "dc": 15
+      }
+    },
+    "elemental_large": {
+      "name": "Greater Elemental",
+      "sprite": "assets/enemies/gen/elemental_large.png",
+      "sprite_dead": "assets/enemies/gen/elemental_large_dead.png",
+      "hp": 70,
+      "ac": 8,
+      "to_hit": 8,
+      "damage": "3d6+2",
+      "speed": 1,
+      "xp": 290,
+      "save": 6
+    },
+    "beholder": {
+      "name": "Beholder",
+      "sprite": "assets/enemies/gen/beholder.png",
+      "sprite_dead": "assets/enemies/gen/beholder_dead.png",
+      "hp": 55,
+      "ac": 8,
+      "to_hit": 9,
+      "damage": "3d6+2",
+      "speed": 1,
+      "xp": 310,
+      "save": 7,
+      "inflicts": {
+        "condition": "paralysis",
+        "rounds": 1,
+        "dc": 15
+      }
+    },
+    "clay_golem": {
+      "name": "Clay Golem",
+      "sprite": "assets/enemies/gen/clay_golem.png",
+      "sprite_dead": "assets/enemies/gen/clay_golem_dead.png",
+      "hp": 75,
+      "ac": 7,
+      "to_hit": 7,
+      "damage": "3d6+3",
+      "speed": 2,
+      "xp": 295,
+      "save": 5
+    },
+    "drider": {
+      "name": "Drider",
+      "sprite": "assets/enemies/gen/drider.png",
+      "sprite_dead": "assets/enemies/gen/drider_dead.png",
+      "hp": 62,
+      "ac": 7,
+      "to_hit": 8,
+      "damage": "3d6+2",
+      "speed": 1,
+      "xp": 300,
+      "save": 6,
+      "inflicts": {
+        "condition": "poison",
+        "rounds": 3,
+        "dc": 16
+      }
+    },
+    "dao": {
+      "name": "Dao",
+      "sprite": "assets/enemies/gen/dao.png",
+      "sprite_dead": "assets/enemies/gen/dao_dead.png",
+      "hp": 64,
+      "ac": 8,
+      "to_hit": 8,
+      "damage": "3d6+2",
+      "speed": 1,
+      "xp": 300,
+      "save": 6
+    },
+    "alhoon": {
+      "name": "Alhoon",
+      "sprite": "assets/enemies/gen/alhoon.png",
+      "sprite_dead": "assets/enemies/gen/alhoon_dead.png",
+      "hp": 50,
+      "ac": 8,
+      "to_hit": 8,
+      "damage": "3d6+3",
+      "speed": 1,
+      "xp": 345,
+      "save": 8,
+      "inflicts": {
+        "condition": "paralysis",
+        "rounds": 1,
+        "dc": 16
+      }
+    },
+    "death_slaad": {
+      "name": "Death Slaad",
+      "sprite": "assets/enemies/gen/death_slaad.png",
+      "sprite_dead": "assets/enemies/gen/death_slaad_dead.png",
+      "hp": 68,
+      "ac": 8,
+      "to_hit": 9,
+      "damage": "3d6+3",
+      "speed": 1,
+      "xp": 345,
+      "save": 7
+    },
+    "djinn": {
+      "name": "Djinni",
+      "sprite": "assets/enemies/gen/djinn.png",
+      "sprite_dead": "assets/enemies/gen/djinn_dead.png",
+      "hp": 66,
+      "ac": 8,
+      "to_hit": 8,
+      "damage": "3d6+3",
+      "speed": 1,
+      "xp": 340,
+      "save": 7
+    },
+    "death_knight": {
+      "name": "Death Knight",
+      "sprite": "assets/enemies/gen/death_knight.png",
+      "sprite_dead": "assets/enemies/gen/death_knight_dead.png",
+      "hp": 78,
+      "ac": 9,
+      "to_hit": 9,
+      "damage": "3d6+4",
+      "speed": 1,
+      "xp": 390,
+      "save": 7,
+      "inflicts": {
+        "condition": "burning",
+        "rounds": 2,
+        "dc": 15
+      }
+    },
+    "iron_golem": {
+      "name": "Iron Golem",
+      "sprite": "assets/enemies/gen/iron_golem.png",
+      "sprite_dead": "assets/enemies/gen/iron_golem_dead.png",
+      "hp": 95,
+      "ac": 9,
+      "to_hit": 8,
+      "damage": "3d6+5",
+      "speed": 2,
+      "xp": 395,
+      "save": 6
+    },
+    "efreet": {
+      "name": "Efreet",
+      "sprite": "assets/enemies/gen/efreet.png",
+      "sprite_dead": "assets/enemies/gen/efreet_dead.png",
+      "hp": 72,
+      "ac": 8,
+      "to_hit": 9,
+      "damage": "3d6+4",
+      "speed": 1,
+      "xp": 390,
+      "save": 7,
+      "inflicts": {
+        "condition": "burning",
+        "rounds": 3,
+        "dc": 15
+      }
+    },
+    "mummy_lord": {
+      "name": "Mummy Lord",
+      "sprite": "assets/enemies/gen/mummy_lord.png",
+      "sprite_dead": "assets/enemies/gen/mummy_lord_dead.png",
+      "hp": 75,
+      "ac": 8,
+      "to_hit": 9,
+      "damage": "3d8+3",
+      "speed": 2,
+      "xp": 440,
+      "save": 8,
+      "inflicts": {
+        "condition": "poison",
+        "rounds": 3,
+        "dc": 16
+      }
+    },
+    "drow_priestess": {
+      "name": "Drow Priestess",
+      "sprite": "assets/enemies/gen/drow_priestess.png",
+      "sprite_dead": "assets/enemies/gen/drow_priestess_dead.png",
+      "hp": 60,
+      "ac": 8,
+      "to_hit": 9,
+      "damage": "3d8+3",
+      "speed": 1,
+      "xp": 440,
+      "save": 9,
+      "inflicts": {
+        "condition": "poison",
+        "rounds": 3,
+        "dc": 16
+      }
+    },
+    "drow_blademaster": {
+      "name": "Drow Blademaster",
+      "sprite": "assets/enemies/gen/drow_blademaster.png",
+      "sprite_dead": "assets/enemies/gen/drow_blademaster_dead.png",
+      "hp": 70,
+      "ac": 9,
+      "to_hit": 10,
+      "damage": "3d8+3",
+      "speed": 1,
+      "xp": 440,
+      "save": 8
+    },
+    "white_slaad": {
+      "name": "White Slaad",
+      "sprite": "assets/enemies/gen/white_slaad.png",
+      "sprite_dead": "assets/enemies/gen/white_slaad_dead.png",
+      "hp": 78,
+      "ac": 9,
+      "to_hit": 9,
+      "damage": "3d8+3",
+      "speed": 1,
+      "xp": 445,
+      "save": 8
+    },
+    "vampire_lord": {
+      "name": "Vampire Lord",
+      "sprite": "assets/enemies/gen/vampire_lord.png",
+      "sprite_dead": "assets/enemies/gen/vampire_lord_dead.png",
+      "hp": 80,
+      "ac": 9,
+      "to_hit": 10,
+      "damage": "3d8+4",
+      "speed": 1,
+      "xp": 495,
+      "save": 9,
+      "inflicts": {
+        "condition": "exhaustion",
+        "rounds": 2,
+        "dc": 16
+      }
+    },
+    "mad_wizard": {
+      "name": "Mad Wizard",
+      "sprite": "assets/enemies/gen/mad_wizard.png",
+      "sprite_dead": "assets/enemies/gen/mad_wizard_dead.png",
+      "hp": 58,
+      "ac": 8,
+      "to_hit": 9,
+      "damage": "3d8+5",
+      "speed": 1,
+      "xp": 490,
+      "save": 9,
+      "inflicts": {
+        "condition": "burning",
+        "rounds": 2,
+        "dc": 16
+      }
+    },
+    "undead_beholder": {
+      "name": "Undead Beholder",
+      "sprite": "assets/enemies/gen/undead_beholder.png",
+      "sprite_dead": "assets/enemies/gen/undead_beholder_dead.png",
+      "hp": 75,
+      "ac": 9,
+      "to_hit": 10,
+      "damage": "3d8+4",
+      "speed": 1,
+      "xp": 495,
+      "save": 9,
+      "inflicts": {
+        "condition": "paralysis",
+        "rounds": 1,
+        "dc": 16
+      }
+    },
+    "lich": {
+      "name": "Lich",
+      "sprite": "assets/enemies/gen/lich.png",
+      "sprite_dead": "assets/enemies/gen/lich_dead.png",
+      "hp": 72,
+      "ac": 9,
+      "to_hit": 10,
+      "damage": "3d8+5",
+      "speed": 1,
+      "xp": 555,
+      "save": 10,
+      "inflicts": {
+        "condition": "paralysis",
+        "rounds": 1,
+        "dc": 17
+      }
+    },
+    "black_slaad": {
+      "name": "Black Slaad",
+      "sprite": "assets/enemies/gen/black_slaad.png",
+      "sprite_dead": "assets/enemies/gen/black_slaad_dead.png",
+      "hp": 88,
+      "ac": 9,
+      "to_hit": 10,
+      "damage": "3d8+5",
+      "speed": 1,
+      "xp": 550,
+      "save": 9
+    },
+    "efreeti_lord": {
+      "name": "Efreet Lord",
+      "sprite": "assets/enemies/gen/efreeti_lord.png",
+      "sprite_dead": "assets/enemies/gen/efreeti_lord_dead.png",
+      "hp": 85,
+      "ac": 9,
+      "to_hit": 10,
+      "damage": "3d8+5",
+      "speed": 1,
+      "xp": 550,
+      "save": 9,
+      "inflicts": {
+        "condition": "burning",
+        "rounds": 3,
+        "dc": 17
+      }
+    },
+    "pit_fiend": {
+      "name": "Pit Fiend",
+      "sprite": "assets/enemies/gen/pit_fiend.png",
+      "sprite_dead": "assets/enemies/gen/pit_fiend_dead.png",
+      "hp": 110,
+      "ac": 10,
+      "to_hit": 10,
+      "damage": "4d6+5",
+      "speed": 1,
+      "xp": 630,
+      "save": 10,
+      "inflicts": {
+        "condition": "burning",
+        "rounds": 3,
+        "dc": 17
+      }
+    },
+    "slaad_lord": {
+      "name": "Slaad Lord",
+      "sprite": "assets/enemies/gen/slaad_lord.png",
+      "sprite_dead": "assets/enemies/gen/slaad_lord_dead.png",
+      "hp": 100,
+      "ac": 9,
+      "to_hit": 10,
+      "damage": "4d6+5",
+      "speed": 1,
+      "xp": 620,
+      "save": 9
+    },
+    "elder_brain": {
+      "name": "Elder Brain",
+      "sprite": "assets/enemies/gen/elder_brain.png",
+      "sprite_dead": "assets/enemies/gen/elder_brain_dead.png",
+      "hp": 85,
+      "ac": 9,
+      "to_hit": 10,
+      "damage": "4d6+4",
+      "speed": 1,
+      "xp": 625,
+      "save": 10,
+      "inflicts": {
+        "condition": "paralysis",
+        "rounds": 1,
+        "dc": 17
+      }
+    },
+    "red_dragon": {
+      "name": "Red Dragon",
+      "sprite": "assets/enemies/gen/red_dragon.png",
+      "sprite_dead": "assets/enemies/gen/red_dragon_dead.png",
+      "hp": 130,
+      "ac": 10,
+      "to_hit": 10,
+      "damage": "4d6+6",
+      "speed": 1,
+      "xp": 700,
+      "save": 10,
+      "inflicts": {
+        "condition": "burning",
+        "rounds": 3,
+        "dc": 17
+      }
     }
   }
 }

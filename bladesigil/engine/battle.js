@@ -874,7 +874,7 @@ export class Battle {
       this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#7fd4c8');
       this.game.log(`${ref.name} raises ${entry.name} — for this round, every blow meant for the party finds them instead.`, 'good');
     } else if (entry.id === 'vanish') {
-      audio.play('spell_arcane');
+      audio.play('vanish'); // its own moment id (designer's pick 2026-08-26: sdr_invisible)
       ref.hidden = true;
       ref.counters.shadowFeats++;
       this.addFx(c.x, c.y, 'VANISH', '#8a7ab8');
@@ -1098,6 +1098,9 @@ export class Battle {
   // A spell's voice: its element class from spells.json fx.sound
   // (fire/frost/lightning/light/arcane), or heal/buff/arcane by type.
   spellSound(s) {
+    // Designer rule (2026-08-26): level-5 healing is a MIRACLE and sounds like
+    // one — its own id, ahead of everything else.
+    if (s.type === 'heal' && s.level >= 5) return 'spell_heal_major';
     if (s.fx?.sound) return `spell_${s.fx.sound}`;
     if (s.type === 'heal') return 'spell_heal';
     if (s.type === 'buff') return 'spell_buff';

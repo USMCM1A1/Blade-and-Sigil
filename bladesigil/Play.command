@@ -11,6 +11,12 @@ exec python3 -c "
 import http.server
 
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
+    # Safari refuses audio served under macOS's odd default types (.m4a as
+    # audio/mp4a-latm) — pin the types every browser accepts.
+    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
+                      '.m4a': 'audio/mp4', '.wav': 'audio/wav',
+                      '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg'}
+
     def end_headers(self):
         # Designer workflow: edit a file, refresh the browser, see the change.
         self.send_header('Cache-Control', 'no-cache')

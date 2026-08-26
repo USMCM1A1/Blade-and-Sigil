@@ -2,3 +2,7 @@
 .DS_Store
 __pycache__/
 bladesigil/tools/gemini_key.txt
+# Raw Infinity Engine archives (1.7GB source data; only extracted/ is used by the game)
+bladesigil/assets/BIF-sounds/*
+!bladesigil/assets/BIF-sounds/extracted
+bladesigil/NearInfinity-*.jar

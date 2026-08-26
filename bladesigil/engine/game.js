@@ -277,7 +277,7 @@ export class Game {
     if (this.gold < price) { this.log(`${def.name} costs ${price} gold — the party cannot pay.`, 'info'); return false; }
     this.gold -= price;
     this.addItem(id);
-    audio.play('shop');
+    audio.play('purchase'); // coins on the counter — the bell is only the door now
     this.log(`Bought ${def.name} for ${price} gold.`, 'gold');
     return true;
   }
@@ -288,7 +288,7 @@ export class Game {
     const price = Math.floor((def.value ?? 0) * (this.data.town.shop.sell_rate ?? 0.5));
     this.inventory[id]--;
     this.gold += price;
-    audio.play('shop');
+    audio.play('purchase'); // coins change hands either direction
     this.log(`Sold ${def.name} for ${price} gold.`, 'gold');
     return true;
   }
@@ -593,7 +593,7 @@ export class Game {
     } else if (cell === 'S') {
       if (!this.revealed.has(`${nx},${ny}`)) return; // to unknowing eyes, just wall
       this.grid[ny][nx] = "'";
-      audio.play('door');
+      audio.play('stone_door'); // secret doors grind in stone; wooden doors keep 'door'
       this.log('The hidden panel swings aside — a secret passage!', 'good');
     } else if (cell === '+') {
       this.grid[ny][nx] = "'";
@@ -706,7 +706,7 @@ export class Game {
     if (disarmer) {
       const chance = this.heroSkill(disarmer);
       if (Math.random() * 100 < chance) {
-        audio.play('discover');
+        audio.play('disarm'); // its own moment (2026-08-26): discover = spotting, disarm = picking it apart
         this.log(`${disarmer.name} picks the ${def.name.toLowerCase()} apart — disarmed!`, 'good');
         return true;
       }
@@ -1128,9 +1128,24 @@ export class Game {
       }
     }
     this.refreshDerived(ch);
-    audio.play('gear_equip');
+    audio.play(this.equipSound(id, def));
     this.log(`${ch.name} equips the ${def.name}.`, 'good');
     return true;
+  }
+
+  // Gear speaks by what it's made of (designer's picks, 2026-08-26): metal
+  // weapons clank, wooden ones (bows, staffs) knock, armor rustles, small
+  // wearables slip on, jewelry chimes. 'robe'/'cape' in an item id gets its
+  // own sound the day such items exist.
+  equipSound(id, def) {
+    const t = def.type;
+    if (t === 'weapon_bow' || id.includes('staff')) return 'equip_wood';
+    if (t.startsWith('weapon')) return 'equip_metal';
+    if (id.includes('robe') || id.includes('cape')) return 'equip_robe';
+    if (t.startsWith('armor') || t === 'shield') return 'equip_armor';
+    if (t === 'helm' || t === 'boots') return 'equip_clothing';
+    if (t.startsWith('jewelry')) return 'equip_jewelry';
+    return 'gear_equip';
   }
 
   // Take a piece off (back into the pouch). A hero's last weapon only leaves
