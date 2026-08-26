@@ -1,21 +1,23 @@
-// Sound effects. Browsers block audio until the first user input,
-// so play() failures before that are silently ignored.
+// Sound effects (sound map v2, 2026-08-25): every game moment has its OWN
+// sound id, and the id → file table lives in user-owned data/sounds.json —
+// drop in a new file, point an id at it, refresh. An id with no file stays
+// SILENT (never a wrong or reused sound; the designer's rule: one sound
+// means one thing). Browsers block audio until the first user input, so
+// early play() failures are silently ignored.
 
-const SOUNDS = {
-  melee: 'assets/sfx/basic_melee_strike.mp3',
-  gold: 'assets/sfx/store_bell.mp3',
-  victory: 'assets/sfx/level_up_ding.mp3',
-  spell: 'assets/sfx/lvl1_spell_woosh.mp3',
-  arrow: 'assets/sfx/arrow_shot.mp3',
-};
-
+let SOUNDS = {};
 const cache = {};
 let muted = false;
+
+// Called at boot with data/sounds.json's "sounds" table.
+export function init(table) {
+  SOUNDS = table ?? {};
+}
 
 export function play(name) {
   if (muted || typeof Audio === 'undefined') return;
   const src = SOUNDS[name];
-  if (!src) return;
+  if (!src) return; // unmapped moments stay silent by design
   if (!cache[name]) {
     cache[name] = new Audio(src);
     cache[name].volume = 0.5;

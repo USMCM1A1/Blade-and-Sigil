@@ -444,6 +444,7 @@ export class Battle {
         label = `-${dmg}!!!`;
       }
       monster.hp -= dmg;
+      if (crit) audio.play('crit_strike'); // silent until the designer maps it
       if (assassinate) this.addFx(foeC.x, foeC.y, 'ASSASSINATE!', '#b03a8e');
       else if (vital && dmgParts.some(([, l]) => l.startsWith('Vital'))) {
         this.addFx(foeC.x, foeC.y, vital === 'unaware' ? 'vital: unaware!' : 'vital: flanked!', '#b03a8e');
@@ -497,7 +498,7 @@ export class Battle {
 
   heroAttack(c, foeC, verb = 'swings') {
     const ch = c.ref, monster = foeC.ref;
-    audio.play('melee');
+    audio.play('melee_hit');
     let killed = false, crit = false;
     for (let a = 0; a < this.heroAttacks(ch) && monster.hp > 0; a++) {
       const res = this.strike(c, foeC, verb);
@@ -742,7 +743,6 @@ export class Battle {
     const ref = c.ref;
     const lane = laneOf(this.game.data, ref);
     const cap = lane.capstone;
-    audio.play('spell');
     // The free flips and arms first — none of these spend the turn.
     if (entry.id === 'overcast_toggle') {
       ref.overcastOn = !ref.overcastOn;
@@ -756,24 +756,28 @@ export class Battle {
     }
     if (entry.id === 'twin_surge') {
       ref.twinArmed = true;
+      audio.play('spell_arcane');
       this.addFx(c.x, c.y, `${(entry.name ?? 'Stormsurge').toUpperCase()} armed`, '#8fb8e8');
       this.game.log(`${ref.name} gathers the storm — the next spell will strike TWICE (and the backlash will cost a round).`, 'good');
       return;
     }
     if (entry.id === 'final_word') {
       ref.finalWordArmed = true;
+      audio.play('spell_arcane');
       this.addFx(c.x, c.y, `${entry.name.toUpperCase()} armed`, '#d4a94e');
       this.game.log(`${ref.name} opens the book to a page no one else can read. The next spell is free — any page at all.`, 'good');
       return;
     }
     if (entry.id === 'maelstrom') {
       ref.maelstromArmed = true;
+      audio.play('spell_arcane');
       this.addFx(c.x, c.y, `${entry.name.toUpperCase()} armed`, '#8fb8e8');
       this.game.log(`${ref.name} lets go of aim itself — the next blast will find EVERYONE.`, 'good');
       return;
     }
     if (entry.id === 'sanctuary') {
       this.markSpent(ref, 'sanctuary');
+      audio.play('spell_light');
       this.sanctuary = { c };
       this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#7fd4c8');
       this.game.log(`${ref.name} raises ${entry.name} — until their next turn, death waits outside the circle.`, 'good');
@@ -781,6 +785,7 @@ export class Battle {
     }
     if (entry.id === 'insight') {
       this.markSpent(ref, 'insight');
+      audio.play('spell_arcane');
       const v = lane.verb;
       const picks = entry.pick.split('_');
       ref.insight = {
@@ -797,6 +802,7 @@ export class Battle {
       const spent = this.game.arena ? Math.max(cap.min_sp ?? 5, ref.sp) : ref.sp;
       if (!this.game.arena) ref.sp = 0;
       ref.timedBuffs = ref.timedBuffs.filter(b => b.name !== (cap.name ?? 'Divine Inspiration'));
+      audio.play('spell_light');
       ref.timedBuffs.push({
         name: cap.name ?? 'Divine Inspiration',
         hit: cap.hit ?? 3, dmg: cap.dmg ?? 3, ac: cap.ac ?? 3, rounds: cap.rounds ?? 3,
@@ -808,6 +814,7 @@ export class Battle {
     }
     if (entry.id === 'miracle') {
       this.markSpent(ref, 'miracle');
+      audio.play('spell_heal');
       ref.spentRest.miracle = true;
       const spent = ref.sp;
       if (!this.game.arena) ref.sp = 0;
@@ -831,6 +838,7 @@ export class Battle {
       return;
     }
     if (entry.id === 'rage') {
+      audio.play('spell_buff');
       ref.timedBuffs = ref.timedBuffs.filter(b => b.name !== (cap.name ?? 'Rage'));
       ref.timedBuffs.push({
         name: cap.name ?? 'Rage',
@@ -840,10 +848,12 @@ export class Battle {
       this.addFx(c.x, c.y, 'RAGE!', '#e0483a');
       this.game.log(`${ref.name} gives themself to the fury — all blade, no shield!`, 'good');
     } else if (entry.id === 'taunt') {
+      audio.play('spell_buff');
       this.taunt = { c, until: this.round + (cap.taunt_rounds ?? 2) };
       this.addFx(c.x, c.y, 'TAUNT!', '#d4a94e');
       this.game.log(`${ref.name} bellows a challenge — every foe turns their way!`, 'good');
     } else if (entry.id === 'whirlwind') {
+      audio.play('melee_hit');
       // The Rite's storm of steel: one strike at every foe in reach.
       const foes = this.monsters().filter(mc => Math.abs(mc.x - c.x) + Math.abs(mc.y - c.y) === 1);
       if (!foes.length) {
@@ -858,11 +868,13 @@ export class Battle {
         if (res.kill) this.slay(foeC.ref);
       }
     } else if (entry.id === 'aegis') {
+      audio.play('spell_buff');
       (this.aegisSpent ??= new Set()).add(ref);
       this.aegis = { c, until: this.round + 1 };
       this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#7fd4c8');
       this.game.log(`${ref.name} raises ${entry.name} — for this round, every blow meant for the party finds them instead.`, 'good');
     } else if (entry.id === 'vanish') {
+      audio.play('spell_arcane');
       ref.hidden = true;
       ref.counters.shadowFeats++;
       this.addFx(c.x, c.y, 'VANISH', '#8a7ab8');
@@ -981,7 +993,7 @@ export class Battle {
       this.cancelTargeting();
       const cap = laneOf(this.game.data, c.ref).capstone;
       const chance = Math.max(0, Math.min(95, this.game.heroSkill(c.ref)));
-      audio.play('melee');
+      audio.play('melee_hit');
       if (Math.random() * 100 < chance) {
         this.battleTraps.push({ x, y, owner: c.ref, dice: cap.dice ?? '2d6' });
         c.ref.counters.shadowFeats++;
@@ -1001,7 +1013,7 @@ export class Battle {
       if (!foeC) return;
       this.cancelTargeting();
       this.markSpent(c.ref, 'deathblow');
-      audio.play('melee');
+      audio.play('melee_hit');
       this.addFx(c.x, c.y, `${p.entry.name.toUpperCase()}!`, '#b03a8e');
       this.game.log(`${c.ref.name} unleashes ${p.entry.name} — there was never anywhere to hide from this.`, 'good');
       this.forceAssassinate = true; // the perfect strike makes its own surprise
@@ -1020,7 +1032,7 @@ export class Battle {
       if (!foeC) return;
       this.cancelTargeting();
       this.markSpent(c.ref, 'judgment');
-      audio.play('melee');
+      audio.play('spell_light');
       this.addFx(c.x, c.y, `${p.entry.name.toUpperCase()}!`, '#ffd24a');
       this.game.log(`${c.ref.name} pronounces ${p.entry.name} — this blow was written before the fight began.`, 'good');
       this.forceCrit = true;
@@ -1043,7 +1055,7 @@ export class Battle {
       if (!this.open(x, y)) return; // needs an empty square
       this.cancelTargeting();
       this.markSpent(c.ref, 'shadowstep');
-      audio.play('spell');
+      audio.play('spell_arcane');
       this.addFx(c.x, c.y, `${p.entry.name.toUpperCase()}!`, '#8a7ab8');
       c.x = x; c.y = y;
       c.ref.hidden = true;
@@ -1066,7 +1078,7 @@ export class Battle {
     }
     this.cancelTargeting();
     this.spendSpell(c.ref, s);
-    audio.play('spell');
+    audio.play(this.spellSound(s));
     this.game.log(`${c.ref.name} casts ${s.name}${s.overcast ? ' — OVERCAST' : ''}${s.archmage ? ` — ${laneOf(this.game.data, c.ref).capstone.name ?? 'the Archmage\'s reach'}, every point spent` : ''}${s.free ? ` — by ${c.ref.rite?.abilityName ?? 'the Final Word'}, freely` : ''}!`, 'info');
     this.resolveSpell(c, s, x, y);
     // Stormsurge: the same spell, twice in immediate succession — then the
@@ -1081,6 +1093,15 @@ export class Battle {
       this.fxOn(c.ref, 'Exhausted', '#c8b88a');
     }
     this.endHeroTurn();
+  }
+
+  // A spell's voice: its element class from spells.json fx.sound
+  // (fire/frost/lightning/light/arcane), or heal/buff/arcane by type.
+  spellSound(s) {
+    if (s.fx?.sound) return `spell_${s.fx.sound}`;
+    if (s.type === 'heal') return 'spell_heal';
+    if (s.type === 'buff') return 'spell_buff';
+    return 'spell_arcane';
   }
 
   // ---- Spell visuals ----
@@ -1259,7 +1280,7 @@ export class Battle {
 
   castBuff(c, s) {
     this.spendSpell(c.ref, s);
-    audio.play('spell');
+    audio.play(this.spellSound(s));
     const targets = s.targets === 'self' ? [c.ref] : this.game.party.filter(ch => ch.alive);
     for (const ch of targets) {
       ch.buffs.hit += s.hit ?? 0;
@@ -1347,7 +1368,7 @@ export class Battle {
     const dmg = Math.max(1, roll(trap.dice));
     c.ref.hp -= dmg;
     c.aware = true;
-    audio.play('melee');
+    audio.play('trap_springs');
     this.addFx(c.x, c.y, `TRAP! -${dmg}`, '#e0912f');
     this.game.log(`The ${c.ref.name} steps on ${trap.owner.name}'s trap — it springs shut for ${dmg} damage!`, 'good');
     if (c.ref.hp <= 0) this.slay(c.ref);
@@ -1411,7 +1432,7 @@ export class Battle {
     if (braced) dmg = Math.max(0, dmg - braced);
     const rollText = this.lastMonsterRoll ? `${this.lastMonsterRoll}${braced ? ` · shield turns ${braced} aside` : ''}` : (braced ? `shield turns ${braced} aside` : '');
     this.lastMonsterRoll = null; // redirected blows (Aegis, the Stand) skip the roll text next time
-    audio.play('melee');
+    audio.play('melee_hit');
     if (dmg <= 0) {
       this.fxOn(target, 'blocked', '#9a94a8');
       this.game.log(`The ${m.name} strikes ${target.name} — the shield takes it all${rollText ? ` (${rollText})` : ''}.`);
@@ -1441,7 +1462,7 @@ export class Battle {
       const p = passiveOf(this.game.data, g);
       if (p?.id === 'braced_stance' && this.game.hasShield(g)) cost = Math.max(0, cost - (p.reduce ?? 1));
       g.counters.standSaves++;
-      audio.play('melee');
+      audio.play('melee_hit');
       this.fxOn(r.target, 'shielded!', '#7fd4c8');
       this.fxOn(g, cost > 0 ? `-${cost}` : 'blocked', '#d4a94e');
       this.game.log(`${g.name} throws themself before the blow meant for ${r.target.name}${cost > 0 ? ` — ${cost} damage taken` : ' — and shrugs it off'}!`, 'good');
@@ -1486,6 +1507,7 @@ export class Battle {
       return false;
     }
     ref.alive = false;
+    audio.play('hero_falls'); // silent until the designer maps it
     this.fxOn(ref, 'FALLEN', '#b03535');
     this.game.log(`${ref.name} has fallen!`, 'death');
     return true;
@@ -1503,7 +1525,9 @@ export class Battle {
       return;
     }
     this.game.log(`The ${monster.name} is slain! Each hero gains ${monster.xp} XP.`, 'good');
-    for (const ch of this.game.awardXp(monster.xp)) this.fxOn(ch, 'READY TO LEVEL!', '#d4a94e');
+    const newlyReady = this.game.awardXp(monster.xp);
+    if (newlyReady.length) audio.play('ready_to_level'); // the ding means ONE thing now
+    for (const ch of newlyReady) this.fxOn(ch, 'READY TO LEVEL!', '#d4a94e');
     if (this.game.depth === 'boss' && monster.id === this.game.data.dungeon.boss.monster) {
       this.game.victory = true; // the run is won — the map shows the banner when the fight ends
       this.game.log(`The ${monster.name} is destroyed! The endless dark is broken — the party has conquered the dungeon!`, 'good');
@@ -1528,7 +1552,7 @@ export class Battle {
       this.ending = wipe ? 'defeat' : 'victory';
       this.endedAt = performance.now();
       this.busy = true;
-      if (!wipe) audio.play('victory');
+      if (!wipe) audio.play('battle_victory');
       setTimeout(() => {
         if (game.battle !== this) return;
         game.battle = null;
@@ -1550,7 +1574,7 @@ export class Battle {
       this.endedAt = performance.now();
       this.busy = true;
       this.stripBattleConditions(); // burning etc. gutter out when the fight ends
-      audio.play('victory');
+      audio.play('battle_victory');
       game.log('The battlefield falls silent. The party stands victorious.', 'good');
       setTimeout(() => {
         if (game.battle === this) {

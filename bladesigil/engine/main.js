@@ -10,7 +10,7 @@ import { choosePartyDef } from './creation.js';
 import * as audio from './audio.js';
 
 async function boot() {
-  const [classes, races, monsters, party, level, spells, conditions, items, town, dungeon, progression] = await Promise.all([
+  const [classes, races, monsters, party, level, spells, conditions, items, town, dungeon, progression, sounds] = await Promise.all([
     loadJSON('data/classes.json'),
     loadJSON('data/races.json'),
     loadJSON('data/monsters.json'),
@@ -22,7 +22,9 @@ async function boot() {
     loadJSON('data/town.json'),
     loadJSON('data/dungeon.json'),
     loadJSON('data/progression.json'),
+    loadJSON('data/sounds.json'),
   ]);
+  audio.init(sounds.sounds); // the moment → file table is the designer's
 
   // Tactical battle templates: the level says which ones its battles use.
   const tacticsNames = level.tactics ?? ['room'];

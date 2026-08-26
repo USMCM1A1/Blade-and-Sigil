@@ -1,5 +1,5 @@
 {
-  "_comment": "MAGIC v2 (design doc v3). Every spell has a 'level' 1-5; its COST IS COMPUTED by the engine (level x 2 + 1 = 3/5/7/9/11 SP) so a cost can never desync from a level — do not add a 'cost' field. WHO can cast: 'classes' (ids from classes.json), gated by character level (spell level 1 at char levels 1-3, 2 at 4-7, 3 at 8-11, 4 at 12-15, 5 at 16-20). Fields: stat = ability whose modifier boosts the spell (int = arcane, wis = divine); type = damage | heal | buff | afflict; range/area in battle squares (area 1 = a 3x3 burst, area 2 = 5x5). Damage spells never miss: each target rolls a save (d20 + bonus vs DC 10 + spell level + caster's stat mod) — 'save' names the resisting ability; success = half damage. auto = true means no save at all. Buffs last the battle: 'hit' adds to attack rolls, 'dmg' to damage; targets = self | allies. 'condition': {id, rounds} lands on targets that FAIL their save. type 'afflict' = no damage, just the condition (save or suffer). 'rare': true = scroll-only lore — nobody learns it from training; only a Wizard-lane spellbook can copy it in from a scroll (items.json 'scroll' items name a spell id). DAMAGE GUIDELINE (doc): ~2d6 per spell level. All spells below level 1 are new CONTENT-FLAG drafts — rename, retune, add, and cut freely! VISUALS: optional \"fx\" per spell — {\"kind\": bolt (a dart travels caster→target) | beam (a straight ray connects them) | lightning (a jagged crack) | burst (no travel — the blast just blooms at the target, washing every square it caught) | sparkle | wisp, \"color\": any hex, \"burst\": fire | frost | holy (adds that blast sprite at impact — bolts and beams may carry one)}. Spells without fx get sensible defaults by type. Sprites live in assets/fx/ (regenerate via the art manifest).",
+  "_comment": "MAGIC v2 (design doc v3). Every spell has a 'level' 1-5; its COST IS COMPUTED by the engine (level x 2 + 1 = 3/5/7/9/11 SP) so a cost can never desync from a level — do not add a 'cost' field. WHO can cast: 'classes' (ids from classes.json), gated by character level (spell level 1 at char levels 1-3, 2 at 4-7, 3 at 8-11, 4 at 12-15, 5 at 16-20). Fields: stat = ability whose modifier boosts the spell (int = arcane, wis = divine); type = damage | heal | buff | afflict; range/area in battle squares (area 1 = a 3x3 burst, area 2 = 5x5). Damage spells never miss: each target rolls a save (d20 + bonus vs DC 10 + spell level + caster's stat mod) — 'save' names the resisting ability; success = half damage. auto = true means no save at all. Buffs last the battle: 'hit' adds to attack rolls, 'dmg' to damage; targets = self | allies. 'condition': {id, rounds} lands on targets that FAIL their save. type 'afflict' = no damage, just the condition (save or suffer). 'rare': true = scroll-only lore — nobody learns it from training; only a Wizard-lane spellbook can copy it in from a scroll (items.json 'scroll' items name a spell id). DAMAGE GUIDELINE (doc): ~2d6 per spell level. All spells below level 1 are new CONTENT-FLAG drafts — rename, retune, add, and cut freely! VISUALS: optional \"fx\" per spell — {\"kind\": bolt (a dart travels caster→target) | beam (a straight ray connects them) | lightning (a jagged crack) | burst (no travel — the blast just blooms at the target, washing every square it caught) | sparkle | wisp, \"color\": any hex, \"burst\": fire | frost | holy (adds that blast sprite at impact — bolts and beams may carry one)}. Spells without fx get sensible defaults by type. Sprites live in assets/fx/ (regenerate via the art manifest). SOUND: fx may also carry \"sound\": fire | frost | lightning | light | arcane — the element's voice from data/sounds.json (spell_fire etc.); heals and buffs are automatic.",
   "spells": {
     "magic_missile": {
       "name": "Magic Missile",
@@ -16,7 +16,8 @@
       "description": "A dart of force that never misses",
       "fx": {
         "kind": "bolt",
-        "color": "#9fc8ff"
+        "color": "#9fc8ff",
+        "sound": "arcane"
       }
     },
     "lesser_fireball": {
@@ -39,7 +40,8 @@
       "fx": {
         "kind": "bolt",
         "color": "#ff9a3a",
-        "burst": "fire"
+        "burst": "fire",
+        "sound": "fire"
       }
     },
     "poison_dart": {
@@ -61,7 +63,8 @@
       "description": "A sliver of venom — the wound is small, the poison is not",
       "fx": {
         "kind": "bolt",
-        "color": "#7ec850"
+        "color": "#7ec850",
+        "sound": "arcane"
       }
     },
     "frost_lance": {
@@ -79,7 +82,8 @@
       "description": "A spear of killing cold for a single foe",
       "fx": {
         "kind": "bolt",
-        "color": "#a8e0f0"
+        "color": "#a8e0f0",
+        "sound": "frost"
       }
     },
     "paralyze": {
@@ -100,7 +104,8 @@
       "description": "Lock a creature's limbs — it loses its next two turns",
       "fx": {
         "kind": "wisp",
-        "color": "#8fb8e8"
+        "color": "#8fb8e8",
+        "sound": "arcane"
       }
     },
     "witchfire": {
@@ -124,7 +129,8 @@
       "fx": {
         "kind": "bolt",
         "color": "#7ee87e",
-        "burst": "fire"
+        "burst": "fire",
+        "sound": "fire"
       }
     },
     "fireball": {
@@ -147,7 +153,8 @@
       "fx": {
         "kind": "bolt",
         "color": "#ff8c3a",
-        "burst": "fire"
+        "burst": "fire",
+        "sound": "fire"
       }
     },
     "lightning_bolt": {
@@ -165,7 +172,8 @@
       "description": "A crack of sky-fire for one unlucky foe",
       "fx": {
         "kind": "lightning",
-        "color": "#cfe6ff"
+        "color": "#cfe6ff",
+        "sound": "lightning"
       }
     },
     "ice_storm": {
@@ -184,7 +192,8 @@
       "fx": {
         "kind": "burst",
         "color": "#a8e0f0",
-        "burst": "frost"
+        "burst": "frost",
+        "sound": "frost"
       }
     },
     "arcane_ruin": {
@@ -202,7 +211,8 @@
       "description": "Unmaking, aimed — one target's very substance rebels",
       "fx": {
         "kind": "beam",
-        "color": "#b08fe8"
+        "color": "#b08fe8",
+        "sound": "arcane"
       }
     },
     "starfall": {
@@ -222,7 +232,8 @@
       "fx": {
         "kind": "burst",
         "color": "#e8e2d0",
-        "burst": "holy"
+        "burst": "holy",
+        "sound": "light"
       }
     },
     "meteor_swarm": {
@@ -245,7 +256,8 @@
       "fx": {
         "kind": "bolt",
         "color": "#ff8c3a",
-        "burst": "fire"
+        "burst": "fire",
+        "sound": "fire"
       }
     },
     "disintegrate": {
@@ -263,7 +275,8 @@
       "description": "A thin green ray. What it touches, mostly, stops being",
       "fx": {
         "kind": "beam",
-        "color": "#7ee87e"
+        "color": "#7ee87e",
+        "sound": "arcane"
       }
     },
     "cure_light_wounds": {
@@ -298,7 +311,8 @@
       "save": "wis",
       "fx": {
         "kind": "beam",
-        "color": "#ffe9a8"
+        "color": "#ffe9a8",
+        "sound": "light"
       }
     },
     "bless": {
@@ -352,7 +366,8 @@
       "description": "Focused daylight, hot enough to judge",
       "fx": {
         "kind": "beam",
-        "color": "#ffd24a"
+        "color": "#ffd24a",
+        "sound": "light"
       }
     },
     "battle_hymn": {
@@ -408,7 +423,8 @@
       "description": "A column of noon falls on one foe",
       "fx": {
         "kind": "beam",
-        "color": "#fff3c8"
+        "color": "#fff3c8",
+        "sound": "light"
       }
     },
     "cure_critical_wounds": {
@@ -444,7 +460,8 @@
       "fx": {
         "kind": "burst",
         "color": "#ffe9a8",
-        "burst": "holy"
+        "burst": "holy",
+        "sound": "light"
       }
     },
     "great_restoration": {
@@ -484,7 +501,8 @@
       "fx": {
         "kind": "burst",
         "color": "#fff3c8",
-        "burst": "holy"
+        "burst": "holy",
+        "sound": "light"
       }
     },
     "wicked_weapon": {

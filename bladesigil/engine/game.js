@@ -81,7 +81,7 @@ export class Game {
     }
     this.inventory[id]--;
     ch.spellbook.push(def.spell);
-    audio.play('spell');
+    audio.play('spell_arcane');
     this.log(`${ch.name} copies ${spell.name} into the spellbook — the scroll crumbles as the ink takes.${spell.level > maxSpellLevel(ch.level) ? ` (A level-${spell.level} spell: castable at character level ${[0, 1, 4, 8, 12, 16][spell.level]}.)` : ' Prepare it at any rest.'}`, 'good');
     return true;
   }
@@ -111,7 +111,7 @@ export class Game {
       const s = this.data.spells.spells[value];
       this.log(`${ch.name} seizes ${s?.name ?? value} — it is in the blood now, never to be unlearned.`, 'good');
     }
-    audio.play('victory');
+    audio.play('leveling');
     this.refreshDerived(ch); // lane offsets land immediately
     this.refreshChoices();   // a lane pick may owe a follow-up (weapon focus)
   }
@@ -124,7 +124,7 @@ export class Game {
     if (!rite || ch.rite) return;
     const tier = riteTier(this.data, ch);
     ch.rite = { ...result, tier };
-    audio.play('victory');
+    audio.play('rite');
     this.log(`The Rite is complete. ${ch.name} ${ch.rite.title} bears the sigil of the ${result.sigil.modifier} ${result.sigil.shape}, wrought in ${result.sigil.color.toLowerCase()}.`, 'good');
     this.log(`${result.abilityName} is theirs alone now — no other living soul commands it. (C in battle)`, 'good');
     const tierDef = rite.tiers[tier];
@@ -246,7 +246,7 @@ export class Game {
       ch.hp = ch.maxHp;
       ch.sp = ch.maxSp;
     }
-    audio.play('victory');
+    audio.play('inn');
     this.log(`The party sleeps soundly at the inn. Wounds mend and spirits return. (−${price} gold)`, 'good');
     this.afterFullRest();
     return true;
@@ -261,7 +261,7 @@ export class Game {
     ch.hp = ch.maxHp;
     ch.sp = ch.maxSp;
     ch.conditions = [];
-    audio.play('victory');
+    audio.play('temple_revive');
     this.log(`Light floods the altar — ${ch.name} draws breath once more! (−${price} gold)`, 'good');
     return true;
   }
@@ -277,7 +277,7 @@ export class Game {
     if (this.gold < price) { this.log(`${def.name} costs ${price} gold — the party cannot pay.`, 'info'); return false; }
     this.gold -= price;
     this.addItem(id);
-    audio.play('gold');
+    audio.play('shop');
     this.log(`Bought ${def.name} for ${price} gold.`, 'gold');
     return true;
   }
@@ -288,7 +288,7 @@ export class Game {
     const price = Math.floor((def.value ?? 0) * (this.data.town.shop.sell_rate ?? 0.5));
     this.inventory[id]--;
     this.gold += price;
-    audio.play('gold');
+    audio.play('shop');
     this.log(`Sold ${def.name} for ${price} gold.`, 'gold');
     return true;
   }
@@ -441,7 +441,7 @@ export class Game {
     }
     this.refreshDerived(ch); // hit/attacks/AC/spell points follow the tables (+ lane offsets)
     this.refreshChoices();   // fork levels owe a choice (pops once back on the map)
-    audio.play('victory');
+    audio.play('leveling');
     this.log(`${ch.name} reaches level ${ch.level}! (+${hpGain} HP)`, 'good');
     if (ch.level === 20) this.log(`${ch.name} has reached the pinnacle of their art.`, 'good');
     if (this.party.every(c => c.level >= 20)) {
@@ -593,15 +593,17 @@ export class Game {
     } else if (cell === 'S') {
       if (!this.revealed.has(`${nx},${ny}`)) return; // to unknowing eyes, just wall
       this.grid[ny][nx] = "'";
+      audio.play('door');
       this.log('The hidden panel swings aside — a secret passage!', 'good');
     } else if (cell === '+') {
       this.grid[ny][nx] = "'";
+      audio.play('door');
       this.log('You push open the heavy door.', 'info');
     } else if (cell === '$') {
       const amount = roll(this.level.chestGold);
       this.gold += amount;
       this.grid[ny][nx] = '.';
-      audio.play('gold');
+      audio.play('coins');
       const found = [], left = [];
       for (const entry of this.level.chestItems) {
         if (Math.random() < entry.chance) {
@@ -675,7 +677,7 @@ export class Game {
       t.tried = true;
       if (Math.random() * 100 < chance) {
         t.detected = true;
-        audio.play('gold');
+        audio.play('discover');
         this.log(`Sharp eyes catch a ${this.data.dungeon.traps[t.id].name.toLowerCase()} hidden in the floor!`, 'good');
       }
     }
@@ -687,7 +689,7 @@ export class Game {
         this.triedDoors.add(key);
         if (Math.random() * 100 < chance) {
           this.revealed.add(key);
-          audio.play('gold');
+          audio.play('discover');
           this.log('A seam in the stonework — there is a secret door here!', 'good');
         }
       }
@@ -704,7 +706,7 @@ export class Game {
     if (disarmer) {
       const chance = this.heroSkill(disarmer);
       if (Math.random() * 100 < chance) {
-        audio.play('gold');
+        audio.play('discover');
         this.log(`${disarmer.name} picks the ${def.name.toLowerCase()} apart — disarmed!`, 'good');
         return true;
       }
@@ -715,7 +717,7 @@ export class Game {
   }
 
   springTrap(def, victim) {
-    audio.play('melee');
+    audio.play('trap_springs');
     const living = this.party.filter(ch => ch.alive);
     const ch = victim && victim.alive ? victim : living[Math.floor(Math.random() * living.length)];
     let dmg = Math.max(1, roll(def.dice));
@@ -793,7 +795,7 @@ export class Game {
       ch.hp = ch.maxHp;
       ch.sp = ch.maxSp;
     }
-    audio.play('victory');
+    audio.play('camp');
     const healed = this.party.some((ch, i) => ch.hp !== before[i]);
     this.log(`The party makes camp and rests (−${mouths} rations). ${healed ? 'Wounds mend and spirits return.' : 'Spirits return.'}`, 'good');
     this.afterFullRest();
@@ -989,7 +991,7 @@ export class Game {
       Math.max(Math.abs(m.x - this.partyPos.x), Math.abs(m.y - this.partyPos.y)) <= BATTLE_RADIUS
       && this.isVisible(m.x, m.y));
     if (!foes.includes(trigger)) foes.push(trigger);
-    audio.play('melee');
+    audio.play('battle_start');
     const article = /^[aeiou]/i.test(trigger.name) ? 'An' : 'A';
     this.log(ambush
       ? 'Battle! They are upon you before you can form ranks!'
@@ -1126,7 +1128,7 @@ export class Game {
       }
     }
     this.refreshDerived(ch);
-    audio.play('gold');
+    audio.play('gear_equip');
     this.log(`${ch.name} equips the ${def.name}.`, 'good');
     return true;
   }
@@ -1166,7 +1168,7 @@ export class Game {
     const reason = this.itemBlockReason(def, ch);
     if (reason) { this.log(reason, 'info'); return { ok: false }; }
     if (!this.arena) this.inventory[id]--;
-    audio.play('spell');
+    audio.play('potion_drink');
     if (def.effect === 'heal') {
       const healed = Math.min(roll(def.dice), ch.maxHp - ch.hp);
       ch.hp += healed;

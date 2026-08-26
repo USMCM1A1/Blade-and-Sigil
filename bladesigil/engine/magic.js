@@ -64,6 +64,9 @@ export function validateMagic(data) {
       if (s.fx.burst && !['fire', 'frost', 'holy'].includes(s.fx.burst)) {
         throw new DataError(where, `fx "burst" must be fire, frost, or holy (the sprites in assets/fx/).`);
       }
+      if (s.fx.sound && !['fire', 'frost', 'lightning', 'light', 'arcane', 'heal', 'buff'].includes(s.fx.sound)) {
+        throw new DataError(where, `fx "sound" must be fire, frost, lightning, light, arcane, heal, or buff (spell_* ids in data/sounds.json).`);
+      }
     }
   }
   for (const [id, it] of Object.entries(data.items.items)) {
