@@ -5,8 +5,15 @@ export async function loadJSON(path) {
   let resp;
   try {
     resp = await fetch(path);
-  } catch (e) {
-    throw new DataError(path, `Could not fetch the file. Are you running via Play.command (a local server)?\n${e.message}`);
+  } catch (first) {
+    // A cold local server occasionally drops the very first fetch — one quiet
+    // retry beats a blank title screen (seen intermittently 2026-08-27).
+    await new Promise(r => setTimeout(r, 350));
+    try {
+      resp = await fetch(path);
+    } catch (e) {
+      throw new DataError(path, `Could not fetch the file. Are you running via Play.command (a local server)?\n${e.message}`);
+    }
   }
   if (!resp.ok) throw new DataError(path, `File not found (HTTP ${resp.status}). Check the filename.`);
   const text = await resp.text();

@@ -64,7 +64,10 @@ export function choosePartyDef(data) {
       const heroes = []; // finished hero defs
       heroStep(0);
 
-      function heroStep(idx) {
+      // Each hero is built in TWO steps (designer's ask 2026-08-27): first
+      // the mechanics (race/class/abilities/row), then name & appearance —
+      // with the portrait AND the full figure shown large enough to judge.
+      function heroStep(idx, phase = 'build') {
         // Start from the previous visit's choices when stepping back.
         const state = heroes[idx] ?? {
           name: '',
@@ -85,27 +88,78 @@ export function choosePartyDef(data) {
             .filter(([, c]) => !c.locked && c.allowed_races.includes(race));
         }
 
-        function render() {
+        function derive() {
           const race = data.races.races[state.race];
           const allowed = classesFor(state.race);
           if (!allowed.some(([id]) => id === state.class)) state.class = allowed[0][0];
           const cls = data.classes.classes[state.class];
-
           const bonus = ab => race.ability_bonus[ab] ?? 0;
           const final = ab => state.rolls[ABILITIES.indexOf(ab)] + bonus(ab);
           const hp = Math.max(1, cls.hp_die + abilityMod(final('con')));
           const ac = 10 + cls.ac_bonus[0] + abilityMod(final('dex'));
           const weap = id => data.items.items[data.classes.classes[id].starting_weapon] ?? { name: '?', damage: '?' };
           const hit = cls.hit_bonus[0] + abilityMod(final(weap(state.class).range ? 'dex' : 'str')); // ranged weapons aim with DEX
+          return { race, allowed, cls, bonus, final, hp, ac, weap, hit };
+        }
+
+        function render() {
+          if (phase === 'look') renderLook(); else renderBuild();
+        }
+
+        // ---- Step 2 of 2: name & appearance, art shown LARGE ----
+        function renderLook() {
+          const { race, cls, hp, ac, hit } = derive();
+          const LABELS = { m1: 'Male', m2: 'Male', f1: 'Female', f2: 'Female' };
+          root.innerHTML = `
+            <div class="cr-panel">
+              <div class="cr-step">Hero ${idx + 1} of ${PARTY_SIZE} — step 2 of 2: name &amp; appearance</div>
+              <div class="cr-lookhead">
+                <input id="cr-name" maxlength="14" value="${state.name.replace(/"/g, '&quot;')}" placeholder="Name your ${race.name} ${cls.name}">
+                <span class="cr-dim">${race.name} ${cls.name} · HP ${hp} · AC ${ac} · to-hit ${fmtMod(hit)}${spellPointsFor(cls, 1) ? ` · SP ${spellPointsFor(cls, 1)}` : ''}</span>
+              </div>
+              <div class="cr-lookgrid">
+                ${['m1', 'm2', 'f1', 'f2'].map(v => `
+                  <button class="cr-lookbig ${v === state.look ? 'picked' : ''}" data-look="${v}">
+                    <span class="cr-looklabel">${LABELS[v]}</span>
+                    <img class="cr-lookface" src="assets/heroes/gen/${state.race}_${state.class}_${v}_face.png"
+                         onerror="this.style.display='none'" alt="">
+                    <span class="cr-lookdoll"><img src="assets/heroes/gen/${state.race}_${state.class}_${v}.png"
+                         onerror="this.closest('button').style.display='none'" alt=""></span>
+                  </button>`).join('')}
+              </div>
+              <div class="cr-nav">
+                <button id="cr-back" class="cr-minor">← Race &amp; class</button>
+                <button id="cr-next">${idx === PARTY_SIZE - 1 ? 'Begin the Descent ▼' : 'Next hero →'}</button>
+              </div>
+            </div>`;
+
+          const nameEl = root.querySelector('#cr-name');
+          nameEl.oninput = () => { state.name = nameEl.value; };
+          for (const b of root.querySelectorAll('[data-look]')) {
+            b.onclick = () => { state.look = b.dataset.look; state.name = nameEl.value; render(); };
+          }
+          root.querySelector('#cr-back').onclick = () => {
+            state.name = nameEl.value; heroes[idx] = state;
+            heroStep(idx, 'build');
+          };
+          root.querySelector('#cr-next').onclick = () => {
+            state.name = nameEl.value;
+            if (!state.name.trim()) { nameEl.focus(); nameEl.classList.add('cr-error'); return; }
+            heroes[idx] = state;
+            if (idx === PARTY_SIZE - 1) finishWizard(); else heroStep(idx + 1, 'build');
+          };
+          nameEl.focus();
+        }
+
+        // ---- Step 1 of 2: the mechanics ----
+        function renderBuild() {
+          const { race, allowed, cls, bonus, final, hp, ac, weap, hit } = derive();
 
           root.innerHTML = `
             <div class="cr-panel">
-              <div class="cr-step">Hero ${idx + 1} of ${PARTY_SIZE}</div>
+              <div class="cr-step">Hero ${idx + 1} of ${PARTY_SIZE} — step 1 of 2: race, class &amp; abilities</div>
               <div class="cr-columns">
                 <div class="cr-col">
-                  <label class="cr-label">Name</label>
-                  <input id="cr-name" maxlength="14" value="${state.name.replace(/"/g, '&quot;')}" placeholder="Name your hero">
-
                   <label class="cr-label">Race</label>
                   <div class="cr-choices" id="cr-races">
                     ${Object.entries(data.races.races).map(([id, r]) => `
@@ -143,15 +197,6 @@ export function choosePartyDef(data) {
                     <button class="cr-choice ${state.row === 'back' ? 'picked' : ''}" data-row="back"><b>Back row</b><span>safe while the front line stands</span></button>
                   </div>
 
-                  <label class="cr-label">Appearance</label>
-                  <div class="cr-choices cr-looks" id="cr-looks">
-                    ${['m1', 'm2', 'f1', 'f2'].map(v => `
-                      <button class="cr-choice cr-look ${v === state.look ? 'picked' : ''}" data-look="${v}" title="${v[0] === 'm' ? 'male' : 'female'}">
-                        <img src="assets/heroes/gen/${state.race}_${state.class}_${v}.png"
-                             onerror="this.closest('button').style.display='none'" alt="">
-                      </button>`).join('')}
-                  </div>
-
                   <div class="cr-preview">
                     <img src="assets/heroes/gen/${state.race}_${state.class}_${state.look}.png"
                          onerror="this.src='${cls.sprite}'" alt="${cls.name}">
@@ -163,16 +208,13 @@ export function choosePartyDef(data) {
               </div>
               <div class="cr-nav">
                 <button id="cr-back" class="cr-minor">${idx === 0 ? '← Title' : '← Previous hero'}</button>
-                <button id="cr-next">${idx === PARTY_SIZE - 1 ? 'Begin the Descent ▼' : 'Next hero →'}</button>
+                <button id="cr-next">Name &amp; appearance →</button>
               </div>
             </div>`;
 
-          const nameEl = root.querySelector('#cr-name');
-          nameEl.oninput = () => { state.name = nameEl.value; };
-          for (const b of root.querySelectorAll('[data-race]')) b.onclick = () => { state.race = b.dataset.race; keepName(); render(); };
-          for (const b of root.querySelectorAll('[data-class]')) b.onclick = () => { state.class = b.dataset.class; keepName(); render(); };
-          for (const b of root.querySelectorAll('[data-row]')) b.onclick = () => { state.row = b.dataset.row; keepName(); render(); };
-          for (const b of root.querySelectorAll('[data-look]')) b.onclick = () => { state.look = b.dataset.look; keepName(); render(); };
+          for (const b of root.querySelectorAll('[data-race]')) b.onclick = () => { state.race = b.dataset.race; render(); };
+          for (const b of root.querySelectorAll('[data-class]')) b.onclick = () => { state.class = b.dataset.class; render(); };
+          for (const b of root.querySelectorAll('[data-row]')) b.onclick = () => { state.row = b.dataset.row; render(); };
           for (const b of root.querySelectorAll('[data-ab]')) b.onclick = () => {
             const i = Number(b.dataset.ab);
             if (swapFrom === null) { swapFrom = i; }
@@ -180,20 +222,17 @@ export function choosePartyDef(data) {
               [state.rolls[swapFrom], state.rolls[i]] = [state.rolls[i], state.rolls[swapFrom]];
               swapFrom = null;
             }
-            keepName(); render();
+            render();
           };
-          root.querySelector('#cr-reroll').onclick = () => { state.rolls = rollAbilitySet(); swapFrom = null; keepName(); render(); };
+          root.querySelector('#cr-reroll').onclick = () => { state.rolls = rollAbilitySet(); swapFrom = null; render(); };
           root.querySelector('#cr-back').onclick = () => {
-            keepName(); heroes[idx] = state;
-            if (idx === 0) showTitle(); else heroStep(idx - 1);
+            heroes[idx] = state;
+            if (idx === 0) showTitle(); else heroStep(idx - 1, 'look');
           };
           root.querySelector('#cr-next').onclick = () => {
-            keepName();
-            if (!state.name.trim()) { nameEl.focus(); nameEl.classList.add('cr-error'); return; }
             heroes[idx] = state;
-            if (idx === PARTY_SIZE - 1) finishWizard(); else heroStep(idx + 1);
+            heroStep(idx, 'look');
           };
-          function keepName() { state.name = root.querySelector('#cr-name').value; }
         }
       }
 
