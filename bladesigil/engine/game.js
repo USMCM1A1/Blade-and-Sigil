@@ -293,6 +293,11 @@ export class Game {
     return true;
   }
 
+  // A hero's face and figure: their chosen appearance variant, falling back
+  // to the class art (premade parties, Quick Start, pre-appearance saves).
+  heroSprite(ch) { return ch.look?.sprite || ch.cls.sprite; }
+  heroPortrait(ch) { return ch.look?.portrait || ch.cls.portrait || this.heroSprite(ch); }
+
   // ---- Character building (design doc rules) ----
   buildCharacter(def) {
     const cls = this.data.classes.classes[def.class];
@@ -332,6 +337,9 @@ export class Game {
       // Progression v2: the lane walked at the fork (null until chosen), the
       // Weapon Focus category, timed battle buffs (Rage), and the playstyle
       // counters that will feed the level-20 Rite's titles.
+      // Appearance (2026-08-26): creation lets each hero pick one of four
+      // race+sex body/portrait variants; null falls back to the class art.
+      look: def.look ?? null,
       lane: def.lane ?? null,
       focusType: def.focus ?? null,
       timedBuffs: [],

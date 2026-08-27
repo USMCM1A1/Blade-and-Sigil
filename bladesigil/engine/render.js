@@ -22,8 +22,23 @@ export class Renderer {
     this.ctx = canvas.getContext('2d');
     this.game = game;
     this.images = images;
+    this.loading = new Set(); // lazy loads for art not known at boot (hero looks)
     this.cols = Math.floor(canvas.width / TILE);
     this.rows = Math.floor(canvas.height / TILE);
+  }
+
+  // Preloaded art comes back instantly; anything else (a hero's chosen look,
+  // picked after boot) starts loading and appears on a later frame.
+  image(src) {
+    if (!src) return null;
+    if (this.images[src]) return this.images[src];
+    if (!this.loading.has(src)) {
+      this.loading.add(src);
+      const im = new Image();
+      im.onload = () => { this.images[src] = im; };
+      im.src = src;
+    }
+    return null;
   }
 
   draw() {
@@ -270,7 +285,7 @@ export class Renderer {
       const isActive = c === b.active();
       const dead = c.kind === 'hero' && !c.ref.alive;
       const icon = c.kind === 'hero'
-        ? (this.images[c.ref.cls.portrait] || this.images[c.ref.cls.sprite])
+        ? this.image(this.game.heroPortrait(c.ref))
         : this.images[c.ref.sprite];
       ctx.save();
       if (dead) ctx.globalAlpha = 0.35;
@@ -364,14 +379,21 @@ export class Renderer {
       if (hidden) ctx.globalAlpha = 0.4; // in the shadows: the player sees a ghost, monsters see nothing
       if (dying) ctx.globalAlpha = Math.max(0.35, 0.9 - (nowD - c.diedAt) / 1600);
       const sprite = c.kind === 'hero'
-        ? (c.ref.alive ? c.ref.cls.sprite : c.ref.cls.sprite_dead)
+        ? (c.ref.alive ? this.game.heroSprite(c.ref) : c.ref.cls.sprite_dead)
         : (dying ? (c.ref.sprite_dead || c.ref.sprite) : c.ref.sprite);
-      const img = this.images[sprite];
-      // Sprites match their tile exactly (designer's ruling 2026-08-26) —
-      // the cells are big now, so the art fills the square edge to edge.
+      const img = this.image(sprite);
+      // Sprites match their tile (designer's ruling 2026-08-26). Hero art is
+      // a transparent CUTOUT figure (2026-08-27) — draw it aspect-true,
+      // bottom-anchored, so nobody gets stretched; monsters are square cards.
       if (img) {
-        const s = CELL - 4;
-        ctx.drawImage(img, px + 2, py + 2, s, s);
+        if (c.kind === 'hero' && c.ref.look) {
+          const scale = Math.min((CELL - 2) / img.width, (CELL - 2) / img.height);
+          const iw = img.width * scale, ih = img.height * scale;
+          ctx.drawImage(img, px + (CELL - iw) / 2, py + CELL - 1 - ih, iw, ih);
+        } else {
+          const s = CELL - 4;
+          ctx.drawImage(img, px + 2, py + 2, s, s);
+        }
       }
       if (c === b.active() && !dead) {
         // Gold ring = your hero's turn; red ring = this monster is acting.

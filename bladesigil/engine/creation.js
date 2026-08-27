@@ -70,6 +70,7 @@ export function choosePartyDef(data) {
           name: '',
           race: 'human',
           class: null,
+          look: 'm1', // appearance variant: m1/m2/f1/f2 (2026-08-26)
           rolls: rollAbilitySet(),
           row: idx < 2 ? 'front' : 'back',
         };
@@ -142,8 +143,18 @@ export function choosePartyDef(data) {
                     <button class="cr-choice ${state.row === 'back' ? 'picked' : ''}" data-row="back"><b>Back row</b><span>safe while the front line stands</span></button>
                   </div>
 
+                  <label class="cr-label">Appearance</label>
+                  <div class="cr-choices cr-looks" id="cr-looks">
+                    ${['m1', 'm2', 'f1', 'f2'].map(v => `
+                      <button class="cr-choice cr-look ${v === state.look ? 'picked' : ''}" data-look="${v}" title="${v[0] === 'm' ? 'male' : 'female'}">
+                        <img src="assets/heroes/gen/${state.race}_${state.class}_${v}.png"
+                             onerror="this.closest('button').style.display='none'" alt="">
+                      </button>`).join('')}
+                  </div>
+
                   <div class="cr-preview">
-                    <img src="${cls.sprite}" alt="${cls.name}">
+                    <img src="assets/heroes/gen/${state.race}_${state.class}_${state.look}.png"
+                         onerror="this.src='${cls.sprite}'" alt="${cls.name}">
                     <div>${race.name} ${cls.name}<br>
                       <span class="cr-dim">HP ${hp} · AC ${ac} · to-hit ${fmtMod(hit)}${spellPointsFor(cls, 1) ? ` · SP ${spellPointsFor(cls, 1)}` : ''}</span>
                     </div>
@@ -161,6 +172,7 @@ export function choosePartyDef(data) {
           for (const b of root.querySelectorAll('[data-race]')) b.onclick = () => { state.race = b.dataset.race; keepName(); render(); };
           for (const b of root.querySelectorAll('[data-class]')) b.onclick = () => { state.class = b.dataset.class; keepName(); render(); };
           for (const b of root.querySelectorAll('[data-row]')) b.onclick = () => { state.row = b.dataset.row; keepName(); render(); };
+          for (const b of root.querySelectorAll('[data-look]')) b.onclick = () => { state.look = b.dataset.look; keepName(); render(); };
           for (const b of root.querySelectorAll('[data-ab]')) b.onclick = () => {
             const i = Number(b.dataset.ab);
             if (swapFrom === null) { swapFrom = i; }
@@ -193,6 +205,10 @@ export function choosePartyDef(data) {
           level: 1,
           row: h.row,
           abilities: Object.fromEntries(ABILITIES.map((ab, i) => [ab, h.rolls[i]])),
+          look: {
+            sprite: `assets/heroes/gen/${h.race}_${h.class}_${h.look ?? 'm1'}.png`,
+            portrait: `assets/heroes/gen/${h.race}_${h.class}_${h.look ?? 'm1'}_face.png`,
+          },
         }));
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(def)); } catch { /* private mode: play without saving */ }
         finish(def);

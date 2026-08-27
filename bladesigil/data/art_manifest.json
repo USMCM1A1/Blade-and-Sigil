@@ -5,7 +5,9 @@
     "sigil_shape": "A heraldic emblem for a fantasy RPG sigil system: a single bold flat symbol in PURE WHITE on a PURE BLACK background. Woodcut / coat-of-arms stencil style, thick confident silhouette with simple interior cut lines, perfectly centered, filling about 70% of a square frame. No color, no gradients, no text, no border, nothing else in the frame. The subject:",
     "sigil_bearing": "A heraldic OVERLAY layer for a fantasy RPG sigil system, designed to be composited OVER a separate central emblem: PURE WHITE linework on a PURE BLACK background, woodcut style, bold and simple. CRITICAL: the CENTER of the frame must stay almost entirely black/empty so the emblem beneath shows through \u2014 this layer lives at the edges, top, or as thin lines crossing the middle. No color, no text, no central object. The overlay:",
     "monster_card": "A fantasy RPG monster illustration in the style of a dark painted card: dramatic lighting, muted dungeon palette, the creature framed as a full scene with a simple dark stone background, painterly detail, no text, no border, square composition.",
-    "fx_sprite": "A spell-effect sprite for a fantasy RPG battle: a single glowing element in PURE WHITE on a PURE BLACK background, soft luminous edges, bold simple readable silhouette, centered, filling most of a square frame. No color, no text, no border, nothing else. The element:"
+    "fx_sprite": "A spell-effect sprite for a fantasy RPG battle: a single glowing element in PURE WHITE on a PURE BLACK background, soft luminous edges, bold simple readable silhouette, centered, filling most of a square frame. No color, no text, no border, nothing else. The element:",
+    "hero_portrait": "A fantasy RPG character PORTRAIT: an EXTREME CLOSE-UP of the head and shoulders ONLY \u2014 the face fills most of the frame, cropped at the upper chest. NO waist, NO hands, NO weapons in frame. Dark painted card style: dramatic lighting, muted palette, painterly detail, simple dark background, no text, no border, square composition. The character:",
+    "hero_cutout": "A paperdoll cutout sprite for a fantasy RPG: ONE character, FULL BODY from the top of the head to the soles of the boots, standing in a relaxed heroic pose. The figure is ISOLATED on a plain flat PURE WHITE background \u2014 no scene, no floor, no shadow, no glow, no vignette, nothing but the figure. Painterly detail, dramatic lighting on the figure itself, no text, no border. Paint the SAME character as the reference portrait \u2014 same face, same hair, same armor. The character:"
   },
   "assets": [
     {
@@ -1095,6 +1097,482 @@
       "post": "trim",
       "prompt": "a giant rat the size of a dog lying dead on its side on the dungeon flagstones, mangy fur still, naked tail limp behind it, unmistakably dead, the room otherwise empty.",
       "out": "assets/enemies/gen/giant_rat_dead.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_warrior_m1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human man, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/human_warrior_m1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_warrior_m1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human man, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/human_warrior_m1_face.png",
+      "out": "assets/heroes/gen/human_warrior_m1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_warrior_m2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human man, grizzled and older, with grey-streaked hair and a weathered face, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/human_warrior_m2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_warrior_m2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human man, grizzled and older, with grey-streaked hair and a weathered face, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/human_warrior_m2_face.png",
+      "out": "assets/heroes/gen/human_warrior_m2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_warrior_f1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human woman, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/human_warrior_f1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_warrior_f1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human woman, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/human_warrior_f1_face.png",
+      "out": "assets/heroes/gen/human_warrior_f1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_warrior_f2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human woman, with striking silver-or-copper hair, seasoned and confident, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/human_warrior_f2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_warrior_f2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human woman, with striking silver-or-copper hair, seasoned and confident, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/human_warrior_f2_face.png",
+      "out": "assets/heroes/gen/human_warrior_f2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_priest_m1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human man, dark-haired, young and determined, in holy vestments bearing a blessed mace and a shining holy symbol.",
+      "out": "assets/heroes/gen/human_priest_m1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_priest_m1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human man, dark-haired, young and determined, in holy vestments bearing a blessed mace and a shining holy symbol.",
+      "reference": "assets/heroes/gen/human_priest_m1_face.png",
+      "out": "assets/heroes/gen/human_priest_m1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_priest_m2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human man, grizzled and older, with grey-streaked hair and a weathered face, in holy vestments bearing a blessed mace and a shining holy symbol.",
+      "out": "assets/heroes/gen/human_priest_m2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_priest_m2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human man, grizzled and older, with grey-streaked hair and a weathered face, in holy vestments bearing a blessed mace and a shining holy symbol.",
+      "reference": "assets/heroes/gen/human_priest_m2_face.png",
+      "out": "assets/heroes/gen/human_priest_m2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_priest_f1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human woman, dark-haired, young and determined, in holy vestments bearing a blessed mace and a shining holy symbol.",
+      "out": "assets/heroes/gen/human_priest_f1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_priest_f1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human woman, dark-haired, young and determined, in holy vestments bearing a blessed mace and a shining holy symbol.",
+      "reference": "assets/heroes/gen/human_priest_f1_face.png",
+      "out": "assets/heroes/gen/human_priest_f1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_priest_f2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human woman, with striking silver-or-copper hair, seasoned and confident, in holy vestments bearing a blessed mace and a shining holy symbol.",
+      "out": "assets/heroes/gen/human_priest_f2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_priest_f2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human woman, with striking silver-or-copper hair, seasoned and confident, in holy vestments bearing a blessed mace and a shining holy symbol.",
+      "reference": "assets/heroes/gen/human_priest_f2_face.png",
+      "out": "assets/heroes/gen/human_priest_f2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_wizard_m1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human man, dark-haired, young and determined, in flowing arcane robes holding a carved spell-staff.",
+      "out": "assets/heroes/gen/human_wizard_m1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_wizard_m1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human man, dark-haired, young and determined, in flowing arcane robes holding a carved spell-staff.",
+      "reference": "assets/heroes/gen/human_wizard_m1_face.png",
+      "out": "assets/heroes/gen/human_wizard_m1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_wizard_m2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human man, grizzled and older, with grey-streaked hair and a weathered face, in flowing arcane robes holding a carved spell-staff.",
+      "out": "assets/heroes/gen/human_wizard_m2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_wizard_m2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human man, grizzled and older, with grey-streaked hair and a weathered face, in flowing arcane robes holding a carved spell-staff.",
+      "reference": "assets/heroes/gen/human_wizard_m2_face.png",
+      "out": "assets/heroes/gen/human_wizard_m2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_wizard_f1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human woman, dark-haired, young and determined, in flowing arcane robes holding a carved spell-staff.",
+      "out": "assets/heroes/gen/human_wizard_f1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_wizard_f1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human woman, dark-haired, young and determined, in flowing arcane robes holding a carved spell-staff.",
+      "reference": "assets/heroes/gen/human_wizard_f1_face.png",
+      "out": "assets/heroes/gen/human_wizard_f1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_human_wizard_f2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a human woman, with striking silver-or-copper hair, seasoned and confident, in flowing arcane robes holding a carved spell-staff.",
+      "out": "assets/heroes/gen/human_wizard_f2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_human_wizard_f2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a human woman, with striking silver-or-copper hair, seasoned and confident, in flowing arcane robes holding a carved spell-staff.",
+      "reference": "assets/heroes/gen/human_wizard_f2_face.png",
+      "out": "assets/heroes/gen/human_wizard_f2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_dwarf_warrior_m1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a stocky dwarf man, broad-shouldered with a magnificent thick beard, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/dwarf_warrior_m1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_dwarf_warrior_m1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a stocky dwarf man, broad-shouldered with a magnificent thick beard, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/dwarf_warrior_m1_face.png",
+      "out": "assets/heroes/gen/dwarf_warrior_m1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_dwarf_warrior_m2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a stocky dwarf man, broad-shouldered with a magnificent thick beard, grizzled and older, with grey-streaked hair and a weathered face, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/dwarf_warrior_m2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_dwarf_warrior_m2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a stocky dwarf man, broad-shouldered with a magnificent thick beard, grizzled and older, with grey-streaked hair and a weathered face, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/dwarf_warrior_m2_face.png",
+      "out": "assets/heroes/gen/dwarf_warrior_m2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_dwarf_warrior_f1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a stocky dwarf woman, broad and strong with ornately braided hair, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/dwarf_warrior_f1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_dwarf_warrior_f1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a stocky dwarf woman, broad and strong with ornately braided hair, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/dwarf_warrior_f1_face.png",
+      "out": "assets/heroes/gen/dwarf_warrior_f1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_dwarf_warrior_f2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a stocky dwarf woman, broad and strong with ornately braided hair, with striking silver-or-copper hair, seasoned and confident, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/dwarf_warrior_f2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_dwarf_warrior_f2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a stocky dwarf woman, broad and strong with ornately braided hair, with striking silver-or-copper hair, seasoned and confident, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/dwarf_warrior_f2_face.png",
+      "out": "assets/heroes/gen/dwarf_warrior_f2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_halfling_thief_m1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a small halfling man, child-sized and quick-eyed, dark-haired, young and determined, in dark supple leathers gripping a keen dagger, half in shadow.",
+      "out": "assets/heroes/gen/halfling_thief_m1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_halfling_thief_m1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a small halfling man, child-sized and quick-eyed, dark-haired, young and determined, in dark supple leathers gripping a keen dagger, half in shadow.",
+      "reference": "assets/heroes/gen/halfling_thief_m1_face.png",
+      "out": "assets/heroes/gen/halfling_thief_m1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_halfling_thief_m2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a small halfling man, child-sized and quick-eyed, grizzled and older, with grey-streaked hair and a weathered face, in dark supple leathers gripping a keen dagger, half in shadow.",
+      "out": "assets/heroes/gen/halfling_thief_m2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_halfling_thief_m2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a small halfling man, child-sized and quick-eyed, grizzled and older, with grey-streaked hair and a weathered face, in dark supple leathers gripping a keen dagger, half in shadow.",
+      "reference": "assets/heroes/gen/halfling_thief_m2_face.png",
+      "out": "assets/heroes/gen/halfling_thief_m2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_halfling_thief_f1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a small halfling woman, child-sized and quick-eyed, dark-haired, young and determined, in dark supple leathers gripping a keen dagger, half in shadow.",
+      "out": "assets/heroes/gen/halfling_thief_f1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_halfling_thief_f1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a small halfling woman, child-sized and quick-eyed, dark-haired, young and determined, in dark supple leathers gripping a keen dagger, half in shadow.",
+      "reference": "assets/heroes/gen/halfling_thief_f1_face.png",
+      "out": "assets/heroes/gen/halfling_thief_f1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_halfling_thief_f2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a small halfling woman, child-sized and quick-eyed, with striking silver-or-copper hair, seasoned and confident, in dark supple leathers gripping a keen dagger, half in shadow.",
+      "out": "assets/heroes/gen/halfling_thief_f2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_halfling_thief_f2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a small halfling woman, child-sized and quick-eyed, with striking silver-or-copper hair, seasoned and confident, in dark supple leathers gripping a keen dagger, half in shadow.",
+      "reference": "assets/heroes/gen/halfling_thief_f2_face.png",
+      "out": "assets/heroes/gen/halfling_thief_f2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_high_elf_wizard_m1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a tall graceful high elf man with pale skin and long pointed ears, dark-haired, young and determined, in flowing arcane robes holding a carved spell-staff.",
+      "out": "assets/heroes/gen/high_elf_wizard_m1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_high_elf_wizard_m1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a tall graceful high elf man with pale skin and long pointed ears, dark-haired, young and determined, in flowing arcane robes holding a carved spell-staff.",
+      "reference": "assets/heroes/gen/high_elf_wizard_m1_face.png",
+      "out": "assets/heroes/gen/high_elf_wizard_m1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_high_elf_wizard_m2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a tall graceful high elf man with pale skin and long pointed ears, grizzled and older, with grey-streaked hair and a weathered face, in flowing arcane robes holding a carved spell-staff.",
+      "out": "assets/heroes/gen/high_elf_wizard_m2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_high_elf_wizard_m2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a tall graceful high elf man with pale skin and long pointed ears, grizzled and older, with grey-streaked hair and a weathered face, in flowing arcane robes holding a carved spell-staff.",
+      "reference": "assets/heroes/gen/high_elf_wizard_m2_face.png",
+      "out": "assets/heroes/gen/high_elf_wizard_m2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_high_elf_wizard_f1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a tall graceful high elf woman with pale skin and long pointed ears, dark-haired, young and determined, in flowing arcane robes holding a carved spell-staff.",
+      "out": "assets/heroes/gen/high_elf_wizard_f1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_high_elf_wizard_f1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a tall graceful high elf woman with pale skin and long pointed ears, dark-haired, young and determined, in flowing arcane robes holding a carved spell-staff.",
+      "reference": "assets/heroes/gen/high_elf_wizard_f1_face.png",
+      "out": "assets/heroes/gen/high_elf_wizard_f1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_high_elf_wizard_f2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a tall graceful high elf woman with pale skin and long pointed ears, with striking silver-or-copper hair, seasoned and confident, in flowing arcane robes holding a carved spell-staff.",
+      "out": "assets/heroes/gen/high_elf_wizard_f2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_high_elf_wizard_f2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a tall graceful high elf woman with pale skin and long pointed ears, with striking silver-or-copper hair, seasoned and confident, in flowing arcane robes holding a carved spell-staff.",
+      "reference": "assets/heroes/gen/high_elf_wizard_f2_face.png",
+      "out": "assets/heroes/gen/high_elf_wizard_f2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_wood_elf_warrior_m1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a lithe wood elf man with sun-browned skin and pointed ears, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/wood_elf_warrior_m1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_wood_elf_warrior_m1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a lithe wood elf man with sun-browned skin and pointed ears, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/wood_elf_warrior_m1_face.png",
+      "out": "assets/heroes/gen/wood_elf_warrior_m1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_wood_elf_warrior_m2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a lithe wood elf man with sun-browned skin and pointed ears, grizzled and older, with grey-streaked hair and a weathered face, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/wood_elf_warrior_m2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_wood_elf_warrior_m2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a lithe wood elf man with sun-browned skin and pointed ears, grizzled and older, with grey-streaked hair and a weathered face, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/wood_elf_warrior_m2_face.png",
+      "out": "assets/heroes/gen/wood_elf_warrior_m2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_wood_elf_warrior_f1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a lithe wood elf woman with sun-browned skin and pointed ears, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/wood_elf_warrior_f1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_wood_elf_warrior_f1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a lithe wood elf woman with sun-browned skin and pointed ears, dark-haired, young and determined, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/wood_elf_warrior_f1_face.png",
+      "out": "assets/heroes/gen/wood_elf_warrior_f1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_wood_elf_warrior_f2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a lithe wood elf woman with sun-browned skin and pointed ears, with striking silver-or-copper hair, seasoned and confident, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "out": "assets/heroes/gen/wood_elf_warrior_f2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_wood_elf_warrior_f2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a lithe wood elf woman with sun-browned skin and pointed ears, with striking silver-or-copper hair, seasoned and confident, wearing sturdy mail armor, sword in hand and shield on arm.",
+      "reference": "assets/heroes/gen/wood_elf_warrior_f2_face.png",
+      "out": "assets/heroes/gen/wood_elf_warrior_f2.png",
       "size": 1024
     }
   ]

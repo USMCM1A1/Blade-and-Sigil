@@ -94,7 +94,7 @@ function renderChoice(game, choice, after) {
   const root = document.getElementById('choice');
   const ch = choice.ch;
   root.style.display = 'flex';
-  const portrait = ch.cls.portrait || ch.cls.sprite;
+  const portrait = game.heroPortrait(ch);
   const close = () => { root.style.display = 'none'; root.innerHTML = ''; };
 
   if (choice.type === 'rite') {
@@ -226,7 +226,7 @@ function renderRite(game, choice, after) {
   const rite = choice.lane.rite;
   const vocab = game.data.progression.sigil;
   const root = document.getElementById('choice');
-  const portrait = ch.cls.portrait || ch.cls.sprite;
+  const portrait = game.heroPortrait(ch);
   root.style.display = 'flex';
   const state = { name: rite.ability.name, sigil: null };
   const rand = list => list[Math.floor(Math.random() * list.length)];
@@ -565,7 +565,7 @@ function renderEquipment(game) {
   game.party.forEach((hero, i) => {
     const btn = document.createElement('button');
     btn.className = 'eq-portrait' + (i === eqHeroIdx ? ' picked' : '') + (hero.alive ? '' : ' dead');
-    btn.innerHTML = `<img src="${hero.alive ? (hero.cls.portrait || hero.cls.sprite) : (hero.cls.sprite_dead || hero.cls.sprite)}" alt="">
+    btn.innerHTML = `<img src="${hero.alive ? game.heroPortrait(hero) : (hero.cls.sprite_dead || hero.cls.sprite)}" alt="">
       ${game.canLevel(hero) ? '<span class="level-cross" title="Ready to level up!">✚</span>' : ''}<span>${hero.name}</span>`;
     btn.addEventListener('click', () => { eqHeroIdx = i; renderEquipment(game); });
     tabs.appendChild(btn);
@@ -615,7 +615,7 @@ function renderEquipment(game) {
   // The doll: the hero stands in the middle, gear slots hug the body.
   // Click a filled slot to take the piece off.
   const doll = document.getElementById('eq-doll');
-  doll.innerHTML = `<div class="eq-figure"><img src="${ch.cls.sprite}" alt="${ch.name}"></div>`;
+  doll.innerHTML = `<div class="eq-figure"><img src="${game.heroSprite(ch)}" alt="${ch.name}"></div>`;
   const twoHander = game.twoHanded(ch);
   for (const [slot, label, glyph] of DOLL_SLOTS) {
     const cell = document.createElement('div');
@@ -753,7 +753,7 @@ function openLevelSummary(game, s) {
   root.innerHTML = `
     <div class="cr-panel lv-panel">
       <div class="cr-step">Level ${ch.level}!</div>
-      <div class="ch-head"><img src="${ch.cls.portrait || ch.cls.sprite}" alt="">
+      <div class="ch-head"><img src="${game.heroPortrait(ch)}" alt="">
         <div><b>${ch.name}</b> grows in skill and legend.</div></div>
       <table class="lv-table">
         ${rows.map(([what, change, note]) => `
@@ -815,7 +815,7 @@ function renderMilestoneCard(game, ch, m) {
   root.innerHTML = `
     <div class="cr-panel lv-panel">
       <div class="cr-step">${step}</div>
-      <div class="ch-head"><img src="${ch.cls.portrait || ch.cls.sprite}" alt=""><div>${headline}</div></div>
+      <div class="ch-head"><img src="${game.heroPortrait(ch)}" alt=""><div>${headline}</div></div>
       ${power ? `<div class="rt-power"><b>${power.name}</b><span>${power.blurb ?? ''}</span></div>` : ''}
       ${how ? `<p class="lv-how">${how}</p>` : ''}
       <button id="lv-close">Onward</button>
@@ -1013,7 +1013,7 @@ export function updateUI(game) {
   for (const ch of game.party) {
     const u = ch.ui;
     u.card.classList.toggle('dead', !ch.alive);
-    u.img.src = ch.alive ? (ch.cls.portrait || ch.cls.sprite) : (ch.cls.sprite_dead || ch.cls.sprite);
+    u.img.src = ch.alive ? game.heroPortrait(ch) : (ch.cls.sprite_dead || ch.cls.sprite);
     u.cross.style.display = game.canLevel(ch) ? 'flex' : 'none';
     // AC and weapon change when gear does.
     const sub = `Level ${ch.level} ${ch.race.name} ${game.displayClass(ch)} · AC ${ch.ac} · ${ch.weapon.name}${ch.level >= 20 ? ' · MAX' : ch.xp ? ` · XP ${ch.xp}/${game.xpToLevel(ch)}` : ''}`;

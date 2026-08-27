@@ -6,3 +6,5 @@ bladesigil/tools/gemini_key.txt
 bladesigil/assets/BIF-sounds/*
 !bladesigil/assets/BIF-sounds/extracted
 bladesigil/NearInfinity-*.jar
+# Designer's scratch screenshots and reference material
+bladesigil/debugging-screenshots/

@@ -263,8 +263,7 @@
     display: flex; align-items: center; justify-content: center;
   }
   .eq-figure img {
-    width: 190px; height: 190px; object-fit: contain;
-    image-rendering: pixelated;
+    width: 190px; height: 220px; object-fit: contain;
     filter: drop-shadow(0 6px 14px rgba(0,0,0,0.9));
   }
   .eq-slot {
@@ -508,7 +507,10 @@
     margin-top: 16px; padding: 10px;
     background: #0a0a0f; border: 1px solid var(--panel-edge); border-radius: 5px;
   }
-  .cr-preview img { width: 64px; height: 64px; object-fit: contain; image-rendering: pixelated; }
+  .cr-preview img { width: 64px; height: 64px; object-fit: contain; border-radius: 4px; }
+  .cr-looks { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .cr-looks .cr-look { flex: 0 0 auto; padding: 4px; }
+  .cr-looks .cr-look img { width: 72px; height: 72px; object-fit: contain; border-radius: 4px; display: block; }
   .cr-nav { display: flex; justify-content: space-between; margin-top: 22px; }
   #cr-next { border-color: var(--gold); color: var(--gold); font-size: 16px; }
   #fatal {
