@@ -1,5 +1,5 @@
 {
-  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. SPELL POINTS (magic v2, doc formula): casters use \"spell_points\": {\"base\": N, \"multiplier\": M} — max SP = base + (level x multiplier x 3), so a Wizard (4, 1.0) has 7 SP at level 1 and 64 at level 20. A legacy per-level array still works; classes with neither have no magic. hit_bonus applies to attack AND damage rolls. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules. 'detect': per-level % chance (design doc tables, thief & archer) to notice secret doors and traps — the party uses its best detector, +5% per point of DEX modifier, +race detect_bonus. 'disarms': true lets the class defuse a DETECTED trap by stepping onto it (thieves only, per the doc).",
+  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. SPELL POINTS (magic v2, doc formula): casters use \"spell_points\": {\"base\": N, \"multiplier\": M} \u2014 max SP = base + (level x multiplier x 3), so a Wizard (4, 1.0) has 7 SP at level 1 and 64 at level 20. A legacy per-level array still works; classes with neither have no magic. hit_bonus applies to attack AND damage rolls. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules. 'detect': per-level % chance (design doc tables, thief & archer) to notice secret doors and traps \u2014 the party uses its best detector, +5% per point of DEX modifier, +race detect_bonus. 'disarms': true lets the class defuse a DETECTED trap by stepping onto it (thieves only, per the doc). | \"locked\": true hides a class from character creation until its progression lanes are built (2026-08-26: archer/spellblade/summoner wait; delete the flag to release one).",
   "classes": {
     "warrior": {
       "name": "Warrior",
@@ -9,7 +9,8 @@
       "hp_die": 10,
       "allowed_races": [
         "human",
-        "dwarf"
+        "dwarf",
+        "wood_elf"
       ],
       "starting_weapon": "rusty_longsword",
       "weapon_types": [
@@ -188,10 +189,7 @@
       "hp_die": 4,
       "allowed_races": [
         "human",
-        "high_elf",
-        "wood_elf",
-        "halfling",
-        "dwarf"
+        "high_elf"
       ],
       "starting_weapon": "splintered_staff",
       "weapon_types": [
@@ -273,7 +271,7 @@
     },
     "thief": {
       "name": "Thief",
-      "_stealthy_comment": "stealthy: begins every fight the PARTY starts hidden in the shadows (monsters cannot see or target them until they strike) — the engine's rule for how a Blade Work rogue reaches an unaware mark",
+      "_stealthy_comment": "stealthy: begins every fight the PARTY starts hidden in the shadows (monsters cannot see or target them until they strike) \u2014 the engine's rule for how a Blade Work rogue reaches an unaware mark",
       "stealthy": true,
       "sprite": "assets/heroes/thief.png",
       "sprite_dead": "assets/heroes/thief_dead.png",
@@ -489,7 +487,8 @@
         3,
         4,
         4
-      ]
+      ],
+      "locked": true
     },
     "spellblade": {
       "name": "Spell Blade",
@@ -577,7 +576,8 @@
       "spell_points": {
         "base": 2,
         "multiplier": 0.5
-      }
+      },
+      "locked": true
     },
     "summoner": {
       "name": "Summoner",
@@ -683,7 +683,8 @@
         21,
         22,
         23
-      ]
+      ],
+      "locked": true
     }
   }
 }

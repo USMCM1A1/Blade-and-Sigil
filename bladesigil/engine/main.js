@@ -57,14 +57,18 @@ async function boot() {
   // bars leave, and the renderer's camera sees as many tiles as fit.
   const TILE = 56;
   const fitCanvas = () => {
+    // Battle claims the whole stage (designer's call 2026-08-26): the sidebar
+    // hides, the log shrinks, and the canvas keeps every pixel — no tile
+    // snapping, since the battle grid scales its own cells.
+    const inBattle = document.body.classList.contains('in-battle');
     const layout = document.getElementById('layout');
-    const w = Math.max(840, layout.clientWidth - 330); // sidebar + gap
+    const w = Math.max(840, layout.clientWidth - (inBattle ? 0 : 330)); // sidebar + gap
     const otherH = document.getElementById('titlebar').offsetHeight
       + document.getElementById('log').offsetHeight
       + document.getElementById('controls').offsetHeight + 44; // paddings/margins
     const h = Math.max(600, window.innerHeight - otherH);
-    canvas.width = Math.floor(w / TILE) * TILE;
-    canvas.height = Math.floor(h / TILE) * TILE;
+    canvas.width = inBattle ? w : Math.floor(w / TILE) * TILE;
+    canvas.height = inBattle ? h : Math.floor(h / TILE) * TILE;
     renderer.cols = Math.floor(canvas.width / TILE);
     renderer.rows = Math.floor(canvas.height / TILE);
   };
@@ -213,7 +217,15 @@ async function boot() {
     }
   });
 
+  let wasBattle = false;
   function frame() {
+    // Entering/leaving battle re-stages the whole screen (sidebar, log, canvas).
+    const inBattle = !!game.battle;
+    if (inBattle !== wasBattle) {
+      wasBattle = inBattle;
+      document.body.classList.toggle('in-battle', inBattle);
+      fitCanvas();
+    }
     renderer.draw();
     updateUI(game);
     maybeOpenChoice(game); // owed lane forks pop up once the party is on the map

@@ -78,7 +78,10 @@ export function choosePartyDef(data) {
         render();
 
         function classesFor(race) {
-          return Object.entries(data.classes.classes).filter(([, c]) => c.allowed_races.includes(race));
+          // "locked": true in classes.json hides a class until its lanes are
+          // built (designer's call 2026-08-26) — delete the flag to release it.
+          return Object.entries(data.classes.classes)
+            .filter(([, c]) => !c.locked && c.allowed_races.includes(race));
         }
 
         function render() {

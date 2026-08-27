@@ -225,30 +225,47 @@ export class Renderer {
     const b = game.battle;
     const W = this.canvas.width, H = this.canvas.height;
     const gw = b.grid[0].length, gh = b.grid.length;
-    // Cells grow with the canvas: fill the space between the header and the
-    // footer hints (44px floor keeps cramped windows playable).
-    const CELL = Math.max(44, Math.min(Math.floor((W - 60) / gw), Math.floor((H - 180) / gh)));
-    const ox = (W - gw * CELL) / 2;
-    const oy = 64 + Math.max(0, (H - 64 - 84 - gh * CELL) / 2);
+    // The field owns the stage (designer's markup 2026-08-26): a slim panel
+    // on the LEFT carries the name, round, initiative ladder, and turn info;
+    // the grid gets everything else, nearly floor to ceiling.
+    const PANEL = 220;
+    const CELL = Math.max(44, Math.min(Math.floor((W - PANEL - 24) / gw), Math.floor((H - 20) / gh)));
+    const ox = PANEL + Math.max(0, (W - PANEL - gw * CELL) / 2);
+    const oy = Math.max(0, (H - gh * CELL) / 2);
 
     ctx.fillStyle = '#101018';
     ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#0c0c13';
+    ctx.fillRect(0, 0, PANEL, H);
 
-    // Header: template name + round on the left…
-    ctx.fillStyle = COLORS.stairs;
-    ctx.font = 'bold 19px Georgia';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`⚔  ${b.templateName}`, 18, 10);
-    ctx.font = '13px Georgia';
-    ctx.fillStyle = '#8a8a99';
-    ctx.fillText(`Round ${b.round}`, 20, 34);
+    // Panel text helper: wrapped lines that keep their own cursor.
+    let panelY = 12;
+    const panelLine = (text, font, color, lh = 18) => {
+      ctx.font = font;
+      ctx.fillStyle = color;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      const words = String(text).split(' ');
+      let line = '';
+      for (const wd of words) {
+        const test = line ? `${line} ${wd}` : wd;
+        if (ctx.measureText(test).width > PANEL - 28 && line) {
+          ctx.fillText(line, 14, panelY);
+          panelY += lh;
+          line = wd;
+        } else line = test;
+      }
+      if (line) { ctx.fillText(line, 14, panelY); panelY += lh; }
+    };
 
-    // …and the initiative tracker on the right: portrait chips in turn
-    // order, HP slivers underneath, the active combatant ringed in gold.
+    panelLine(`⚔ ${b.templateName}`, 'bold 18px Georgia', COLORS.stairs, 22);
+    panelLine(`Round ${b.round}`, '13px Georgia', '#8a8a99', 16);
+    panelY += 8;
+
+    // The initiative ladder: a vertical stack of portrait + name + HP bar,
+    // the active combatant ringed in gold.
     const order = b.combatants.filter(c => c.kind === 'hero' ? true : c.ref.hp > 0);
-    const CHIP = 38, GAP = 9, chipY = 9;
-    let tx = W - 18 - order.length * (CHIP + GAP) + GAP;
+    const CHIP = 40, ROW = 50;
     for (const c of order) {
       const isActive = c === b.active();
       const dead = c.kind === 'hero' && !c.ref.alive;
@@ -258,26 +275,25 @@ export class Renderer {
       ctx.save();
       if (dead) ctx.globalAlpha = 0.35;
       ctx.fillStyle = '#0a0a0f';
-      ctx.fillRect(tx, chipY, CHIP, CHIP);
-      if (icon) ctx.drawImage(icon, tx, chipY, CHIP, CHIP);
-      const hpFrac = Math.max(0, c.ref.hp / c.ref.maxHp);
-      ctx.fillStyle = '#0a0a0f';
-      ctx.fillRect(tx, chipY + CHIP + 2, CHIP, 4);
-      ctx.fillStyle = c.kind === 'hero' ? '#5c88d8' : '#c04848';
-      ctx.fillRect(tx, chipY + CHIP + 2, CHIP * hpFrac, 4);
+      ctx.fillRect(14, panelY, CHIP, CHIP);
+      if (icon) ctx.drawImage(icon, 14, panelY, CHIP, CHIP);
       ctx.strokeStyle = isActive ? COLORS.stairs : (c.kind === 'hero' ? '#3d4d6d' : '#5d3535');
       ctx.lineWidth = isActive ? 3 : 1.5;
-      ctx.strokeRect(tx + 0.5, chipY + 0.5, CHIP - 1, CHIP - 1);
-      if (isActive) {
-        ctx.fillStyle = COLORS.stairs;
-        ctx.font = 'bold 12px Georgia';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'alphabetic';
-        ctx.fillText('▾', tx + CHIP / 2, chipY + CHIP + 16);
-      }
+      ctx.strokeRect(14.5, panelY + 0.5, CHIP - 1, CHIP - 1);
+      ctx.font = `${isActive ? 'bold ' : ''}13px Georgia`;
+      ctx.fillStyle = isActive ? '#ffe9b8' : (c.kind === 'hero' ? '#cfc4a6' : '#c89090');
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText((isActive ? '▸ ' : '') + c.ref.name, 62, panelY + 6, PANEL - 76);
+      const hpFrac = Math.max(0, c.ref.hp / c.ref.maxHp);
+      ctx.fillStyle = '#0a0a0f';
+      ctx.fillRect(62, panelY + 26, PANEL - 80, 5);
+      ctx.fillStyle = c.kind === 'hero' ? '#5c88d8' : '#c04848';
+      ctx.fillRect(62, panelY + 26, (PANEL - 80) * hpFrac, 5);
       ctx.restore();
-      tx += CHIP + GAP;
+      panelY += ROW;
     }
+    panelY += 12;
     ctx.textBaseline = 'top';
 
     // The battlefield grid. In targeting mode, squares in range glow cold;
@@ -335,7 +351,8 @@ export class Renderer {
     // anyone stepping onto the square stands on top of the body.
     const nowD = performance.now();
     const drawOrder = [...b.combatants].sort((a, z) =>
-      (a.kind === 'monster' && a.ref.hp <= 0 ? 0 : 1) - (z.kind === 'monster' && z.ref.hp <= 0 ? 0 : 1));
+      ((a.kind === 'monster' && a.ref.hp <= 0 ? 0 : 1) - (z.kind === 'monster' && z.ref.hp <= 0 ? 0 : 1))
+      || (a.y - z.y)); // sprites overflow their tile upward, so lower rows paint over higher ones
     for (const c of drawOrder) {
       const dying = c.kind === 'monster' && c.ref.hp <= 0;
       if (dying && !c.diedAt) continue;
@@ -350,7 +367,12 @@ export class Renderer {
         ? (c.ref.alive ? c.ref.cls.sprite : c.ref.cls.sprite_dead)
         : (dying ? (c.ref.sprite_dead || c.ref.sprite) : c.ref.sprite);
       const img = this.images[sprite];
-      if (img) ctx.drawImage(img, px + 4, py + 3, CELL - 8, CELL - 14);
+      // Sprites match their tile exactly (designer's ruling 2026-08-26) —
+      // the cells are big now, so the art fills the square edge to edge.
+      if (img) {
+        const s = CELL - 4;
+        ctx.drawImage(img, px + 2, py + 2, s, s);
+      }
       if (c === b.active() && !dead) {
         // Gold ring = your hero's turn; red ring = this monster is acting.
         ctx.strokeStyle = c.kind === 'hero' ? COLORS.stairs : '#c04040';
@@ -445,19 +467,13 @@ export class Renderer {
       ctx.fillText('✛', px + CELL / 2, py - 2);
     }
 
-    // Footer: whose turn + hints.
+    // Turn status + hints live in the left panel now (below the ladder).
     const a = b.active();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
     if (a?.kind === 'monster') {
-      ctx.fillStyle = '#e08080';
-      ctx.font = 'bold 15px Georgia';
-      ctx.fillText(`The ${a.ref.name} acts…`, W / 2, H - 42);
+      panelLine(`The ${a.ref.name} acts…`, 'bold 14px Georgia', '#e08080');
     } else if (a?.kind === 'hero' && b.mode === 'move') {
-      ctx.fillStyle = COLORS.stairs;
-      ctx.font = 'bold 15px Georgia';
+      panelLine(`${a.ref.name}'s turn — ${b.movesLeft} move${b.movesLeft === 1 ? '' : 's'} left`, 'bold 14px Georgia', COLORS.stairs);
       // Bump preview: a foe in reach shows the odds — and why (stealth tags).
-      let bump = '';
       const foe = b.monsters()
         .filter(mc => Math.abs(mc.x - a.x) + Math.abs(mc.y - a.y) === 1)
         .sort((p, q) => (b.assassinateTriggers(a, q) ? 2 : b.isUnaware(q, a.ref) ? 1 : 0)
@@ -469,9 +485,8 @@ export class Renderer {
         else if (b.isUnaware(foe, a.ref)) tags.push('💤 unaware');
         if (b.isFlanked(foe)) tags.push('flanked');
         const pct = Math.round(Math.max(5, Math.min(95, (21 + b.attackBonus(a.ref) - (10 + foe.ref.ac)) / 20 * 100)));
-        bump = ` · bump the ${foe.ref.name}: ${tags.some(t => t.startsWith('ASSASSINATE')) ? 'auto-crit' : `${pct}% to hit`}${tags.length ? ` (${tags.join(', ')})` : ''}`;
+        panelLine(`bump the ${foe.ref.name}: ${tags.some(t => t.startsWith('ASSASSINATE')) ? 'auto-crit' : `${pct}% to hit`}${tags.length ? ` (${tags.join(', ')})` : ''}`, '13px Georgia', '#e8d8a8', 16);
       }
-      ctx.fillText(`${a.ref.name}'s turn — ${b.movesLeft} move${b.movesLeft === 1 ? '' : 's'} left${bump}`, W / 2, H - 42);
     } else if (b.mode === 'target') {
       ctx.fillStyle = COLORS.stairs;
       ctx.font = 'bold 15px Georgia';
@@ -503,10 +518,8 @@ export class Renderer {
           }
         }
       }
-      ctx.fillText(`Aiming ${what} — range ${b.pending.range}${odds}`, W / 2, H - 42);
+      panelLine(`Aiming ${what} — range ${b.pending.range}${odds}`, 'bold 14px Georgia', COLORS.stairs);
     }
-    ctx.fillStyle = 'rgba(207,196,166,0.7)';
-    ctx.font = '13px Georgia';
     // The C hint NAMES the hero's battle arts — a power nobody sees is a
     // power nobody uses (Rage, Vanish, and every named Rite verb).
     let cHint = '';
@@ -523,7 +536,8 @@ export class Renderer {
     const hints = b.mode === 'target'
       ? 'arrows — aim · Enter — unleash! · Esc — cancel'
       : `arrows — move & bump to attack · ${cHint}${a?.kind === 'hero' && b.canShoot(a) ? 'F — shoot · ' : ''}${a?.kind === 'hero' && this.game.heldItems().length ? 'I — item · ' : ''}Space — end turn · Esc — flee`;
-    ctx.fillText(hints, W / 2, H - 20);
+    panelY += 8;
+    for (const hint of hints.split(' · ')) panelLine(hint, '12.5px Georgia', 'rgba(207,196,166,0.65)', 17);
 
     // Abilities menu overlay (spells + class battle arts). A high-level
     // caster's list outgrows nine digits, so the menu scrolls: arrows walk a
@@ -535,7 +549,7 @@ export class Renderer {
       const start = Math.max(0, Math.min(sel - Math.floor(maxRows / 2), full.length - maxRows));
       const list = full.slice(start, start + maxRows);
       const mw = 460, mh = 70 + list.length * 44;
-      const mx = (W - mw) / 2, my = (H - mh) / 2;
+      const mx = PANEL + (W - PANEL - mw) / 2, my = (H - mh) / 2;
       ctx.fillStyle = 'rgba(10,10,16,0.92)';
       ctx.fillRect(mx, my, mw, mh);
       ctx.strokeStyle = COLORS.stairs;
@@ -573,7 +587,7 @@ export class Renderer {
     if (b.mode === 'items' && a?.kind === 'hero') {
       const list = b.usableItems(a);
       const mw = 380, mh = 70 + list.length * 44;
-      const mx = (W - mw) / 2, my = (H - mh) / 2;
+      const mx = PANEL + (W - PANEL - mw) / 2, my = (H - mh) / 2;
       ctx.fillStyle = 'rgba(10,10,16,0.92)';
       ctx.fillRect(mx, my, mw, mh);
       ctx.strokeStyle = COLORS.stairs;

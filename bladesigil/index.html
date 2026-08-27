@@ -55,6 +55,12 @@
     width: 320px; flex-shrink: 0;
     display: flex; flex-direction: column; gap: 8px;
   }
+  /* Battle claims the stage (2026-08-26): the sidebar steps aside and the log
+     tightens so the field and its sprites get nearly the whole window. The
+     initiative chips up top carry HP; menus pop over the field. */
+  body.in-battle #sidebar { display: none; }
+  body.in-battle #log { height: 84px; }
+  body.in-battle #titlebar { display: none; }
   .char-card {
     background: var(--panel);
     border: 1px solid var(--panel-edge);
