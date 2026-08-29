@@ -597,7 +597,7 @@ export class Renderer {
     }
     const hints = b.mode === 'target'
       ? 'arrows — aim · Enter — unleash! · Esc — cancel'
-      : `arrows — move & bump to attack · ${cHint}${a?.kind === 'hero' && b.canShoot(a) ? 'F — shoot · ' : ''}${a?.kind === 'hero' && b.usableItems(a).length ? 'I — item · ' : ''}Space — end turn · Esc — flee`;
+      : `arrows — move & bump to attack · ${cHint}${a?.kind === 'hero' && b.canShoot(a) ? (b.shootBlock(a) ? `F — shoot (${b.shootBlock(a).startsWith('no arrows') ? 'no arrows!' : 'stand still'}) · ` : `F — shoot${b.pointBlank(a.ref) ? ` (−${b.pointBlank(a.ref)} point-blank)` : ''}${Number.isFinite(this.game.ammoCount()) ? ` · ${this.game.ammoCount()} arrows` : ''} · `) : ''}${a?.kind === 'hero' && b.usableItems(a).length ? 'I — item · ' : ''}${a?.kind === 'hero' && b.swapOptions(a).length ? 'W — swap weapon · ' : ''}Space — end turn · Esc — flee`;
     panelY += 8;
     for (const hint of hints.split(' · ')) panelLine(hint, '12.5px Georgia', 'rgba(207,196,166,0.65)', 17);
 
@@ -677,6 +677,42 @@ export class Renderer {
       ctx.fillStyle = '#8a8a99';
       ctx.font = '12px Georgia';
       ctx.fillText('press a number to drink or read (ends the turn) · Esc to close', mx + mw / 2, my + mh - 22);
+    }
+
+    // Swap-weapon overlay (W) — same skin as the item menu.
+    if (b.mode === 'swap' && a?.kind === 'hero') {
+      const list = b.swapOptions(a);
+      const mw = 520, mh = 92 + list.length * 44;
+      const mx = PANEL + (W - PANEL - mw) / 2, my = (H - mh) / 2;
+      ctx.fillStyle = 'rgba(10,10,16,0.92)';
+      ctx.fillRect(mx, my, mw, mh);
+      ctx.strokeStyle = COLORS.stairs;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(mx, my, mw, mh);
+      ctx.fillStyle = COLORS.stairs;
+      ctx.font = 'bold 17px Georgia';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`${a.ref.name} swaps weapons — now: ${a.ref.weapon.name}${a.ref.equipment.hand2 ? ` & ${this.game.itemDef(a.ref.equipment.hand2).name}` : ''}`, mx + mw / 2, my + 12);
+      ctx.font = 'italic 12px Georgia';
+      ctx.fillStyle = '#8a8a99';
+      ctx.fillText('drawing a one-hander in place of a bow brings a shield up with it', mx + mw / 2, my + 34);
+      list.forEach((it, i) => {
+        const ly = my + 66 + i * 44;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = it.reason ? '#66605a' : '#cfc4a6';
+        ctx.font = 'bold 14px Georgia';
+        const d = it.def;
+        const tag = d.type === 'shield' ? `shield · +${d.ac ?? 0} AC` : `${d.damage}${d.range ? ` · range ${d.range}${d.steady ? ' · stand still' : ''}` : ''}${d.hands === 2 ? ' · two hands' : ''}`;
+        ctx.fillText(`${i + 1}.  ${d.name}  ×${it.count}  —  ${tag}`, mx + 20, ly);
+        ctx.font = 'italic 11.5px Georgia';
+        ctx.fillStyle = it.reason ? '#55504c' : '#8a8a99';
+        ctx.fillText(it.reason ?? d.description ?? '', mx + 38, ly + 17);
+      });
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#8a8a99';
+      ctx.font = '12px Georgia';
+      ctx.fillText('press a number to ready it (ends the turn) · Esc to close', mx + mw / 2, my + mh - 22);
     }
 
     // Guardian's Stand: the blow hangs in the air while the player decides.
@@ -765,6 +801,22 @@ export class Renderer {
         const s = CELL * 0.62;
         if (spr) ctx.drawImage(spr, -s / 2, -s / 2, s, s);
         else { ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(0, 0, CELL * 0.14, 0, Math.PI * 2); ctx.fill(); }
+      } else if (f.kind === 'arrow') {
+        // A shot: a thin dark shaft with a pale head — no glow, no magic.
+        const [x0, y0] = center(f.from), [x1, y1] = center(f.to);
+        const px = x0 + (x1 - x0) * t, py = y0 + (y1 - y0) * t;
+        ctx.translate(px, py);
+        ctx.rotate(Math.atan2(y1 - y0, x1 - x0));
+        const len = CELL * 0.6;
+        ctx.strokeStyle = f.color;
+        ctx.lineWidth = Math.max(2, CELL * 0.05);
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(-len / 2, 0); ctx.lineTo(len / 2, 0); ctx.stroke();
+        ctx.strokeStyle = '#8a8a99'; // fletching
+        ctx.lineWidth = Math.max(1, CELL * 0.03);
+        ctx.beginPath(); ctx.moveTo(-len / 2, 0); ctx.lineTo(-len / 2 - CELL * 0.08, -CELL * 0.07); ctx.moveTo(-len / 2, 0); ctx.lineTo(-len / 2 - CELL * 0.08, CELL * 0.07); ctx.stroke();
+        ctx.fillStyle = '#c8c8d0'; // the head
+        ctx.beginPath(); ctx.moveTo(len / 2 + CELL * 0.09, 0); ctx.lineTo(len / 2 - CELL * 0.04, -CELL * 0.06); ctx.lineTo(len / 2 - CELL * 0.04, CELL * 0.06); ctx.closePath(); ctx.fill();
       } else if (f.kind === 'beam' || f.kind === 'lightning') {
         const alpha = (1 - t) * (f.kind === 'lightning' ? 0.65 + 0.35 * Math.sin(now / 22) : 1);
         ctx.globalAlpha = Math.max(0, alpha);

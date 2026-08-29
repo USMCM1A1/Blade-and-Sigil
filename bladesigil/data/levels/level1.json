@@ -20,6 +20,10 @@
     {
       "id": "rations",
       "chance": 0.4
+    },
+    {
+      "id": "arrows",
+      "chance": 0.3
     }
   ],
   "chest_random": 0,

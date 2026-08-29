@@ -341,9 +341,9 @@ export class Game {
     const price = def.value ?? 0;
     if (this.gold < price) { this.log(`${def.name} costs ${price} gold — the party cannot pay.`, 'info'); return false; }
     this.gold -= price;
-    this.addItem(id);
+    const got = this.addItem(id, def.bundle ?? 1); // arrows come by the dozen
     audio.play('purchase'); // coins on the counter — the bell is only the door now
-    this.log(`Bought ${def.name} for ${price} gold.`, 'gold');
+    this.log(`Bought ${got > 1 ? `${got} ` : ''}${def.name} for ${price} gold.`, 'gold');
     return true;
   }
 
@@ -895,7 +895,9 @@ export class Game {
     const found = [], left = [];
     for (const entry of this.level.chestItems) {
       if (Math.random() < entry.chance) {
-        (this.addItem(entry.id) ? found : left).push(this.itemDef(entry.id).name);
+        const def = this.itemDef(entry.id);
+        const got = this.addItem(entry.id, def.bundle ?? 1);
+        (got ? found : left).push(`${got > 1 ? `${got} ` : ''}${def.name}`);
       }
     }
     // Guaranteed surprises: N items drawn at random from the whole catalog.
@@ -1384,6 +1386,27 @@ export class Game {
         return { id, def, spell: spell ? { id: def.spell, ...spell } : null, count: n,
           reason: spell ? scrollReadable(this.data, ch, spell) : `names an unknown spell "${def.spell}"` };
       });
+  }
+
+  // ---- Ranged rules (items.json 'ranged' block) ----
+  rangedRules() { return this.data.items.ranged ?? {}; }
+  ammoId() { return this.rangedRules().ammo ?? null; }
+  ammoCount() { const id = this.ammoId(); return id ? (this.inventory[id] || 0) : Infinity; }
+  // A shot spends one arrow (the arena's quiver is bottomless).
+  spendAmmo() {
+    const id = this.ammoId();
+    if (!id || this.arena) return;
+    if (this.inventory[id] > 0) this.inventory[id]--;
+  }
+
+  // Weapons and shields in the pouch this hero could swap to in battle:
+  // [{id, def, count, reason}] — reason set when the class may not use it.
+  swapOptions(ch) {
+    return Object.entries(this.inventory)
+      .filter(([id, n]) => n > 0)
+      .map(([id, n]) => ({ id, def: this.itemDef(id), count: n }))
+      .filter(it => it.def && (it.def.type.startsWith('weapon_') || it.def.type === 'shield'))
+      .map(it => ({ ...it, reason: this.gearBlockReason(it.def, ch) }));
   }
 
   // The words burn off the page (the arena keeps its scrolls).

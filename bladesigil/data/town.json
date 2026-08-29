@@ -25,6 +25,7 @@
     "welcome": "The shopkeep looks up from her ledger. 'Buying or selling? Coin either way.'",
     "stock": [
       "rations",
+      "arrows",
       "health_potion",
       "antidote_potion",
       "mana_potion",

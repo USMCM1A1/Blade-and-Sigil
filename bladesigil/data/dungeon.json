@@ -148,6 +148,10 @@
         {
           "id": "rations",
           "chance": 0.4
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -187,6 +191,10 @@
         {
           "id": "rations",
           "chance": 0.4
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -230,6 +238,10 @@
         {
           "id": "mana_potion",
           "chance": 0.25
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -273,6 +285,10 @@
         {
           "id": "mana_potion",
           "chance": 0.25
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -336,6 +352,10 @@
         {
           "id": "invisibility_potion",
           "chance": 0.08
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -403,6 +423,10 @@
         {
           "id": "invisibility_potion",
           "chance": 0.08
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -469,6 +493,10 @@
         {
           "id": "invisibility_potion",
           "chance": 0.08
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -536,6 +564,10 @@
         {
           "id": "invisibility_potion",
           "chance": 0.08
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -611,6 +643,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -687,6 +723,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -762,6 +802,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -838,6 +882,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -912,6 +960,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -987,6 +1039,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -1062,6 +1118,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -1135,6 +1195,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -1209,6 +1273,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -1281,6 +1349,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -1353,6 +1425,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [
@@ -1426,6 +1502,10 @@
         {
           "id": "greater_mana_potion",
           "chance": 0.1
+        },
+        {
+          "id": "arrows",
+          "chance": 0.3
         }
       ],
       "traps": [

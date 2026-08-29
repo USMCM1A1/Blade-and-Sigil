@@ -144,6 +144,11 @@ async function boot() {
         else if (e.key === 'Escape' || e.key === 'i' || e.key === 'I') b.mode = 'move';
         return;
       }
+      if (b.mode === 'swap') {
+        if (/^[1-9]$/.test(e.key)) b.chooseSwap(Number(e.key));
+        else if (e.key === 'Escape' || e.key === 'w' || e.key === 'W') b.mode = 'move';
+        return;
+      }
       if (b.mode === 'target') {
         if (MOVES[e.key]) { e.preventDefault(); b.moveCursor(...MOVES[e.key]); }
         else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); b.confirm(); }
@@ -162,6 +167,8 @@ async function boot() {
         b.beginShoot();
       } else if (e.key === 'i' || e.key === 'I') {
         b.openItems();
+      } else if (e.key === 'w' || e.key === 'W') {
+        b.openSwap();
       } else if (e.key === 'Escape') {
         b.flee();
       } else if (e.key === 'm' || e.key === 'M') {

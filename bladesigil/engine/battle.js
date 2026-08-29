@@ -320,7 +320,7 @@ export class Battle {
   // `delay` (ms) holds the text back — damage numbers land AT impact, after
   // the bolt has crossed the field, never before it.
   addFx(x, y, text, color, delay = 0) {
-    this.fx.push({ x, y, text, color, born: performance.now() + delay });
+    this.fx.push({ x, y, text, color, born: performance.now() + delay + (this.fxDelay ?? 0) });
   }
 
   fxOn(ref, text, color) {
@@ -359,7 +359,30 @@ export class Battle {
     for (const b of ch.timedBuffs ?? []) if (b.hit) parts.push([b.hit, b.name]);
     if (ch.insight?.hit) parts.push([ch.insight.hit, 'Arcane Insight']);
     for (const part of this.game.condParts(ch, 'hit')) parts.push(part); // Weakened, Frightened…
+    // Point-blank (ranged rules): loosing an arrow with a foe at your elbow.
+    const pb = this.pointBlank(ch);
+    if (pb) parts.push([-pb, 'point-blank']);
     return parts;
+  }
+
+  // A bow-wielder with a living foe adjacent shoots at a penalty
+  // (items.json ranged.point_blank_penalty). 0 when it doesn't apply.
+  pointBlank(ch) {
+    if (!ch.weapon?.range) return 0;
+    const c = this.combatants.find(cc => cc.ref === ch);
+    if (!c) return 0;
+    const near = this.monsters().some(mc => Math.abs(mc.x - c.x) + Math.abs(mc.y - c.y) === 1);
+    return near ? (this.game.rangedRules().point_blank_penalty ?? 4) : 0;
+  }
+
+  // Why this hero can't shoot right now — or null. The hint line and the F
+  // key both ask, so a refusal is never silent.
+  shootBlock(c) {
+    const ch = c.ref;
+    if (!ch.weapon?.range) return null;
+    if (ch.weapon.steady && this.movesLeft < HERO_MOVE) return `the ${ch.weapon.name.toLowerCase()} needs a planted stance — no shot on a turn you have moved`;
+    if (this.game.ammoCount() <= 0) return `no arrows left in the pouch`;
+    return null;
   }
 
   // opts.vital: 'unaware' | 'flanked' when Vital Strike applies this swing.
@@ -562,10 +585,22 @@ export class Battle {
 
   heroAttack(c, foeC, verb = 'swings') {
     const ch = c.ref, monster = foeC.ref;
-    audio.play('melee_hit');
+    const shooting = verb === 'shoots';
+    if (!shooting) audio.play('melee_hit');
     let killed = false, crit = false;
     for (let a = 0; a < this.heroAttacks(ch) && monster.hp > 0; a++) {
+      if (shooting) {
+        // The arrow crosses the field; its number lands on impact. A second
+        // shot follows a beat behind the first.
+        if (this.game.ammoCount() <= 0) { this.game.log(`${ch.name}'s quiver is empty.`, 'info'); break; }
+        this.game.spendAmmo();
+        audio.play('arrow');
+        const dur = this.emitArrow(c, foeC, a * 160);
+        this.fxDelay = dur;
+      }
       const res = this.strike(c, foeC, verb);
+      this.fxDelay = 0;
+      if (shooting && !res.hit && !res.immune) this.arrowsMissed = (this.arrowsMissed ?? 0) + 1;
       killed = killed || res.kill;
       crit = crit || res.crit;
       if (res.assassinate && res.kill) ch.counters.assassinateKills++;
@@ -1011,8 +1046,47 @@ export class Battle {
   beginShoot() {
     const c = this.active();
     if (!c || c.kind !== 'hero' || !this.canShoot(c)) return;
+    const why = this.shootBlock(c);
+    if (why) {
+      this.addFx(c.x, c.y, 'no shot', '#9a94a8');
+      this.game.log(`${c.ref.name} cannot shoot — ${why}.`, 'info');
+      return;
+    }
     this.pending = { kind: 'shoot', range: c.ref.weapon.range };
     this.beginTargeting(false);
+  }
+
+  // ---- Swap weapons (W): draw a blade, or ready the bow — it costs the turn.
+  swapOptions(c) { return this.game.swapOptions(c.ref); }
+
+  openSwap() {
+    const c = this.active();
+    if (!c || c.kind !== 'hero') return;
+    if (!this.swapOptions(c).length) {
+      this.game.log('The party pouch holds no other weapon or shield.', 'info');
+      return;
+    }
+    this.mode = 'swap';
+  }
+
+  chooseSwap(n) {
+    const c = this.active();
+    const it = this.swapOptions(c)[n - 1];
+    if (!it) return;
+    if (it.reason) { this.game.log(it.reason, 'info'); return; }
+    const ch = c.ref;
+    const wasTwoHanded = !!this.game.twoHanded(ch);
+    if (!this.game.equipItem(it.id, ch)) return;
+    // Readying for melee is ONE act: a one-hander drawn in place of a bow
+    // brings a shield up with it, if the pouch holds one the hero may carry.
+    if (wasTwoHanded && it.def.type.startsWith('weapon_') && it.def.hands !== 2 && !ch.equipment.hand2) {
+      const shield = this.game.swapOptions(ch).find(o => o.def.type === 'shield' && !o.reason);
+      if (shield) this.game.equipItem(shield.id, ch);
+    }
+    this.mode = 'move';
+    this.addFx(c.x, c.y, `${it.def.name} ready`, '#d4a94e');
+    this.game.log(`${ch.name} readies the ${it.def.name.toLowerCase()} — the swap takes the turn.`, 'info');
+    this.endHeroTurn();
   }
 
   // A square the crosshair may occupy: in range AND in line of sight.
@@ -1078,7 +1152,6 @@ export class Battle {
       const foe = this.monsterAt(x, y);
       if (!foe) return; // keep aiming
       this.cancelTargeting();
-      audio.play('arrow');
       c.ref.hidden = false; // loosing an arrow gives you away
       this.heroAttack(c, foe, 'shoots'); // ends the turn
       return;
@@ -1274,6 +1347,15 @@ export class Battle {
       phase: Math.random() * 0.35,
     }));
     this.spellFx.push({ kind, to: { x, y }, parts, color, born: performance.now(), dur: 750 });
+  }
+
+  // A shot in flight: a thin dark shaft, no glow, travelling caster→target
+  // like a bolt. Returns the ms until it lands (numbers wait for it).
+  emitArrow(c, foeC, delay = 0) {
+    const from = { x: c.x, y: c.y }, to = { x: foeC.x, y: foeC.y };
+    const dur = Math.min(360, 120 + Math.hypot(to.x - from.x, to.y - from.y) * 36);
+    this.spellFx.push({ kind: 'arrow', from, to, color: '#2a2218', born: performance.now() + delay, dur });
+    return delay + dur;
   }
 
   // Pay for a cast (and settle the flags & tracked deeds that ride along).
@@ -1900,6 +1982,7 @@ export class Battle {
       this.endedAt = performance.now();
       this.busy = true;
       this.stripBattleConditions(); // burning etc. gutter out when the fight ends
+      this.recoverArrows();
       audio.play('battle_victory');
       game.log('The battlefield falls silent. The party stands victorious.', 'good');
       setTimeout(() => {
@@ -1911,6 +1994,18 @@ export class Battle {
       return true;
     }
     return false;
+  }
+
+  // After a won fight the party walks the field: a share of the arrows
+  // that missed (items.json ranged.recover_misses) come back to the quiver.
+  recoverArrows() {
+    const id = this.game.ammoId();
+    const missed = this.arrowsMissed ?? 0;
+    if (!id || !missed) return;
+    const back = Math.floor(missed * (this.game.rangedRules().recover_misses ?? 0.5));
+    if (back <= 0) return;
+    const got = this.game.addItem(id, back);
+    if (got > 0) this.game.log(`The party gathers ${got} arrow${got > 1 ? 's' : ''} from the field.`, 'good');
   }
 
   stripBattleConditions() {
