@@ -3,8 +3,8 @@
 // toggled with I, E, or C).
 
 import { abilityMod } from './rules.js';
-import { classProg, laneOf, riteTier } from './progression.js';
-import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed } from './magic.js';
+import { classProg, laneOf, passiveOf, riteTier } from './progression.js';
+import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable } from './magic.js';
 import * as audio from './audio.js';
 
 // Every UI button clicks (designer's pick 2026-08-26: GAM_09) — except where
@@ -17,7 +17,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b || b.disabled) return;
   if (b.id === 'eq-levelup' || b.closest('#choice') || b.closest('#levelup')) return;
-  if (b.dataset.prep || b.dataset.unprep || b.dataset.copy) audio.play('spellbook');
+  if (b.dataset.prep || b.dataset.unprep || b.dataset.copy || b.dataset.study) audio.play('spellbook');
   else audio.play('button_click');
 });
 
@@ -26,8 +26,18 @@ function gearStats(def) {
   const kind = def.type.replace('weapon_', '').replace('armor_', '').replace('jewelry_', '').replace('_', ' ');
   const bits = [kind];
   if (def.damage) bits.push(def.damage + (def.range ? ` · range ${def.range}` : ''));
+  if (def.hit) bits.push(`+${def.hit} to hit`);
+  if (def.enchanted) bits.push('magical');
   if (def.ac) bits.push(`AC +${def.ac}`);
   if (def.sp) bits.push(`+${def.sp} SP`);
+  if (def.dmg) bits.push(`+${def.dmg} dmg`);
+  if (def.detect) bits.push(`+${def.detect}% detect`);
+  if (def.save_bonus) bits.push(`+${def.save_bonus} saves`);
+  for (const [ab, v] of Object.entries(def.abilities ?? {})) bits.push(`+${v} ${ab.toUpperCase()}`);
+  if (def.bonus_damage) bits.push(`+${def.bonus_damage.dice} ${def.bonus_damage.element}`);
+  if (def.double_vs) bits.push(`×2 vs ${def.double_vs}${def.flavor ? ` (${def.flavor})` : ''}`);
+  if (def.resist?.length) bits.push(`resist: ${def.resist.join(', ')}`);
+  if (def.immune?.length) bits.push(`immune: ${def.immune.join(', ')}`);
   return bits.join(' · ');
 }
 
@@ -44,13 +54,42 @@ export function choiceOpen() {
 // Called every frame: opens the next owed choice whenever the party is on
 // the map (never mid-battle) and nothing else is being decided.
 export function maybeOpenChoice(game) {
-  if (game.battle || game.over || !game.choiceQueue.length || choiceOpen() || buildingOpen() || equipmentOpen() || playtestOpen()) return;
+  if (game.battle || game.over || !game.choiceQueue.length || choiceOpen() || buildingOpen() || equipmentOpen() || spellbookOpen() || playtestOpen()) return;
   renderChoice(game, game.choiceQueue[0]);
 }
 
 // Number keys pick cards (main.js routes digits here while the modal is up).
 export function choicePick(n) {
   document.querySelectorAll('#choice .cr-choice')[n - 1]?.click();
+}
+
+// One line of designer-friendly spell facts: level, cost, reach, dice,
+// and every magic-v3 rider (duration, AC, wards, cures, growth).
+function spellMetaLine(game, ch, s) {
+  const bits = [`L${s.level}`, `${spellCost(game.data, ch, s)} SP`];
+  if (s.range) bits.push(`range ${s.range}`);
+  if (s.area === 'all') bits.push('every foe'); else if (s.area) bits.push(`burst ${s.area}`);
+  if (s.targets === 'allies') bits.push('whole party'); else if (s.targets === 'ally') bits.push('one ally'); else if (s.targets === 'self') bits.push('self');
+  if (s.dice) bits.push(s.dice);
+  if (s.condition) bits.push(`${game.conditionDef(s.condition.id)?.name?.toLowerCase() ?? s.condition.id} ${s.condition.rounds}r`);
+  if (s.hit) bits.push(`${s.hit > 0 ? '+' : ''}${s.hit} hit`);
+  if (s.dmg) bits.push(`${s.dmg > 0 ? '+' : ''}${s.dmg} dmg`);
+  if (s.ac) bits.push(`${s.ac > 0 ? '+' : ''}${s.ac} AC`);
+  if (s.saves) bits.push(`${s.saves > 0 ? '+' : ''}${s.saves} saves`);
+  if (s.attacks) bits.push(`+${s.attacks} attack`);
+  if (s.absorb) bits.push(`ward ${s.absorb}`);
+  if (s.bonus_damage) bits.push(`+${s.bonus_damage.dice} ${s.bonus_damage.element}`);
+  if (s.hidden) bits.push('unseen');
+  if (s.resist) bits.push(s.resist === 'all' ? 'all elements halved' : `${s.resist.join('/')} halved`);
+  if (s.immune_conditions) bits.push('no afflictions');
+  if (s.rounds) bits.push(`${s.rounds} rounds`);
+  if (s.cures) bits.push(s.cures === 'all' ? 'cures all' : `cures ${s.cures.map(c => game.conditionDef(c)?.name?.toLowerCase() ?? c).join('/')}`);
+  if (s.drain) bits.push(`drains ${Math.round(s.drain * 100)}%`);
+  if (s.double_vs) bits.push(`×2 vs ${s.double_vs}`);
+  if (s.only_family) bits.push(`${s.only_family.join('/')} only`);
+  if (s.hp) bits.push(`rise at ${Math.round(s.hp * 100)}%`);
+  if (s.scale) bits.push(describeScale(s));
+  return bits.join(' · ');
 }
 
 function fmtOffsets(off = {}) {
@@ -67,8 +106,8 @@ function passiveBlurb(p) {
   if (p.id === 'braced_stance') return `Braced Stance: −${p.reduce ?? 1} damage from every hit while a shield is worn`;
   if (p.id === 'vital_strike') return `Vital Strike: +${p.dmg ?? 2} damage against unaware or flanked foes`;
   if (p.id === 'keen_senses') return `Keen Senses: +${p.bonus ?? 10}% to detect traps, secret doors, and trap work`;
-  if (p.id === 'prepared_mind') return `Prepared Mind: a spellbook holding every spell of your training and any scroll you copy in — ${p.slots_base ?? 3} + max-spell-level prepared at a time, re-picked freely at every rest`;
-  if (p.id === 'overchannel') return `Overchannel: every cast costs ${p.discount ?? 1} less spell point (never below 1) — but you know only ${p.known_per_level ?? 2} spells per spell level, chosen forever`;
+  if (p.id === 'prepared_mind') return `Prepared Mind: keep the spellbook — study on, copy every scroll you find, and prepare ${p.slots_bonus ? `${p.slots_bonus} more spell${p.slots_bonus > 1 ? 's' : ''}` : 'your pages'} at a time, re-picked freely at every rest`;
+  if (p.id === 'overchannel') return `Overchannel: every cast costs ${p.discount ?? 1} less spell point (never below 1) — the book is set aside: you know only ${p.known_per_level ?? 2} spells per spell level (chosen forever, from the catalog or your old pages)${p.bonus_pick_levels?.length ? `, plus one wild pick at levels ${p.bonus_pick_levels.join('/')}` : ''}`;
   if (p.id === 'blessed_hands') return `Blessed Hands: +${p.heal ?? 2} HP on every healing spell you cast`;
   if (p.id === 'sacred_weapon') return `Sacred Weapon: +${p.dmg ?? 1} divine damage on every weapon hit`;
   return p.id;
@@ -122,28 +161,54 @@ function renderChoice(game, choice, after) {
       b.onclick = () => { game.applyChoice(choice, b.dataset.lane); close(); after?.(); };
     }
   } else if (choice.type === 'spell') {
-    // The Sorcerer's pick: one spell of this level, in the blood forever.
-    const owed = spellPicksOwed(game.data, ch).find(o => o.level === choice.level);
+    // The Sorcerer's pick: one spell of this level, in the blood forever —
+    // or a wild pick (any castable level) at a bonus level.
+    const wild = choice.level === 'any';
+    const owed = wild ? bonusPicksOwed(game.data, ch) : spellPicksOwed(game.data, ch).find(o => o.level === choice.level);
     const opts = owed?.options ?? [];
     if (!opts.length) { close(); after?.(); return; } // nothing left to pick (data changed?)
     root.innerHTML = `
       <div class="cr-panel ch-panel">
-        <div class="cr-step">The Raw Gift — a level-${choice.level} spell</div>
+        <div class="cr-step">${wild ? 'The blood remembers — a spell of any level' : `The Raw Gift — a level-${choice.level} spell`}</div>
         <div class="ch-head"><img src="${portrait}" alt="">
           <div><b>${ch.name}</b>'s magic is blood, not books: few spells, never dry.
-          Choose a level-${choice.level} spell to keep forever${owed.remaining > 1 ? ` (${owed.remaining} picks at this level)` : ''}.</div></div>
+          ${wild ? 'The gift deepens: choose ONE more spell of any level you can reach' : `Choose a level-${choice.level} spell`} to keep forever${owed.remaining > 1 ? ` (${owed.remaining} picks${wild ? '' : ' at this level'})` : ''}.</div></div>
         <div class="cr-choices">
           ${opts.map((s, i) => `
             <button class="cr-choice" data-spell="${s.id}">
               <b>${i + 1}. ${s.name}</b>
               <span>${s.description}</span>
-              <span>L${s.level} · ${spellCost(game.data, ch, s)} SP${s.range ? ` · range ${s.range}` : ''}${s.area ? ` · burst ${s.area}` : ''}${s.dice ? ` · ${s.dice}` : ''}</span>
+              <span>${spellMetaLine(game, ch, s)}${s.rare ? ' · from the old book' : ''}</span>
             </button>`).join('')}
         </div>
         <p class="ch-warn">Chosen is chosen — a Sorcerer never swaps spells.</p>
       </div>`;
     for (const b of root.querySelectorAll('[data-spell]')) {
       b.onclick = () => { game.applyChoice(choice, b.dataset.spell); close(); after?.(); };
+    }
+  } else if (choice.type === 'study') {
+    // Study (magic v3): a free page for the spellbook — any common spell of
+    // a level the hero can reach.
+    const owed = studiesOwed(game.data, ch);
+    const opts = owed.options;
+    if (!opts.length) { close(); after?.(); return; }
+    root.innerHTML = `
+      <div class="cr-panel ch-panel">
+        <div class="cr-step">Study — a new page</div>
+        <div class="ch-head"><img src="${portrait}" alt="">
+          <div>Candle-light and quiet hours: <b>${ch.name}</b> may ink one more spell into the spellbook${owed.remaining > 1 ? ` (${owed.remaining} pages owed)` : ''}. Rarer lore is found only on scrolls.</div></div>
+        <div class="cr-choices">
+          ${opts.map((s, i) => `
+            <button class="cr-choice" data-study="${s.id}">
+              <b>${i + 1}. ${s.name}</b>
+              <span>${s.description}</span>
+              <span>${spellMetaLine(game, ch, s)}</span>
+            </button>`).join('')}
+        </div>
+        <p class="ch-warn">A page inked is a page kept — prepare it at any rest.</p>
+      </div>`;
+    for (const b of root.querySelectorAll('[data-study]')) {
+      b.onclick = () => { game.applyChoice(choice, b.dataset.study); close(); after?.(); };
     }
   } else if (choice.type === 'focus') {
     const current = ch.weapon?.type?.replace('weapon_', '');
@@ -362,6 +427,88 @@ export function togglePlaytest(game, show) {
 }
 
 // Where this monster lives in the endless dungeon, in designer terms.
+// The bench's item chest: every item in items.json, by category, with
+// collapsible groups — one click drops a copy into the party pouch (the
+// real addItem, so max_carry caps still apply). Equip from the sheet.
+const CHEST_GROUPS = [
+  ['Weapons — blades', d => d.type === 'weapon_light_blade' || d.type === 'weapon_med_blade' || d.type === 'weapon_heavy_blade'],
+  ['Weapons — blunt', d => d.type === 'weapon_light_blunt' || d.type === 'weapon_med_blunt' || d.type === 'weapon_heavy_blunt'],
+  ['Weapons — bows', d => d.type === 'weapon_bow'],
+  ['Armor & robes', d => d.type.startsWith('armor_')],
+  ['Shields', d => d.type === 'shield'],
+  ['Helms, cloaks & boots', d => ['helm', 'cloak', 'boots'].includes(d.type)],
+  ['Rings & necklaces', d => d.type.startsWith('jewelry_')],
+  ['Potions', d => d.type === 'consumable'],
+  ['Supplies', d => d.type === 'supply'],
+  ['Scrolls', d => d.type === 'scroll'],
+];
+let chestOpen = new Set(); // which groups the designer has unfolded (kept across re-renders)
+let chestFilter = '';
+
+function renderItemChest(game) {
+  const body = document.getElementById('pt-body');
+  const items = Object.entries(game.data.items.items);
+  const used = new Set();
+  const groups = CHEST_GROUPS.map(([name, test]) => {
+    const list = items.filter(([id, d]) => !used.has(id) && test(d));
+    for (const [id] of list) used.add(id);
+    return [name, list];
+  });
+  const rest = items.filter(([id]) => !used.has(id));
+  if (rest.length) groups.push(['Everything else', rest]);
+  const q = chestFilter.trim().toLowerCase();
+  const matches = ([id, d]) => !q || d.name.toLowerCase().includes(q) || id.includes(q) || (d.description ?? '').toLowerCase().includes(q);
+  const row = ([id, d]) => {
+    const have = game.inventory[id] || 0;
+    const stack = d.type === 'consumable' || d.type === 'supply' || d.type === 'scroll';
+    return `<div class="eq-pool-item">
+      <span class="eq-pool-name">${d.name}${d.tier ? ` <span class="inv-stats">T${d.tier}</span>` : ''}${have ? ` <span class="inv-count">×${have} in pouch</span>` : ''}
+        <span class="inv-stats">${gearStats(d)}${d.value ? ` · ${d.value}g` : ''}</span>
+        ${d.description ? `<span class="inv-stats">${d.description}</span>` : ''}</span>
+      <button data-give="${id}" data-n="1">+1</button>${stack ? `<button data-give="${id}" data-n="5">+5</button>` : ''}
+    </div>`;
+  };
+  body.innerHTML = `
+    <div class="pt-btnrow" style="align-items:center">
+      <button data-back>← Back to the bench</button>
+      <input id="pt-chest-filter" type="text" placeholder="filter by name…" value="${chestFilter.replace(/"/g, '&quot;')}"
+        style="font-family:Georgia,serif;background:#1d1d28;color:var(--parchment);border:1px solid var(--panel-edge);border-radius:4px;padding:5px 8px;font-size:13px;flex:1;min-width:160px">
+      <button data-unfold="1">Unfold all</button><button data-unfold="0">Fold all</button>
+    </div>
+    <p class="pt-note">${items.length} items in items.json. Click a category to open it; +1 drops one into the party pouch
+    (potions, supplies and scrolls get a +5). Gold: ${game.gold}.</p>
+    ${groups.map(([name, list]) => {
+      const shown = list.filter(matches);
+      if (q && !shown.length) return '';
+      const open = q ? shown.length > 0 : chestOpen.has(name);
+      return `<details data-group="${name}"${open ? ' open' : ''}>
+        <summary class="eq-sec" style="cursor:pointer;margin-top:10px">${name} <span class="inv-stats">${shown.length}${q ? ` of ${list.length}` : ''}</span></summary>
+        ${shown.map(row).join('')}
+      </details>`;
+    }).join('')}`;
+  body.querySelector('[data-back]').onclick = () => renderPlaytest(game);
+  const filter = body.querySelector('#pt-chest-filter');
+  filter.oninput = () => { chestFilter = filter.value; const at = filter.selectionStart; renderItemChest(game); const f2 = document.getElementById('pt-chest-filter'); f2.focus(); f2.setSelectionRange(at, at); };
+  for (const b of body.querySelectorAll('[data-unfold]')) {
+    b.onclick = () => { chestOpen = b.dataset.unfold === '1' ? new Set(groups.map(([n]) => n)) : new Set(); renderItemChest(game); };
+  }
+  for (const det of body.querySelectorAll('details[data-group]')) {
+    det.ontoggle = () => { if (det.open) chestOpen.add(det.dataset.group); else chestOpen.delete(det.dataset.group); };
+  }
+  for (const b of body.querySelectorAll('[data-give]')) {
+    b.onclick = () => {
+      const id = b.dataset.give, n = Number(b.dataset.n);
+      const taken = game.addItem(id, n);
+      const d = game.itemDef(id);
+      game.log(taken > 0
+        ? `TEST: ${taken}× ${d.name} appears in the party pouch.${taken < n ? ' (The rest would not fit — max_carry.)' : ''}`
+        : `TEST: the pouch cannot hold another ${d.name} (max_carry ${d.max_carry}).`, 'info');
+      renderItemChest(game);
+      updateUI(game);
+    };
+  }
+}
+
 function monsterTierLabel(game, id) {
   if (game.data.dungeon.boss?.monster === id) return 'the boss floor';
   const spans = (game.data.dungeon.tiers || [])
@@ -403,7 +550,10 @@ function renderPlaytest(game) {
     <div class="pt-btnrow">
       <button data-heal>Heal &amp; revive everyone</button>
       <button data-gold>+1000 gold</button>
+      <button data-chest>Open the item chest…</button>
     </div>
+    <p class="pt-note">The item chest lists every item in items.json by category — drop any of them
+    into the party pouch, then equip or drink from the character sheet (C).</p>
     <div class="eq-sec" style="margin-top:16px">Playstyle counters — ${game.party.map(c => Object.values(c.counters).join('·')).join(' / ')}</div>
     <p class="pt-note">The deeds that weigh the Rite's Title at level 20 (tiers at 0 / 5 / 15).
     Bump them here to test all three tiers; drop below level 20 to re-run a Rite.</p>
@@ -436,6 +586,7 @@ function renderPlaytest(game) {
     };
   }
   body.querySelector('[data-heal]').onclick = () => { game.debugHealParty(); renderPlaytest(game); };
+  body.querySelector('[data-chest]').onclick = () => renderItemChest(game);
   body.querySelector('[data-gold]').onclick = () => { game.debugGold(1000); renderPlaytest(game); };
   for (const b of body.querySelectorAll('[data-counters]')) {
     b.onclick = () => { game.debugAddCounters(Number(b.dataset.counters)); renderPlaytest(game); };
@@ -541,7 +692,7 @@ const DOLL_SLOTS = [
   ['necklace', 'Necklace', '❧'], ['head', 'Head', '⛑'], ['armor', 'Armor', '🛡'],
   ['hand1', 'Main hand', '⚔'], ['hand2', 'Off hand', '✋'],
   ['ring1', 'Ring', '◌'], ['ring2', 'Ring', '◌'],
-  ['boots', 'Boots', '👢'],
+  ['cloak', 'Cloak', '🧥'], ['boots', 'Boots', '👢'],
 ];
 let eqHeroIdx = 0;
 
@@ -583,12 +734,21 @@ function renderEquipment(game) {
   document.getElementById('eq-stats').textContent =
     `Level ${ch.level} ${ch.race.name} ${game.displayClass(ch)} · AC ${ch.ac} · ${ch.weapon.name} ${ch.weapon.damage}${ch.maxSp ? ` · SP ${ch.sp}/${ch.maxSp}` : ''}`;
 
-  // The six abilities, with the design-doc modifier beside each score.
+  // The six abilities, with the design-doc modifier beside each score. A
+  // score raised by gear glows gold and NAMES the piece (the named-bonus rule).
   document.getElementById('eq-abilities').innerHTML =
     ['str', 'int', 'wis', 'dex', 'con', 'cha'].map(k => {
       const v = ch.abilities[k];
       const mod = abilityMod(v);
-      return `<div class="eq-ab"><b>${k.toUpperCase()}</b><span>${v}</span><i>${mod >= 0 ? '+' : ''}${mod}</i></div>`;
+      const boosted = v !== (ch.baseAbilities?.[k] ?? v);
+      const sources = boosted
+        ? Object.values(ch.equipment).filter(Boolean).map(id => game.itemDef(id))
+            .filter(d => d.abilities?.[k]).map(d => `+${d.abilities[k]} ${d.name}`).join(', ')
+        : '';
+      return `<div class="eq-ab"${sources ? ` title="${ch.baseAbilities[k]} rolled, ${sources}"` : ''}>` +
+        `<b>${k.toUpperCase()}</b><span${boosted ? ' style="color:#e8c860"' : ''}>${v}</span>` +
+        `<i>${mod >= 0 ? '+' : ''}${mod}</i>` +
+        `${sources ? `<small style="display:block;font-size:9.5px;color:#e8c860">${sources}</small>` : ''}</div>`;
     }).join('');
 
   renderPath(game, ch);
@@ -715,7 +875,7 @@ function advanceLevelFlow(game) {
   if (!f) { refreshSheet(game); return; }
   if (!f.choicesDone) {
     f.choicesDone = true;
-    f.cards = f.s.milestones.filter(m => ['verb', 'capstone', 'refinement', 'spelltier'].includes(m.kind));
+    f.cards = f.s.milestones.filter(m => ['verb', 'capstone', 'refinement', 'spelltier', 'slot', 'revelation'].includes(m.kind));
     f.idx = 0;
     openChoicesFor(game, f.s.ch, () => showNextCard(game));
     return;
@@ -803,8 +963,20 @@ function renderMilestoneCard(game, ch, m) {
   } else if (m.kind === 'spelltier') {
     step = `Level ${ch.level} — deeper magic`;
     headline = `The veil thins. <b>${ch.name}</b> can now reach <b>level-${m.tier} spells</b>.`;
-    power = { name: `Level-${m.tier} spells`, blurb: `Cost ${m.tier * 2 + 1} SP each (level × 2 + 1). ${laneOf(game.data, ch)?.passive?.id === 'prepared_mind' ? 'New pages have written themselves into the spellbook — prepare them at your next rest.' : laneOf(game.data, ch)?.passive?.id === 'overchannel' ? 'New picks are owed — choose which spells join the blood.' : 'Every new spell of your training is already in hand — see the character sheet.'}` };
+    const model = magicModel(game.data, ch);
+    power = { name: `Level-${m.tier} spells`, blurb: `Cost ${m.tier * 2 + 1} SP each (level × 2 + 1). ${model === 'spellbook' ? 'Your studies can reach them now — and any scroll of that level can be copied in.' : model === 'known' ? 'New picks are owed — choose which spells join the blood.' : 'Every new prayer of your training is already in hand — see the character sheet.'}` };
     how = '';
+  } else if (m.kind === 'slot') {
+    step = `Level ${ch.level} — a fuller mind`;
+    headline = `<b>${ch.name}</b> can hold more at once: <b>${m.slots} prepared spells</b>.`;
+    power = { name: `${m.slots} prepared at a time`, blurb: 'Pick which pages are ready each morning on the character sheet (C) — the window opens at every full rest.' };
+    how = '';
+  } else if (m.kind === 'revelation') {
+    const sp = game.data.spells.spells[m.spell];
+    step = `Level ${ch.level} — a revelation`;
+    headline = `In the quiet after prayer, a word arrives unbidden. <b>${ch.name}</b> now knows <b>${sp?.name ?? m.spell}</b> — a prayer no book teaches.`;
+    power = { name: sp?.name ?? m.spell, blurb: `${sp?.description ?? ''} (${spellMetaLine(game, ch, { id: m.spell, ...sp })})` };
+    how = `It joins the C menu in battle like any prayer, castable from ${[0, 1, 4, 8, 12, 16][sp?.level ?? 1] <= ch.level ? 'now' : `character level ${[0, 1, 4, 8, 12, 16][sp?.level ?? 1]}`}.`;
   } else if (m.kind === 'refinement') {
     step = 'Level 18 — mastery';
     headline = `Ten thousand repetitions have honed <b>${lane.verb?.name ?? 'the signature move'}</b> to its final edge.`;
@@ -885,94 +1057,195 @@ function renderPath(game, ch) {
   panel.innerHTML = `<div class="eq-sec">Path &amp; powers</div>${rows}`;
 }
 
-// ---- Magic on the character sheet (magic v2) ----
-// A caster's spells, in designer-friendly terms: what they know, what is
-// prepared today (the Wizard lane re-picks at every rest), the Sorcerer's
-// blood-list, and any scrolls waiting to be copied in.
+// ---- Magic on the character sheet: a summary, and the door to the Spellbook screen (B) ----
 function renderMagic(game, ch) {
   const panel = document.getElementById('eq-magic');
   const model = magicModel(game.data, ch);
   const known = knownSpells(game.data, ch);
-  const scrolls = Object.entries(game.inventory)
-    .filter(([id, n]) => n > 0 && game.itemDef(id)?.type === 'scroll')
-    .map(([id, n]) => ({ id, def: game.itemDef(id), count: n }));
-  if (!known.length && !ch.maxSp && !scrolls.length) {
+  const scrolls = Object.values(game.inventory).length && Object.entries(game.inventory)
+    .filter(([id, n]) => n > 0 && game.itemDef(id)?.type === 'scroll').reduce((sum, [, n]) => sum + n, 0);
+  if (!known.length && !ch.maxSp && !scrolls) {
     panel.innerHTML = '';
     panel.style.display = 'none';
     return;
   }
   panel.style.display = 'block';
-  const tier = maxSpellLevel(ch.level);
-  const castable = castableSpells(game.data, ch).map(s => s.id);
-  const spellMeta = s => `L${s.level} · ${spellCost(game.data, ch, s)} SP${s.range ? ` · range ${s.range}` : ''}${s.area ? ` · burst ${s.area}` : ''}${s.dice ? ` · ${s.dice}` : ''}`;
-
-  let head = '';
-  let rows = '';
+  let line = '';
   if (model === 'spellbook') {
     const slots = preparedSlots(game.data, ch);
-    head = `Spellbook — ${ch.prepared.length}/${slots} prepared${ch.prepFresh ? ' · <i>rested: re-pick freely</i>' : ' · re-pick at your next rest'}`;
-    for (const s of [...known].sort((a, b) => a.level - b.level)) {
-      const prepped = ch.prepared.includes(s.id);
-      const overTier = s.level > tier;
-      const btn = overTier
-        ? `<button disabled title="A level-${s.level} spell — beyond ${ch.name}'s reach for now.">L${s.level} — too deep</button>`
-        : prepped
-          ? `<button data-unprep="${s.id}"${ch.prepFresh ? '' : ' disabled title="Preparation is set for the day — rest to re-pick."'}>Set aside</button>`
-          : `<button data-prep="${s.id}"${ch.prepFresh ? (ch.prepared.length >= slots ? ' disabled title="Every slot is full — set another aside first."' : '') : ' disabled title="Preparation is set for the day — rest to re-pick."'}>Prepare</button>`;
-      rows += `<div class="eq-pool-item${prepped ? '' : ' eq-unprepped'}">
-        <span class="eq-pool-name">${prepped ? '✦ ' : ''}${s.name} <span class="inv-stats">${spellMeta(s)}${s.rare ? ' · scroll-lore' : ''}</span></span>${btn}</div>`;
-    }
+    const study = studiesOwed(game.data, ch);
+    line = `${known.length} page${known.length === 1 ? '' : 's'} · ${ch.prepared.length}/${slots} prepared${ch.prepFresh ? ' · <i>rested: re-pick freely</i>' : ''}${study.remaining ? ` · <i>a study is owed</i>` : ''}`;
   } else if (model === 'known') {
-    head = `Spells in the blood — ${known.length} known · Overchannel already counted in each cost`;
-    rows = [...known].sort((a, b) => a.level - b.level).map(s => `
-      <div class="eq-pool-item"><span class="eq-pool-name">✦ ${s.name}
-        <span class="inv-stats">${spellMeta(s)}</span></span></div>`).join('');
-    if (spellPicksOwed(game.data, ch).length) {
-      rows += `<p class="pt-note">A pick is owed — it arrives on the map.</p>`;
-    }
+    line = `${known.length} spell${known.length === 1 ? '' : 's'} in the blood · Overchannel counted in each cost`;
   } else if (known.length) {
-    head = `Spells — every one of ${ch.name}'s training, level ${tier} and below`;
-    rows = [...known].filter(s => s.level <= tier).sort((a, b) => a.level - b.level).map(s => `
-      <div class="eq-pool-item"><span class="eq-pool-name">${s.name}
-        <span class="inv-stats">${spellMeta(s)}</span></span></div>`).join('');
+    line = `${known.length} prayer${known.length === 1 ? '' : 's'} of ${ch.name}'s training`;
+  }
+  if (scrolls) line += `${line ? ' · ' : ''}${scrolls} scroll${scrolls === 1 ? '' : 's'} in the pouch`;
+  panel.innerHTML = `<div class="eq-sec">Magic</div><p class="pt-note" style="margin:2px 0 4px">${line}</p>
+    <button class="sb-open" data-open-book>Open the spellbook (B)</button>`;
+  panel.querySelector('[data-open-book]').onclick = () => flipToBook(game);
+}
+
+// ---- The Spellbook screen (B) ----
+// A caster's whole magic in one place: pages grouped by spell level, the
+// day's preparation (spellbook model), the Sorcerer's blood-list, the
+// Priest's prayers and revelations, scrolls in the pouch, once-per-rest
+// powers, and what is still owed (study, picks).
+let sbHeroIdx = 0;
+
+export function spellbookOpen() {
+  return document.getElementById('spellbook').style.display === 'block';
+}
+
+function isCaster(game, ch) {
+  return ch.maxSp > 0 || knownSpells(game.data, ch).length > 0 || !!ch.cls.spellbook;
+}
+
+// Flip between the two screens keeping the same hero in view.
+export function flipToSheet(game) { eqHeroIdx = sbHeroIdx; toggleSpellbook(game, false); toggleEquipment(game, true); }
+export function flipToBook(game) { sbHeroIdx = eqHeroIdx; toggleEquipment(game, false); toggleSpellbook(game, true); }
+
+export function toggleSpellbook(game, show) {
+  const panel = document.getElementById('spellbook');
+  const opening = show ?? !spellbookOpen();
+  if (opening && !game.party.some(ch => isCaster(game, ch))) {
+    game.log('Nobody in the party works magic — no spellbook to open.', 'info');
+    return;
+  }
+  panel.style.display = opening ? 'block' : 'none';
+  if (opening) renderSpellbook(game);
+}
+
+function renderSpellbook(game) {
+  const casters = game.party.map((ch, i) => [ch, i]).filter(([ch]) => isCaster(game, ch));
+  if (!casters.some(([, i]) => i === sbHeroIdx)) sbHeroIdx = casters[0][1];
+  const ch = game.party[sbHeroIdx];
+  const model = magicModel(game.data, ch);
+  const tier = maxSpellLevel(ch.level);
+  const known = knownSpells(game.data, ch);
+
+  // Portrait tabs — casters only.
+  const tabs = document.getElementById('sb-tabs');
+  tabs.innerHTML = '';
+  for (const [hero, i] of casters) {
+    const btn = document.createElement('button');
+    btn.className = 'eq-portrait' + (i === sbHeroIdx ? ' picked' : '') + (hero.alive ? '' : ' dead');
+    btn.innerHTML = `<img src="${hero.alive ? game.heroPortrait(hero) : (hero.cls.sprite_dead || hero.cls.sprite)}" alt=""><span>${hero.name}</span>`;
+    btn.addEventListener('click', () => { sbHeroIdx = i; renderSpellbook(game); });
+    tabs.appendChild(btn);
   }
 
-  // Scrolls: lore for a spellbook, coin for everyone else.
-  let scrollRows = '';
+  document.getElementById('sb-name').textContent = model === 'spellbook' ? `${ch.name}'s Spellbook`
+    : model === 'known' ? `${ch.name} — the Raw Gift` : `${ch.name}'s Prayers`;
+  const slots = model === 'spellbook' ? preparedSlots(game.data, ch) : 0;
+  document.getElementById('sb-stats').innerHTML =
+    `Level ${ch.level} ${game.displayClass(ch)} · SP ${ch.sp}/${ch.maxSp} · spells up to level ${tier}` +
+    (model === 'spellbook' ? ` · <b>${ch.prepared.length}/${slots} prepared</b> — ${ch.prepFresh ? '<i>rested: re-pick freely until the next fight</i>' : 'set for the day; a full rest reopens the choice'}` : '') +
+    (model === 'known' ? ` · Overchannel: every cast 1 SP cheaper` : '');
+
+  // Pages by level.
+  const byLevel = {};
+  for (const s of known) (byLevel[s.level] ??= []).push(s);
+  let pages = '';
+  for (let lvl = 1; lvl <= 5; lvl++) {
+    const list = byLevel[lvl] ?? [];
+    const unlockAt = [0, 1, 4, 8, 12, 16][lvl];
+    const deep = lvl > tier;
+    if (!list.length && deep) continue; // nothing to say about a level not yet reached
+    pages += `<div class="sb-level"><div class="eq-sec">Level ${lvl} spells<span>${lvl * 2 + 1} SP each${deep ? ` · castable at character level ${unlockAt}` : ''}${model === 'spellbook' && !deep && !list.length ? ' · no pages yet' : ''}</span></div>`;
+    if (!list.length) pages += `<div class="sb-page"><small>${model === 'spellbook' ? 'Study or a scroll will fill this level.' : model === 'known' ? 'No spell of this level in the blood.' : 'Nothing of this level.'}</small></div>`;
+    for (const s of list) {
+      const prepped = model === 'spellbook' && ch.prepared.includes(s.id);
+      let btn = '';
+      if (model === 'spellbook') {
+        btn = deep
+          ? `<button disabled title="A level-${s.level} spell — beyond ${ch.name}'s reach until character level ${unlockAt}.">too deep</button>`
+          : prepped
+            ? `<button data-unprep="${s.id}"${ch.prepFresh ? '' : ' disabled title="Preparation is set for the day — rest to re-pick."'}>Set aside</button>`
+            : `<button data-prep="${s.id}"${ch.prepFresh ? (ch.prepared.length >= slots ? ' disabled title="Every slot is full — set another aside first."' : '') : ' disabled title="Preparation is set for the day — rest to re-pick."'}>Prepare</button>`;
+      }
+      pages += `<div class="sb-page${prepped ? ' prepared' : ''}${deep ? ' deep' : ''}">
+        <div class="sb-page-main"><b>${prepped ? '✦ ' : model !== 'spellbook' && s.rare ? '✧ ' : ''}${s.name}</b>${s.rare ? ` <span class="inv-stats">${model === 'spellbook' ? 'scroll-lore' : model === 'known' ? 'from the old book' : 'a revelation'}</span>` : ''}
+          <small>${s.description}</small><small>${spellMetaLine(game, ch, s)}</small></div>${btn}</div>`;
+    }
+    pages += '</div>';
+  }
+  if (!known.length) pages = `<p class="pt-note">${model === 'spellbook' ? 'The book is empty.' : 'No spells yet.'}</p>`;
+  document.getElementById('sb-pages').innerHTML = pages;
+
+  // The side column: what is owed, scrolls, once-per-rest powers.
+  let side = '';
+  if (model === 'spellbook') {
+    const study = studiesOwed(game.data, ch);
+    const sb = ch.cls.spellbook ?? {};
+    const nextStudy = (sb.study_levels ?? []).find(l => l > ch.level);
+    const nextSlot = (sb.extra_slot_levels ?? []).find(l => l > ch.level);
+    side += `<div class="eq-sec">Study</div><p class="pt-note">${study.remaining
+      ? (study.options.length ? `<b>${study.remaining} page${study.remaining > 1 ? 's' : ''} owed</b> — the choice opens on the map.` : `${study.remaining} study pick${study.remaining > 1 ? 's' : ''} banked: every common spell of reach is already inked; the next spell level will open new pages.`)
+      : `Nothing owed.`}${nextStudy ? ` Next study at level ${nextStudy}.` : ''}${nextSlot ? ` One more prepared slot at level ${nextSlot}.` : ''}
+      Rarer lore is never studied — it comes only on scrolls.</p>`;
+  } else if (model === 'known') {
+    const picks = spellPicksOwed(game.data, ch);
+    const bonus = bonusPicksOwed(game.data, ch);
+    const p = passiveOf(game.data, ch);
+    const nextBonus = (p?.bonus_pick_levels ?? []).find(l => l > ch.level);
+    side += `<div class="eq-sec">The blood</div><p class="pt-note">${picks.length || bonus.remaining ? '<b>A pick is owed</b> — it arrives on the map.' : 'No pick owed.'} Two spells per spell level as each unlocks${nextBonus ? `, and a wild pick of any level at ${nextBonus}` : ''}. Chosen is chosen. No scrolls copy in — but ${ch.name} may still read one in battle.</p>`;
+    if (ch.formerBook?.length) side += `<p class="pt-note">The old book (set aside at the fork): ${ch.formerBook.map(id => game.data.spells.spells[id]?.name ?? id).join(', ')} — its pages may still be chosen.</p>`;
+  } else {
+    const rl = ch.cls.revelation_levels ?? {};
+    const next = Object.entries(rl).map(([l, at]) => [Number(l), at]).filter(([, at]) => at > ch.level).sort((a, b) => a[1] - b[1])[0];
+    side += `<div class="eq-sec">Grace</div><p class="pt-note">Every common prayer of ${ch.name}'s training is known the moment its level opens. Rare prayers arrive as revelations${next ? ` — the next at level ${next[1]}` : ''}.</p>`;
+  }
+
+  // Scrolls in the pouch.
+  const scrolls = Object.entries(game.inventory)
+    .filter(([id, n]) => n > 0 && game.itemDef(id)?.type === 'scroll')
+    .map(([id, n]) => ({ id, def: game.itemDef(id), count: n }));
+  side += `<div class="eq-sec" style="margin-top:12px">Scrolls in the pouch</div>`;
+  if (!scrolls.length) side += `<p class="pt-note">None. Scrolls turn up in chests and vaults, and Novamagus sells the simplest.</p>`;
   for (const sc of scrolls) {
     const spell = game.data.spells.spells[sc.def.spell];
     const already = model === 'spellbook' && spell && ch.spellbook.includes(sc.def.spell);
     const reason = model !== 'spellbook'
-      ? `Only a spellbook holds a scroll's lore — ${ch.name} keeps none. (Sell it, or hand it to a Spellbook-lane Wizard.)`
+      ? `Only a spellbook holds a scroll's lore — ${ch.name} keeps none.`
       : already ? `${spell.name} is already inked in the book.` : null;
-    scrollRows += `<div class="eq-pool-item">
-      <span class="eq-pool-name">${sc.def.name} <span class="inv-count">×${sc.count}</span>
-        <span class="inv-stats">${spell ? `${spell.name} — ${spellMeta(spell)}` : `names an unknown spell "${sc.def.spell}"`}</span></span>
+    const readNote = spell ? (scrollReadable(game.data, ch, spell) ?? `${ch.name} can read it in battle (I) — once, for no SP`) : '';
+    side += `<div class="sb-page"><div class="sb-page-main"><b>${sc.def.name}</b> <span class="inv-count">×${sc.count}</span>
+        <small>${spell ? `${spell.description} — ${spellMetaLine(game, ch, { id: sc.def.spell, ...spell })}` : `names an unknown spell "${sc.def.spell}"`}</small>
+        <small>${readNote}</small></div>
       <button data-copy="${sc.id}"${reason ? ` disabled title="${reason.replace(/"/g, '&quot;')}"` : ''}>Copy into book</button></div>`;
   }
-  if (scrollRows) scrollRows = `<div class="eq-sec" style="margin-top:10px">Scrolls in the pouch</div>${scrollRows}`;
 
   // Once-per-rest powers: say plainly whether they are ready or spent.
   const lane = laneOf(game.data, ch);
-  let restNote = '';
   if (lane?.capstone && ch.level >= lane.capstone.level && ['archmage', 'twin_surge', 'miracle'].includes(lane.capstone.id)) {
     const key = lane.capstone.id;
-    restNote = `<p class="pt-note">${lane.capstone.name ?? key}: ${ch.spentRest?.[key] ? 'spent — it returns with a night\'s rest' : 'ready (once per rest)'}.</p>`;
+    side += `<div class="eq-sec" style="margin-top:12px">Once per rest</div><p class="pt-note">${lane.capstone.name ?? key}: ${ch.spentRest?.[key] ? 'spent — it returns with a night\'s rest' : 'ready'}.</p>`;
   }
+  side += `<p style="margin-top:14px"><button class="sb-open" data-open-sheet>Character sheet (C)</button></p>`;
+  const sideEl = document.getElementById('sb-side');
+  sideEl.innerHTML = side;
+  // The footer speaks to the hero on screen — a priest is never told to prepare pages.
+  document.getElementById('sb-foot').innerHTML = (model === 'spellbook'
+    ? 'Prepare pages after a full rest &middot; scrolls copy in here and are read in battle (I) &middot; '
+    : model === 'known' ? 'Chosen is chosen &middot; scrolls are read in battle (I) &middot; '
+      : 'Every prayer is ready the moment its level opens &middot; ')
+    + 'B or Esc closes &middot; C — character sheet';
 
-  panel.innerHTML = `<div class="eq-sec">${head || 'Magic'}</div>${rows}${scrollRows}${restNote}`;
-  for (const b of panel.querySelectorAll('[data-prep]')) {
+  const root = document.getElementById('spellbook');
+  for (const b of root.querySelectorAll('[data-prep]')) {
     b.onclick = () => {
       if (ch.prepared.length < preparedSlots(game.data, ch)) ch.prepared.push(b.dataset.prep);
-      renderEquipment(game);
+      renderSpellbook(game);
     };
   }
-  for (const b of panel.querySelectorAll('[data-unprep]')) {
-    b.onclick = () => { ch.prepared = ch.prepared.filter(id => id !== b.dataset.unprep); renderEquipment(game); };
+  for (const b of root.querySelectorAll('[data-unprep]')) {
+    b.onclick = () => { ch.prepared = ch.prepared.filter(id => id !== b.dataset.unprep); renderSpellbook(game); };
   }
-  for (const b of panel.querySelectorAll('[data-copy]')) {
-    b.onclick = () => { game.copyScroll(b.dataset.copy, ch); renderEquipment(game); };
+  for (const b of root.querySelectorAll('[data-copy]')) {
+    b.onclick = () => { game.copyScroll(b.dataset.copy, ch); renderSpellbook(game); };
   }
+  sideEl.querySelector('[data-open-sheet]').onclick = () => flipToSheet(game);
 }
 
 export function buildPartyPanel(game) {

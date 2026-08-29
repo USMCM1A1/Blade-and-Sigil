@@ -1,38 +1,70 @@
 {
-  "_comment": "Pregenerated Phase 1 party (character creation UI arrives in Phase 2). Abilities are the six rolled scores BEFORE racial bonus. 'row': front-row characters take the hits; back row is protected while any front-row member lives. Party marching order is the order of this list. 'starting_gold' is rolled once PER HERO and pooled into the shared purse (legacy rule from player.py).",
+  "_comment": "Pregenerated Phase 1 party (character creation UI arrives in Phase 2). Abilities are the six rolled scores BEFORE racial bonus. 'row': front-row characters take the hits; back row is protected while any front-row member lives. Party marching order is the order of this list. 'starting_gold' is rolled once PER HERO and pooled into the shared purse (legacy rule from player.py). 'look' picks the hero's appearance variant — m1/m2 (male) or f1/f2 (female) from the generated art; leave it out to use the old class art.",
   "starting_gold": "4d6+200",
   "party": [
     {
       "name": "Borin",
       "race": "dwarf",
       "class": "warrior",
+      "look": "m1",
       "level": 1,
       "row": "front",
-      "abilities": { "str": 16, "int": 8, "wis": 12, "dex": 12, "con": 15, "cha": 10 }
+      "abilities": {
+        "str": 16,
+        "int": 8,
+        "wis": 12,
+        "dex": 12,
+        "con": 15,
+        "cha": 10
+      }
     },
     {
       "name": "Marcus",
       "race": "human",
       "class": "priest",
+      "look": "m2",
       "level": 1,
       "row": "front",
-      "abilities": { "str": 13, "int": 10, "wis": 16, "dex": 10, "con": 13, "cha": 12 }
+      "abilities": {
+        "str": 13,
+        "int": 10,
+        "wis": 16,
+        "dex": 10,
+        "con": 13,
+        "cha": 12
+      }
     },
     {
       "name": "Aelith",
       "race": "high_elf",
       "class": "wizard",
+      "look": "f1",
       "level": 1,
       "row": "back",
-      "abilities": { "str": 8, "int": 17, "wis": 13, "dex": 13, "con": 10, "cha": 12 }
+      "abilities": {
+        "str": 8,
+        "int": 17,
+        "wis": 13,
+        "dex": 13,
+        "con": 10,
+        "cha": 12
+      }
     },
     {
       "name": "Pip",
       "race": "halfling",
       "class": "thief",
+      "look": "m1",
       "level": 1,
       "row": "back",
-      "abilities": { "str": 10, "int": 12, "wis": 10, "dex": 17, "con": 12, "cha": 14 }
+      "abilities": {
+        "str": 10,
+        "int": 12,
+        "wis": 10,
+        "dex": 17,
+        "con": 12,
+        "cha": 14
+      }
     }
   ]
 }

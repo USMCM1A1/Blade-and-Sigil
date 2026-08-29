@@ -1,5 +1,5 @@
 {
-  "_comment": "The bestiary. Stats for the 52 monsters added 2026-08-26 are Claude's PROPOSALS scaled from the original rat/goblin/skeleton/orc curve \u2014 retune freely! 'slow' monsters have speed 2 (act on even rounds). 'inflicts' rides a hit: condition id from conditions.json, rounds, save DC. Sprites in assets/enemies/gen/ come from the art pipeline (data/art_manifest.json + tools/genart.py); a missing image just renders empty. NOTE: troll regeneration and undead level drain are NOT mechanics yet \u2014 flags for future design.",
+  "_comment": "The bestiary. Stats for the 52 monsters added 2026-08-26 are Claude's PROPOSALS scaled from the original rat/goblin/skeleton/orc curve — retune freely! 'slow' monsters have speed 2 (act on even rounds). 'inflicts' rides a hit: condition id from conditions.json, rounds, save DC. Sprites in assets/enemies/gen/ come from the art pipeline (data/art_manifest.json + tools/genart.py); a missing image just renders empty. NOTE: troll regeneration and undead level drain are NOT mechanics yet — flags for future design. | 'magic_to_hit': true — mundane weapons pass straight through; only 'enchanted' weapons (tier 2+) or spells can harm it. Designer ruling 2026-08-27: incorporeal undead + outsiders (fiends, genies, slaadi, elementals). The exact list is a Claude PROPOSAL — add/remove freely. | 'family' (tier abilities 2026-08-27): every monster's kind — undead/outsider/beast/vermin/humanoid/construct/ooze/aberration/dragon/elemental; Ancient weapons double vs undead, Bane vs outsider. 'element' on a monster types its ATTACK (fire/frost/lightning/poison) so worn resist halves it and immunity drinks it. All tags are Claude PROPOSALS — retag freely.",
   "monsters": {
     "giant_rat": {
       "name": "Giant Rat",
@@ -16,7 +16,8 @@
         "condition": "poison",
         "rounds": 3,
         "dc": 12
-      }
+      },
+      "family": "vermin"
     },
     "goblin": {
       "name": "Goblin",
@@ -28,7 +29,8 @@
       "damage": "1d6",
       "speed": 1,
       "xp": 10,
-      "save": 1
+      "save": 1,
+      "family": "humanoid"
     },
     "skeleton": {
       "name": "Skeleton",
@@ -40,10 +42,11 @@
       "damage": "1d6",
       "speed": 2,
       "xp": 15,
-      "save": 0
+      "save": 0,
+      "family": "undead"
     },
     "dread_sovereign": {
-      "_comment": "PLACEHOLDER final boss (Phase 5) \u2014 designer: rename, restat, and commission art! Reached only when every hero is level 20.",
+      "_comment": "PLACEHOLDER final boss (Phase 5) — designer: rename, restat, and commission art! Reached only when every hero is level 20.",
       "name": "Dread Sovereign",
       "sprite": "assets/enemies/orc.jpg",
       "sprite_dead": "assets/enemies/orc_dead.png",
@@ -58,7 +61,8 @@
         "condition": "burning",
         "rounds": 3,
         "dc": 16
-      }
+      },
+      "family": "undead"
     },
     "orc": {
       "name": "Orc",
@@ -70,7 +74,8 @@
       "damage": "1d6+1",
       "speed": 1,
       "xp": 25,
-      "save": 2
+      "save": 2,
+      "family": "humanoid"
     },
     "large_spider": {
       "name": "Large Spider",
@@ -87,7 +92,9 @@
         "condition": "poison",
         "rounds": 3,
         "dc": 12
-      }
+      },
+      "family": "vermin",
+      "element": "poison"
     },
     "zombie": {
       "name": "Zombie",
@@ -99,7 +106,8 @@
       "damage": "1d6+2",
       "speed": 2,
       "xp": 40,
-      "save": 1
+      "save": 1,
+      "family": "undead"
     },
     "hobgoblin": {
       "name": "Hobgoblin",
@@ -111,7 +119,8 @@
       "damage": "1d8+1",
       "speed": 1,
       "xp": 55,
-      "save": 2
+      "save": 2,
+      "family": "humanoid"
     },
     "ghoul": {
       "name": "Ghoul",
@@ -128,7 +137,8 @@
         "condition": "paralysis",
         "rounds": 1,
         "dc": 13
-      }
+      },
+      "family": "undead"
     },
     "animated_sword": {
       "name": "Animated Sword",
@@ -140,7 +150,8 @@
       "damage": "1d8",
       "speed": 1,
       "xp": 55,
-      "save": 2
+      "save": 2,
+      "family": "construct"
     },
     "mephit": {
       "name": "Mephit",
@@ -157,7 +168,10 @@
         "condition": "burning",
         "rounds": 2,
         "dc": 12
-      }
+      },
+      "magic_to_hit": true,
+      "family": "outsider",
+      "element": "fire"
     },
     "bugbear": {
       "name": "Bugbear",
@@ -169,7 +183,8 @@
       "damage": "2d6",
       "speed": 1,
       "xp": 95,
-      "save": 3
+      "save": 3,
+      "family": "humanoid"
     },
     "wight": {
       "name": "Wight",
@@ -186,7 +201,9 @@
         "condition": "exhaustion",
         "rounds": 2,
         "dc": 13
-      }
+      },
+      "magic_to_hit": true,
+      "family": "undead"
     },
     "monstrous_spider": {
       "name": "Monstrous Spider",
@@ -203,7 +220,9 @@
         "condition": "poison",
         "rounds": 3,
         "dc": 14
-      }
+      },
+      "family": "vermin",
+      "element": "poison"
     },
     "gelatinous_cube": {
       "name": "Gelatinous Cube",
@@ -220,7 +239,8 @@
         "condition": "paralysis",
         "rounds": 1,
         "dc": 14
-      }
+      },
+      "family": "ooze"
     },
     "black_pudding": {
       "name": "Black Pudding",
@@ -237,7 +257,8 @@
         "condition": "poison",
         "rounds": 3,
         "dc": 13
-      }
+      },
+      "family": "ooze"
     },
     "shadow": {
       "name": "Shadow",
@@ -254,7 +275,9 @@
         "condition": "exhaustion",
         "rounds": 2,
         "dc": 14
-      }
+      },
+      "magic_to_hit": true,
+      "family": "undead"
     },
     "animated_armor": {
       "name": "Animated Armor",
@@ -266,7 +289,8 @@
       "damage": "2d6+1",
       "speed": 1,
       "xp": 120,
-      "save": 3
+      "save": 3,
+      "family": "construct"
     },
     "troll": {
       "name": "Troll",
@@ -278,7 +302,8 @@
       "damage": "2d6+2",
       "speed": 1,
       "xp": 160,
-      "save": 4
+      "save": 4,
+      "family": "humanoid"
     },
     "elemental_small": {
       "name": "Lesser Elemental",
@@ -290,7 +315,9 @@
       "damage": "2d6+2",
       "speed": 1,
       "xp": 150,
-      "save": 4
+      "save": 4,
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "succubus": {
       "name": "Succubus",
@@ -307,7 +334,9 @@
         "condition": "exhaustion",
         "rounds": 2,
         "dc": 14
-      }
+      },
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "red_slaad": {
       "name": "Red Slaad",
@@ -319,7 +348,9 @@
       "damage": "2d6+2",
       "speed": 1,
       "xp": 160,
-      "save": 4
+      "save": 4,
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "blue_slaad": {
       "name": "Blue Slaad",
@@ -331,7 +362,10 @@
       "damage": "2d6+2",
       "speed": 1,
       "xp": 185,
-      "save": 4
+      "save": 4,
+      "magic_to_hit": true,
+      "family": "outsider",
+      "element": "lightning"
     },
     "spectre": {
       "name": "Spectre",
@@ -348,7 +382,9 @@
         "condition": "exhaustion",
         "rounds": 2,
         "dc": 15
-      }
+      },
+      "magic_to_hit": true,
+      "family": "undead"
     },
     "illithid": {
       "name": "Illithid",
@@ -365,7 +401,8 @@
         "condition": "paralysis",
         "rounds": 1,
         "dc": 15
-      }
+      },
+      "family": "aberration"
     },
     "elemental_medium": {
       "name": "Elemental",
@@ -377,7 +414,10 @@
       "damage": "2d8+2",
       "speed": 1,
       "xp": 215,
-      "save": 5
+      "save": 5,
+      "magic_to_hit": true,
+      "family": "outsider",
+      "element": "lightning"
     },
     "flesh_golem": {
       "name": "Flesh Golem",
@@ -389,7 +429,8 @@
       "damage": "2d8+3",
       "speed": 2,
       "xp": 220,
-      "save": 4
+      "save": 4,
+      "family": "construct"
     },
     "incubus": {
       "name": "Incubus",
@@ -406,7 +447,9 @@
         "condition": "exhaustion",
         "rounds": 2,
         "dc": 15
-      }
+      },
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "green_slaad": {
       "name": "Green Slaad",
@@ -418,7 +461,9 @@
       "damage": "2d8+2",
       "speed": 1,
       "xp": 220,
-      "save": 5
+      "save": 5,
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "vampire": {
       "name": "Vampire",
@@ -435,7 +480,8 @@
         "condition": "exhaustion",
         "rounds": 2,
         "dc": 15
-      }
+      },
+      "family": "undead"
     },
     "grey_slaad": {
       "name": "Grey Slaad",
@@ -447,7 +493,9 @@
       "damage": "2d8+3",
       "speed": 1,
       "xp": 260,
-      "save": 6
+      "save": 6,
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "mummy": {
       "name": "Mummy",
@@ -464,7 +512,8 @@
         "condition": "poison",
         "rounds": 3,
         "dc": 15
-      }
+      },
+      "family": "undead"
     },
     "elemental_large": {
       "name": "Greater Elemental",
@@ -476,7 +525,9 @@
       "damage": "3d6+2",
       "speed": 1,
       "xp": 290,
-      "save": 6
+      "save": 6,
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "beholder": {
       "name": "Beholder",
@@ -493,7 +544,8 @@
         "condition": "paralysis",
         "rounds": 1,
         "dc": 15
-      }
+      },
+      "family": "aberration"
     },
     "clay_golem": {
       "name": "Clay Golem",
@@ -505,7 +557,8 @@
       "damage": "3d6+3",
       "speed": 2,
       "xp": 295,
-      "save": 5
+      "save": 5,
+      "family": "construct"
     },
     "drider": {
       "name": "Drider",
@@ -522,7 +575,9 @@
         "condition": "poison",
         "rounds": 3,
         "dc": 16
-      }
+      },
+      "family": "aberration",
+      "element": "poison"
     },
     "dao": {
       "name": "Dao",
@@ -534,7 +589,9 @@
       "damage": "3d6+2",
       "speed": 1,
       "xp": 300,
-      "save": 6
+      "save": 6,
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "alhoon": {
       "name": "Alhoon",
@@ -551,7 +608,8 @@
         "condition": "paralysis",
         "rounds": 1,
         "dc": 16
-      }
+      },
+      "family": "aberration"
     },
     "death_slaad": {
       "name": "Death Slaad",
@@ -563,7 +621,9 @@
       "damage": "3d6+3",
       "speed": 1,
       "xp": 345,
-      "save": 7
+      "save": 7,
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "djinn": {
       "name": "Djinni",
@@ -575,7 +635,9 @@
       "damage": "3d6+3",
       "speed": 1,
       "xp": 340,
-      "save": 7
+      "save": 7,
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "death_knight": {
       "name": "Death Knight",
@@ -592,7 +654,8 @@
         "condition": "burning",
         "rounds": 2,
         "dc": 15
-      }
+      },
+      "family": "undead"
     },
     "iron_golem": {
       "name": "Iron Golem",
@@ -604,7 +667,8 @@
       "damage": "3d6+5",
       "speed": 2,
       "xp": 395,
-      "save": 6
+      "save": 6,
+      "family": "construct"
     },
     "efreet": {
       "name": "Efreet",
@@ -621,7 +685,10 @@
         "condition": "burning",
         "rounds": 3,
         "dc": 15
-      }
+      },
+      "magic_to_hit": true,
+      "family": "outsider",
+      "element": "fire"
     },
     "mummy_lord": {
       "name": "Mummy Lord",
@@ -638,7 +705,8 @@
         "condition": "poison",
         "rounds": 3,
         "dc": 16
-      }
+      },
+      "family": "undead"
     },
     "drow_priestess": {
       "name": "Drow Priestess",
@@ -655,7 +723,8 @@
         "condition": "poison",
         "rounds": 3,
         "dc": 16
-      }
+      },
+      "family": "humanoid"
     },
     "drow_blademaster": {
       "name": "Drow Blademaster",
@@ -667,7 +736,8 @@
       "damage": "3d8+3",
       "speed": 1,
       "xp": 440,
-      "save": 8
+      "save": 8,
+      "family": "humanoid"
     },
     "white_slaad": {
       "name": "White Slaad",
@@ -679,7 +749,10 @@
       "damage": "3d8+3",
       "speed": 1,
       "xp": 445,
-      "save": 8
+      "save": 8,
+      "magic_to_hit": true,
+      "family": "outsider",
+      "element": "frost"
     },
     "vampire_lord": {
       "name": "Vampire Lord",
@@ -696,7 +769,8 @@
         "condition": "exhaustion",
         "rounds": 2,
         "dc": 16
-      }
+      },
+      "family": "undead"
     },
     "mad_wizard": {
       "name": "Mad Wizard",
@@ -713,7 +787,8 @@
         "condition": "burning",
         "rounds": 2,
         "dc": 16
-      }
+      },
+      "family": "humanoid"
     },
     "undead_beholder": {
       "name": "Undead Beholder",
@@ -730,7 +805,8 @@
         "condition": "paralysis",
         "rounds": 1,
         "dc": 16
-      }
+      },
+      "family": "undead"
     },
     "lich": {
       "name": "Lich",
@@ -747,7 +823,8 @@
         "condition": "paralysis",
         "rounds": 1,
         "dc": 17
-      }
+      },
+      "family": "undead"
     },
     "black_slaad": {
       "name": "Black Slaad",
@@ -759,7 +836,9 @@
       "damage": "3d8+5",
       "speed": 1,
       "xp": 550,
-      "save": 9
+      "save": 9,
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "efreeti_lord": {
       "name": "Efreet Lord",
@@ -776,7 +855,10 @@
         "condition": "burning",
         "rounds": 3,
         "dc": 17
-      }
+      },
+      "magic_to_hit": true,
+      "family": "outsider",
+      "element": "fire"
     },
     "pit_fiend": {
       "name": "Pit Fiend",
@@ -793,7 +875,10 @@
         "condition": "burning",
         "rounds": 3,
         "dc": 17
-      }
+      },
+      "magic_to_hit": true,
+      "family": "outsider",
+      "element": "fire"
     },
     "slaad_lord": {
       "name": "Slaad Lord",
@@ -805,7 +890,9 @@
       "damage": "4d6+5",
       "speed": 1,
       "xp": 620,
-      "save": 9
+      "save": 9,
+      "magic_to_hit": true,
+      "family": "outsider"
     },
     "elder_brain": {
       "name": "Elder Brain",
@@ -822,7 +909,8 @@
         "condition": "paralysis",
         "rounds": 1,
         "dc": 17
-      }
+      },
+      "family": "aberration"
     },
     "red_dragon": {
       "name": "Red Dragon",
@@ -839,7 +927,9 @@
         "condition": "burning",
         "rounds": 3,
         "dc": 17
-      }
+      },
+      "family": "dragon",
+      "element": "fire"
     }
   }
 }

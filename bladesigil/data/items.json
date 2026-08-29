@@ -1,13 +1,396 @@
 {
-  "_comment": "All items. CONSUMABLES: effect 'heal' rolls 'dice' as HP; 'cure' removes the condition in 'cures'. GEAR goes on the paper doll (E key) — types map to slots: weapon_<category> and shield -> the two hands ('hands': 2 on a weapon claims both), armor_light/med/heavy -> body, helm -> head, boots -> feet, jewelry_ring -> one of two ring slots, jewelry_neck -> necklace. Weapon categories: light_blade/med_blade/heavy_blade/light_blunt/med_blunt/heavy_blunt/bow (weapons need 'damage', bows also 'range'). ANY worn piece may carry 'ac', 'sp', and/or 'dmg' (+damage on every hit) — they all stack. Class permissions live in classes.json (weapon_types/armor_types/shields); helms, boots, and jewelry fit anyone. 'value' is the gold price for the Phase 4 shops. SUPPLIES: type 'supply' items (rations) are camp fuel, not potions — 'max_carry' caps how many the party can haul. Add items freely! FINESSE (magic-v2 session ruling): 'finesse': true on a weapon lets the wielder aim and damage with the BETTER of STR or DEX — set on light blades. SCROLLS (magic v2): type 'scroll' with 'spell' (an id from spells.json) — a Wizard-lane hero copies it into their spellbook from the character sheet (the scroll is consumed); anyone else can only sell it. RITE TRINKETS: tier-2 Rite rewards; plain worn gear otherwise.",
+  "_comment": "Itemization v2 (2026-08-27, designer's five-tier model). Every item has a 'tier' 1-5: T1 regular gear + Mastersmith weapons (+1 damage, mundane); T2 Enchanted +1 (weapons get 'hit': 1 and 'enchanted': true — ONLY enchanted weapons can strike monsters marked 'magic_to_hit' in monsters.json; armor +1 AC) plus minor trinkets; T3 enchanted with a minor ability/benefit/protection; T4 major; T5 unique named pieces. Vault chests draw gear from the floor's tier band (depth 1-4 -> T1 ... 17-20 -> T5). Supported magic fields on any worn piece: ac, sp, hit, dmg, detect, save_bonus, immune (condition ids), abilities ({str:+1}), enchanted. Weapons: 'finesse' aims with best of STR/DEX, 'hands': 2 claims both hands, 'range' makes it a bow. Potions: effect heal/cure/mana (dice) or invisibility (battle-only: the drinker fades until they strike). ALL stats here are Claude PROPOSALS under the designer's model — retune freely. | TIER ABILITIES (2026-08-27 session 2): 'resist': [elements] = HALF damage from that element (designer ruling — damage only); 'immune' also takes elements (zero damage AND blocks the linked condition: fire->burning, poison->poison); weapon 'bonus_damage': {dice, element} adds a named elemental die per hit; weapon 'double_vs': family + 'flavor' word doubles the FINAL damage total vs that monster family (Ancient=undead/holy, Bane=outsider). Elements: fire/frost/lightning/poison (electricity = lightning). | PRINCIPLE (designer, 2026-08-28): WEAPONS carry offensive minor abilities, ARMOR/clothing defensive ones — the T3 elemental blades add flat +1 elemental damage (bonus_damage dice may be a flat number); resist/immune belong on worn pieces. | MAGIC v3 (2026-08-28): scrolls. A spell with 'scroll': true in spells.json becomes the item 'scroll_<spell>' automatically; explicit scroll entries here (type 'scroll' + 'spell') override that. 'scroll_values' = the price ladder by spell level, x 'rare_multiplier' for rare lore; tier defaults to the spell level. Any arcane caster reads a scroll once in battle; only a spellbook copies it.",
+  "scroll_values": [
+    100,
+    250,
+    500,
+    900,
+    1500
+  ],
+  "rare_multiplier": 1.5,
   "items": {
+    "dagger": {
+      "name": "Dagger",
+      "type": "weapon_light_blade",
+      "tier": 1,
+      "damage": "1d4",
+      "finesse": true,
+      "value": 20,
+      "description": "A thin blade for quick hands."
+    },
+    "tanto": {
+      "name": "Tanto",
+      "type": "weapon_light_blade",
+      "tier": 1,
+      "damage": "1d4",
+      "finesse": true,
+      "value": 30,
+      "description": "A short eastern blade, honed to a whisper."
+    },
+    "short_sword": {
+      "name": "Short Sword",
+      "type": "weapon_med_blade",
+      "tier": 1,
+      "damage": "1d6",
+      "value": 50,
+      "description": "A stout, no-nonsense soldier's sidearm."
+    },
+    "longsword": {
+      "name": "Longsword",
+      "type": "weapon_med_blade",
+      "tier": 1,
+      "damage": "1d8",
+      "value": 100,
+      "description": "A soldier's blade, balanced and true."
+    },
+    "katana": {
+      "name": "Katana",
+      "type": "weapon_med_blade",
+      "tier": 1,
+      "damage": "1d8",
+      "finesse": true,
+      "value": 160,
+      "description": "A folded-steel saber that rewards grace over brawn."
+    },
+    "two_handed_sword": {
+      "name": "Two-Handed Sword",
+      "type": "weapon_heavy_blade",
+      "tier": 1,
+      "damage": "1d10",
+      "hands": 2,
+      "value": 180,
+      "description": "A greatsword that clears a circle when it swings."
+    },
+    "battle_axe": {
+      "name": "Battle Axe",
+      "type": "weapon_heavy_blade",
+      "tier": 1,
+      "damage": "1d8",
+      "value": 90,
+      "description": "A bearded axe that bites deep."
+    },
+    "great_axe": {
+      "name": "Great Axe",
+      "type": "weapon_heavy_blade",
+      "tier": 1,
+      "damage": "1d12",
+      "hands": 2,
+      "value": 200,
+      "description": "An executioner's crescent on a long haft."
+    },
+    "staff": {
+      "name": "Staff",
+      "type": "weapon_light_blunt",
+      "tier": 1,
+      "damage": "1d4",
+      "value": 15,
+      "description": "A traveler's stave — and a wizard's oldest friend."
+    },
+    "mace": {
+      "name": "Mace",
+      "type": "weapon_med_blunt",
+      "tier": 1,
+      "damage": "1d6",
+      "value": 60,
+      "description": "A flanged head that argues with armor."
+    },
+    "warhammer": {
+      "name": "Warhammer",
+      "type": "weapon_heavy_blunt",
+      "tier": 1,
+      "damage": "1d8",
+      "value": 110,
+      "description": "A priest's answer to plate: blunt scripture."
+    },
+    "short_bow": {
+      "name": "Short Bow",
+      "type": "weapon_bow",
+      "tier": 1,
+      "damage": "1d6",
+      "range": 5,
+      "hands": 2,
+      "value": 45,
+      "description": "A hunter's bow, quick to draw."
+    },
+    "longbow": {
+      "name": "Longbow",
+      "type": "weapon_bow",
+      "tier": 1,
+      "damage": "1d8",
+      "range": 6,
+      "hands": 2,
+      "value": 90,
+      "description": "A tall yew bow with a soldier's reach."
+    },
+    "crossbow": {
+      "name": "Crossbow",
+      "type": "weapon_bow",
+      "tier": 1,
+      "damage": "1d10",
+      "range": 5,
+      "hands": 2,
+      "value": 120,
+      "description": "A cranked arbalest that punches through mail."
+    },
+    "mastersmith_dagger": {
+      "name": "Mastersmith Dagger",
+      "type": "weapon_light_blade",
+      "tier": 1,
+      "damage": "1d4+1",
+      "finesse": true,
+      "value": 60,
+      "description": "A flawless dagger from a master's forge — it simply cuts better."
+    },
+    "mastersmith_tanto": {
+      "name": "Mastersmith Tanto",
+      "type": "weapon_light_blade",
+      "tier": 1,
+      "damage": "1d4+1",
+      "finesse": true,
+      "value": 90,
+      "description": "A flawless tanto from a master's forge — it simply cuts better."
+    },
+    "mastersmith_short_sword": {
+      "name": "Mastersmith Short Sword",
+      "type": "weapon_med_blade",
+      "tier": 1,
+      "damage": "1d6+1",
+      "value": 150,
+      "description": "A flawless short sword from a master's forge — it simply cuts better."
+    },
+    "mastersmith_longsword": {
+      "name": "Mastersmith Longsword",
+      "type": "weapon_med_blade",
+      "tier": 1,
+      "damage": "1d8+1",
+      "value": 300,
+      "description": "A flawless longsword from a master's forge — it simply cuts better."
+    },
+    "mastersmith_katana": {
+      "name": "Mastersmith Katana",
+      "type": "weapon_med_blade",
+      "tier": 1,
+      "damage": "1d8+1",
+      "finesse": true,
+      "value": 480,
+      "description": "A flawless katana from a master's forge — it simply cuts better."
+    },
+    "mastersmith_two_handed_sword": {
+      "name": "Mastersmith Two-Handed Sword",
+      "type": "weapon_heavy_blade",
+      "tier": 1,
+      "damage": "1d10+1",
+      "hands": 2,
+      "value": 540,
+      "description": "A flawless two-handed sword from a master's forge — it simply cuts better."
+    },
+    "mastersmith_battle_axe": {
+      "name": "Mastersmith Battle Axe",
+      "type": "weapon_heavy_blade",
+      "tier": 1,
+      "damage": "1d8+1",
+      "value": 270,
+      "description": "A flawless battle axe from a master's forge — it simply cuts better."
+    },
+    "mastersmith_great_axe": {
+      "name": "Mastersmith Great Axe",
+      "type": "weapon_heavy_blade",
+      "tier": 1,
+      "damage": "1d12+1",
+      "hands": 2,
+      "value": 600,
+      "description": "A flawless great axe from a master's forge — it simply cuts better."
+    },
+    "mastersmith_staff": {
+      "name": "Mastersmith Staff",
+      "type": "weapon_light_blunt",
+      "tier": 1,
+      "damage": "1d4+1",
+      "value": 45,
+      "description": "A flawless staff from a master's forge — it simply cuts better."
+    },
+    "mastersmith_mace": {
+      "name": "Mastersmith Mace",
+      "type": "weapon_med_blunt",
+      "tier": 1,
+      "damage": "1d6+1",
+      "value": 180,
+      "description": "A flawless mace from a master's forge — it simply cuts better."
+    },
+    "mastersmith_warhammer": {
+      "name": "Mastersmith Warhammer",
+      "type": "weapon_heavy_blunt",
+      "tier": 1,
+      "damage": "1d8+1",
+      "value": 330,
+      "description": "A flawless warhammer from a master's forge — it simply cuts better."
+    },
+    "mastersmith_short_bow": {
+      "name": "Mastersmith Short Bow",
+      "type": "weapon_bow",
+      "tier": 1,
+      "damage": "1d6+1",
+      "range": 5,
+      "hands": 2,
+      "value": 135,
+      "description": "A flawless short bow from a master's forge — it simply cuts better."
+    },
+    "mastersmith_longbow": {
+      "name": "Mastersmith Longbow",
+      "type": "weapon_bow",
+      "tier": 1,
+      "damage": "1d8+1",
+      "range": 6,
+      "hands": 2,
+      "value": 270,
+      "description": "A flawless longbow from a master's forge — it simply cuts better."
+    },
+    "mastersmith_crossbow": {
+      "name": "Mastersmith Crossbow",
+      "type": "weapon_bow",
+      "tier": 1,
+      "damage": "1d10+1",
+      "range": 5,
+      "hands": 2,
+      "value": 360,
+      "description": "A flawless crossbow from a master's forge — it simply cuts better."
+    },
+    "leather_armor": {
+      "name": "Leather Armor",
+      "type": "armor_light",
+      "tier": 1,
+      "ac": 1,
+      "value": 40,
+      "description": "Boiled leather, supple and quiet."
+    },
+    "studded_leather": {
+      "name": "Studded Leather",
+      "type": "armor_light",
+      "tier": 1,
+      "ac": 2,
+      "value": 80,
+      "description": "Leather sown with iron studs."
+    },
+    "ring_mail": {
+      "name": "Ring Mail",
+      "type": "armor_med",
+      "tier": 1,
+      "ac": 2,
+      "value": 100,
+      "description": "Rings of iron stitched onto a leather backing."
+    },
+    "scale_mail": {
+      "name": "Scale Mail",
+      "type": "armor_med",
+      "tier": 1,
+      "ac": 3,
+      "value": 180,
+      "description": "Overlapping steel scales, heavy but forgiving."
+    },
+    "chain_mail": {
+      "name": "Chain Mail",
+      "type": "armor_heavy",
+      "tier": 1,
+      "ac": 4,
+      "value": 300,
+      "description": "A river of interlocked rings."
+    },
+    "plate_mail": {
+      "name": "Plate Mail",
+      "type": "armor_heavy",
+      "tier": 1,
+      "ac": 5,
+      "value": 600,
+      "description": "A fortress you wear."
+    },
+    "buckler": {
+      "name": "Buckler",
+      "type": "shield",
+      "tier": 1,
+      "ac": 1,
+      "value": 25,
+      "description": "A fist-sized disc for turning blades aside."
+    },
+    "medium_shield": {
+      "name": "Medium Shield",
+      "type": "shield",
+      "tier": 1,
+      "ac": 2,
+      "value": 60,
+      "description": "A knight's kite shield."
+    },
+    "tower_shield": {
+      "name": "Tower Shield",
+      "type": "shield",
+      "tier": 1,
+      "ac": 3,
+      "value": 150,
+      "description": "A wall of oak and iron on one arm."
+    },
+    "robes": {
+      "name": "Robes",
+      "type": "armor_robe",
+      "tier": 1,
+      "ac": 1,
+      "sp": 2,
+      "value": 60,
+      "description": "Layered scholar's robes — any hero may wear them, and casters swear by them."
+    },
+    "iron_helm": {
+      "name": "Iron Helm",
+      "type": "helm",
+      "tier": 1,
+      "ac": 1,
+      "value": 30,
+      "description": "A plain iron pot that has saved many a skull."
+    },
+    "hat": {
+      "name": "Hat",
+      "type": "helm",
+      "tier": 1,
+      "value": 10,
+      "description": "A fine hat. It protects your dignity, if nothing else."
+    },
+    "travelers_cloak": {
+      "name": "Traveler's Cloak",
+      "type": "cloak",
+      "tier": 1,
+      "value": 10,
+      "description": "A weather-stained cloak that keeps the dungeon's chill out."
+    },
+    "sturdy_boots": {
+      "name": "Sturdy Boots",
+      "type": "boots",
+      "tier": 1,
+      "value": 15,
+      "description": "Thick-soled boots for bad roads."
+    },
     "health_potion": {
       "name": "Health Potion",
       "type": "consumable",
-      "effect": "heal",
+      "tier": 1,
       "dice": "1d8",
+      "effect": "heal",
       "value": 20,
       "description": "A straw-colored potion that restores a small amount of health."
+    },
+    "extra_healing_potion": {
+      "name": "Potion of Extra Healing",
+      "type": "consumable",
+      "tier": 2,
+      "dice": "3d8",
+      "effect": "heal",
+      "value": 60,
+      "description": "A deep crimson draught that knits serious wounds."
+    },
+    "greater_healing_potion": {
+      "name": "Potion of Greater Healing",
+      "type": "consumable",
+      "tier": 3,
+      "dice": "6d8",
+      "effect": "heal",
+      "value": 150,
+      "description": "A radiant vial that pulls a hero back from the brink."
     },
     "antidote_potion": {
       "name": "Antidote",
@@ -15,73 +398,75 @@
       "effect": "cure",
       "cures": "poison",
       "value": 25,
-      "description": "A bitter green draught that purges poison from the blood."
+      "description": "A bitter green draught that purges poison from the blood.",
+      "tier": 1
+    },
+    "mana_potion": {
+      "name": "Mana Potion",
+      "type": "consumable",
+      "tier": 1,
+      "dice": "1d8",
+      "effect": "mana",
+      "value": 30,
+      "description": "A humming blue philter that restores a few spell points."
+    },
+    "extra_mana_potion": {
+      "name": "Potion of Extra Mana",
+      "type": "consumable",
+      "tier": 2,
+      "dice": "3d8",
+      "effect": "mana",
+      "value": 90,
+      "description": "A swirling sapphire draught that refills a caster's well."
+    },
+    "greater_mana_potion": {
+      "name": "Potion of Greater Mana",
+      "type": "consumable",
+      "tier": 3,
+      "dice": "6d8",
+      "effect": "mana",
+      "value": 220,
+      "description": "Liquid starlight. The archmage's nightcap."
+    },
+    "invisibility_potion": {
+      "name": "Potion of Invisibility",
+      "type": "consumable",
+      "tier": 2,
+      "effect": "invisibility",
+      "value": 100,
+      "description": "Drunk mid-battle, the hero fades from sight until they strike."
     },
     "rations": {
       "name": "Rations",
       "type": "supply",
       "value": 5,
       "max_carry": 12,
-      "description": "A day's food and firewood. Making camp eats one per living hero."
-    },
-    "longsword": {
-      "name": "Longsword",
-      "type": "weapon_med_blade",
-      "damage": "1d8",
-      "value": 100,
-      "description": "A soldier's blade, balanced and true."
-    },
-    "mace": {
-      "name": "Mace",
-      "type": "weapon_med_blunt",
-      "damage": "1d6",
-      "value": 60,
-      "description": "A heavy flanged head on a stout haft."
-    },
-    "staff": {
-      "name": "Staff",
-      "type": "weapon_light_blunt",
-      "damage": "1d4",
-      "value": 15,
-      "description": "A traveler's stave, worn smooth by the road."
-    },
-    "dagger": {
-      "name": "Dagger",
-      "type": "weapon_light_blade",
-      "damage": "1d4",
-      "value": 20,
-      "description": "Quick, quiet, and easily hidden.",
-      "finesse": true
-    },
-    "longbow": {
-      "name": "Longbow",
-      "type": "weapon_bow",
-      "damage": "1d6",
-      "range": 6,
-      "hands": 2,
-      "value": 90,
-      "description": "A tall yew bow that strikes from across the field. Needs both hands."
+      "description": "A day's food and firewood. Making camp eats one per living hero.",
+      "tier": 1
     },
     "rusty_longsword": {
       "name": "Rusty Longsword",
       "type": "weapon_med_blade",
       "damage": "1d8-1",
       "value": 25,
-      "description": "A soldier's blade gone orange at the edge. It still cuts — mostly."
+      "description": "A soldier's blade gone orange at the edge. It still cuts — mostly.",
+      "tier": 1
     },
     "rusty_mace": {
       "name": "Rusty Mace",
       "type": "weapon_med_blunt",
       "damage": "1d6-1",
       "value": 15,
-      "description": "Flaking iron on a worm-eaten haft."
+      "description": "Flaking iron on a worm-eaten haft.",
+      "tier": 1
     },
     "splintered_staff": {
       "name": "Splintered Staff",
       "type": "weapon_light_blunt",
       "damage": "1d4-1",
       "value": 5,
-      "description": "A cracked stave held together by twine and hope."
+      "description": "A cracked stave held together by twine and hope.",
+      "tier": 1
     },
     "rusty_dagger": {
       "name": "Rusty Dagger",
@@ -89,7 +474,8 @@
       "damage": "1d4-1",
       "value": 5,
       "description": "More tetanus than threat, but it fits the hand.",
-      "finesse": true
+      "finesse": true,
+      "tier": 1
     },
     "splintered_longbow": {
       "name": "Splintered Longbow",
@@ -98,98 +484,567 @@
       "range": 6,
       "hands": 2,
       "value": 25,
-      "description": "A yew bow with a hairline crack — it thrums where it should sing. Needs both hands."
+      "description": "A yew bow with a hairline crack — it thrums where it should sing. Needs both hands.",
+      "tier": 1
     },
     "tarnished_elven_blade": {
       "name": "Tarnished Elven Blade",
       "type": "weapon_med_blade",
       "damage": "1d8-1",
       "value": 40,
-      "description": "Elven steel dulled by neglect. It remembers being sharper."
+      "description": "Elven steel dulled by neglect. It remembers being sharper.",
+      "tier": 1
     },
-    "elven_blade": {
-      "name": "Elven Blade",
-      "type": "weapon_med_blade",
-      "damage": "1d8",
-      "value": 150,
-      "description": "A slender sword of elven steel, light as a whisper."
-    },
-    "iron_sword": {
-      "name": "Iron Sword",
-      "type": "weapon_med_blade",
-      "damage": "1d6",
-      "value": 45,
-      "description": "A reliable sword that deals moderate damage."
-    },
-    "iron_dagger": {
-      "name": "Iron Dagger",
+    "enchanted_dagger": {
+      "name": "Dagger +1",
       "type": "weapon_light_blade",
-      "damage": "1d4",
-      "value": 20,
-      "description": "A plain blade for a plain purpose.",
-      "finesse": true
+      "tier": 2,
+      "damage": "1d4+1",
+      "hit": 1,
+      "finesse": true,
+      "enchanted": true,
+      "value": 400,
+      "description": "A dagger with runes cold to the touch — it bites what mundane steel cannot."
     },
-    "iron_mace": {
-      "name": "Iron Mace",
+    "enchanted_tanto": {
+      "name": "Tanto +1",
+      "type": "weapon_light_blade",
+      "tier": 2,
+      "damage": "1d4+1",
+      "hit": 1,
+      "finesse": true,
+      "enchanted": true,
+      "value": 400,
+      "description": "A tanto with runes cold to the touch — it bites what mundane steel cannot."
+    },
+    "enchanted_short_sword": {
+      "name": "Short Sword +1",
+      "type": "weapon_med_blade",
+      "tier": 2,
+      "damage": "1d6+1",
+      "hit": 1,
+      "enchanted": true,
+      "value": 400,
+      "description": "A short sword with runes cold to the touch — it bites what mundane steel cannot."
+    },
+    "enchanted_longsword": {
+      "name": "Longsword +1",
+      "type": "weapon_med_blade",
+      "tier": 2,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "value": 800,
+      "description": "A longsword with runes cold to the touch — it bites what mundane steel cannot."
+    },
+    "enchanted_katana": {
+      "name": "Katana +1",
+      "type": "weapon_med_blade",
+      "tier": 2,
+      "damage": "1d8+1",
+      "hit": 1,
+      "finesse": true,
+      "enchanted": true,
+      "value": 1280,
+      "description": "A katana with runes cold to the touch — it bites what mundane steel cannot."
+    },
+    "enchanted_two_handed_sword": {
+      "name": "Two-Handed Sword +1",
+      "type": "weapon_heavy_blade",
+      "tier": 2,
+      "damage": "1d10+1",
+      "hit": 1,
+      "hands": 2,
+      "enchanted": true,
+      "value": 1440,
+      "description": "A two-handed sword with runes cold to the touch — it bites what mundane steel cannot."
+    },
+    "enchanted_battle_axe": {
+      "name": "Battle Axe +1",
+      "type": "weapon_heavy_blade",
+      "tier": 2,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "value": 720,
+      "description": "A battle axe with runes cold to the touch — it bites what mundane steel cannot."
+    },
+    "enchanted_great_axe": {
+      "name": "Great Axe +1",
+      "type": "weapon_heavy_blade",
+      "tier": 2,
+      "damage": "1d12+1",
+      "hit": 1,
+      "hands": 2,
+      "enchanted": true,
+      "value": 1600,
+      "description": "A great axe with runes cold to the touch — it bites what mundane steel cannot."
+    },
+    "enchanted_staff": {
+      "name": "Staff +1",
+      "type": "weapon_light_blunt",
+      "tier": 2,
+      "damage": "1d4+1",
+      "hit": 1,
+      "enchanted": true,
+      "value": 400,
+      "description": "A staff with runes cold to the touch — it bites what mundane steel cannot."
+    },
+    "enchanted_mace": {
+      "name": "Mace +1",
       "type": "weapon_med_blunt",
-      "damage": "1d6",
-      "value": 60,
-      "description": "A reliable mace that deals moderate damage."
+      "tier": 2,
+      "damage": "1d6+1",
+      "hit": 1,
+      "enchanted": true,
+      "value": 480,
+      "description": "A mace with runes cold to the touch — it bites what mundane steel cannot."
     },
-    "wooden_shield": {
-      "name": "Wooden Shield",
-      "type": "shield",
-      "ac": 1,
-      "value": 40,
-      "description": "A basic shield offering minimal protection."
+    "enchanted_warhammer": {
+      "name": "Warhammer +1",
+      "type": "weapon_heavy_blunt",
+      "tier": 2,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "value": 880,
+      "description": "A warhammer with runes cold to the touch — it bites what mundane steel cannot."
     },
-    "leather_armor": {
-      "name": "Leather Armor",
+    "enchanted_short_bow": {
+      "name": "Short Bow +1",
+      "type": "weapon_bow",
+      "tier": 2,
+      "damage": "1d6+1",
+      "hit": 1,
+      "range": 5,
+      "hands": 2,
+      "enchanted": true,
+      "value": 400,
+      "description": "A short bow with runes cold to the touch — it bites what mundane steel cannot."
+    },
+    "enchanted_longbow": {
+      "name": "Longbow +1",
+      "type": "weapon_bow",
+      "tier": 2,
+      "damage": "1d8+1",
+      "hit": 1,
+      "range": 6,
+      "hands": 2,
+      "enchanted": true,
+      "value": 720,
+      "description": "A longbow with runes cold to the touch — it bites what mundane steel cannot."
+    },
+    "enchanted_crossbow": {
+      "name": "Crossbow +1",
+      "type": "weapon_bow",
+      "tier": 2,
+      "damage": "1d10+1",
+      "hit": 1,
+      "range": 5,
+      "hands": 2,
+      "enchanted": true,
+      "value": 960,
+      "description": "A crossbow with runes cold to the touch — it bites what mundane steel cannot."
+    },
+    "enchanted_leather_armor": {
+      "name": "Leather Armor +1",
       "type": "armor_light",
-      "ac": 1,
-      "value": 40,
-      "description": "Basic light armor."
-    },
-    "ring_mail": {
-      "name": "Ring Mail",
-      "type": "armor_med",
+      "tier": 2,
       "ac": 2,
-      "value": 100,
-      "description": "Basic medium armor."
+      "enchanted": true,
+      "value": 300,
+      "description": "Leather Armor woven with a warding charm."
     },
-    "chain_mail": {
-      "name": "Chain Mail",
-      "type": "armor_heavy",
+    "enchanted_studded_leather": {
+      "name": "Studded Leather +1",
+      "type": "armor_light",
+      "tier": 2,
       "ac": 3,
-      "value": 200,
-      "description": "Basic heavy armor."
+      "enchanted": true,
+      "value": 320,
+      "description": "Studded Leather woven with a warding charm."
+    },
+    "enchanted_ring_mail": {
+      "name": "Ring Mail +1",
+      "type": "armor_med",
+      "tier": 2,
+      "ac": 3,
+      "enchanted": true,
+      "value": 400,
+      "description": "Ring Mail woven with a warding charm."
+    },
+    "enchanted_scale_mail": {
+      "name": "Scale Mail +1",
+      "type": "armor_med",
+      "tier": 2,
+      "ac": 4,
+      "enchanted": true,
+      "value": 720,
+      "description": "Scale Mail woven with a warding charm."
+    },
+    "enchanted_chain_mail": {
+      "name": "Chain Mail +1",
+      "type": "armor_heavy",
+      "tier": 2,
+      "ac": 5,
+      "enchanted": true,
+      "value": 1200,
+      "description": "Chain Mail woven with a warding charm."
+    },
+    "enchanted_plate_mail": {
+      "name": "Plate Mail +1",
+      "type": "armor_heavy",
+      "tier": 2,
+      "ac": 6,
+      "enchanted": true,
+      "value": 2400,
+      "description": "Plate Mail woven with a warding charm."
+    },
+    "enchanted_buckler": {
+      "name": "Buckler +1",
+      "type": "shield",
+      "tier": 2,
+      "ac": 2,
+      "enchanted": true,
+      "value": 300,
+      "description": "Buckler woven with a warding charm."
+    },
+    "enchanted_medium_shield": {
+      "name": "Medium Shield +1",
+      "type": "shield",
+      "tier": 2,
+      "ac": 3,
+      "enchanted": true,
+      "value": 300,
+      "description": "Medium Shield woven with a warding charm."
+    },
+    "enchanted_tower_shield": {
+      "name": "Tower Shield +1",
+      "type": "shield",
+      "tier": 2,
+      "ac": 4,
+      "enchanted": true,
+      "value": 600,
+      "description": "Tower Shield woven with a warding charm."
     },
     "spell_ring": {
-      "name": "Spell Ring",
+      "name": "Minor Mana Ring",
       "type": "jewelry_ring",
-      "sp": 1,
-      "value": 40,
-      "description": "A magical ring that grants extra spell points."
-    },
-    "iron_helm": {
-      "name": "Iron Helm",
-      "type": "helm",
-      "ac": 1,
-      "value": 30,
-      "description": "A plain iron cap. Better than bare-headed."
-    },
-    "sturdy_boots": {
-      "name": "Sturdy Boots",
-      "type": "boots",
-      "value": 15,
-      "description": "Well-cobbled leather boots for dungeon floors."
+      "tier": 2,
+      "sp": 5,
+      "value": 350,
+      "description": "A magical ring holding a small well of spell points."
     },
     "warding_amulet": {
       "name": "Warding Amulet",
       "type": "jewelry_neck",
+      "tier": 2,
       "ac": 1,
-      "value": 80,
-      "description": "A silver charm that turns aside glancing blows."
+      "value": 160,
+      "description": "A charm against the everyday knife."
+    },
+    "wizard_hat": {
+      "name": "Wizard Hat",
+      "type": "helm",
+      "tier": 2,
+      "sp": 2,
+      "value": 150,
+      "description": "A tall hat that hums faintly with stored thought."
+    },
+    "cloak_of_shadows": {
+      "name": "Cloak of Shadows",
+      "type": "cloak",
+      "tier": 2,
+      "detect": 5,
+      "value": 150,
+      "description": "A cloak of dusk-colored weave; its wearer notices what hides."
+    },
+    "lucky_charm": {
+      "name": "Lucky Charm",
+      "type": "jewelry_neck",
+      "tier": 2,
+      "save_bonus": 1,
+      "value": 150,
+      "description": "A rabbit's foot that actually works."
+    },
+    "silent_boots": {
+      "name": "Silent Boots",
+      "type": "boots",
+      "tier": 2,
+      "detect": 5,
+      "value": 130,
+      "description": "Boots that never announce you — and teach you to listen."
+    },
+    "elven_blade": {
+      "name": "Elven Blade",
+      "type": "weapon_med_blade",
+      "tier": 3,
+      "damage": "1d8+1",
+      "hit": 1,
+      "finesse": true,
+      "enchanted": true,
+      "detect": 5,
+      "value": 900,
+      "description": "A leaf-shaped blade sung over by elven smiths; it warns its bearer of hidden things."
+    },
+    "ring_of_protection": {
+      "name": "Ring of Protection",
+      "type": "jewelry_ring",
+      "tier": 2,
+      "ac": 1,
+      "value": 300,
+      "description": "A plain silver band that turns aside more than it should."
+    },
+    "amulet_of_antivenom": {
+      "name": "Amulet of Antivenom",
+      "type": "jewelry_neck",
+      "tier": 3,
+      "resist": [
+        "poison"
+      ],
+      "value": 600,
+      "description": "A serpent eating its own tail. Venom loses half its bite on its wearer."
+    },
+    "necklace_of_intelligence": {
+      "name": "Necklace of Intelligence",
+      "type": "jewelry_neck",
+      "tier": 3,
+      "abilities": {
+        "int": 1
+      },
+      "value": 700,
+      "description": "A magical necklace that makes you smarter."
+    },
+    "ring_of_strength": {
+      "name": "Ring of Strength",
+      "type": "jewelry_ring",
+      "tier": 3,
+      "abilities": {
+        "str": 1
+      },
+      "value": 700,
+      "description": "An iron band that lends an ox's shoulders."
+    },
+    "ring_of_dexterity": {
+      "name": "Ring of Dexterity",
+      "type": "jewelry_ring",
+      "tier": 3,
+      "abilities": {
+        "dex": 1
+      },
+      "value": 700,
+      "description": "A quicksilver band; hands wearing it are never clumsy."
+    },
+    "cloak_of_elvenkind": {
+      "name": "Cloak of Elvenkind",
+      "type": "cloak",
+      "tier": 3,
+      "detect": 10,
+      "value": 650,
+      "description": "Grey-green weave that shows its wearer every seam and snare."
+    },
+    "sentinels_helm": {
+      "name": "Sentinel's Helm",
+      "type": "helm",
+      "tier": 3,
+      "ac": 2,
+      "value": 600,
+      "description": "A watchman's helm that seems to see for you."
+    },
+    "manastone_pendant": {
+      "name": "Manastone Pendant",
+      "type": "jewelry_neck",
+      "tier": 3,
+      "sp": 4,
+      "value": 650,
+      "description": "A rough blue stone, warm as a heartbeat, brimming with spell points."
+    },
+    "enchanted2_longsword": {
+      "name": "Longsword +2",
+      "type": "weapon_med_blade",
+      "tier": 4,
+      "damage": "1d8+2",
+      "hit": 2,
+      "enchanted": true,
+      "value": 2500,
+      "description": "A longsword whose runes burn steady — a weapon of legend's edge."
+    },
+    "enchanted2_katana": {
+      "name": "Katana +2",
+      "type": "weapon_med_blade",
+      "tier": 4,
+      "damage": "1d8+2",
+      "hit": 2,
+      "finesse": true,
+      "enchanted": true,
+      "value": 3200,
+      "description": "A katana whose runes burn steady — a weapon of legend's edge."
+    },
+    "enchanted2_great_axe": {
+      "name": "Great Axe +2",
+      "type": "weapon_heavy_blade",
+      "tier": 4,
+      "damage": "1d12+2",
+      "hit": 2,
+      "hands": 2,
+      "enchanted": true,
+      "value": 4000,
+      "description": "A great axe whose runes burn steady — a weapon of legend's edge."
+    },
+    "enchanted2_warhammer": {
+      "name": "Warhammer +2",
+      "type": "weapon_heavy_blunt",
+      "tier": 4,
+      "damage": "1d8+2",
+      "hit": 2,
+      "enchanted": true,
+      "value": 2500,
+      "description": "A warhammer whose runes burn steady — a weapon of legend's edge."
+    },
+    "enchanted2_longbow": {
+      "name": "Longbow +2",
+      "type": "weapon_bow",
+      "tier": 4,
+      "damage": "1d8+2",
+      "hit": 2,
+      "range": 6,
+      "hands": 2,
+      "enchanted": true,
+      "value": 2500,
+      "description": "A longbow whose runes burn steady — a weapon of legend's edge."
+    },
+    "enchanted2_chain_mail": {
+      "name": "Chain Mail +2",
+      "type": "armor_heavy",
+      "tier": 4,
+      "ac": 6,
+      "enchanted": true,
+      "value": 2800,
+      "description": "Chain that rings like a bell and turns like a wall."
+    },
+    "enchanted2_plate_mail": {
+      "name": "Plate Mail +2",
+      "type": "armor_heavy",
+      "tier": 4,
+      "ac": 7,
+      "enchanted": true,
+      "value": 4000,
+      "description": "Plate worked with wards; siege engines have done worse against less."
+    },
+    "ring_of_free_action": {
+      "name": "Ring of Free Action",
+      "type": "jewelry_ring",
+      "tier": 4,
+      "immune": [
+        "paralysis"
+      ],
+      "value": 2000,
+      "description": "Nothing holds the hand that wears it — no grip, no grave-chill, no spell of binding."
+    },
+    "salamander_cloak": {
+      "name": "Salamander Cloak",
+      "type": "cloak",
+      "tier": 4,
+      "immune": [
+        "fire"
+      ],
+      "value": 2000,
+      "description": "Scaled hide that drinks flame and asks for more."
+    },
+    "amulet_of_the_titan": {
+      "name": "Amulet of the Titan",
+      "type": "jewelry_neck",
+      "tier": 4,
+      "abilities": {
+        "str": 2
+      },
+      "value": 2200,
+      "description": "A shard of something enormous. Its weight makes you stronger."
+    },
+    "archmage_ring": {
+      "name": "Archmage's Ring",
+      "type": "jewelry_ring",
+      "tier": 4,
+      "sp": 8,
+      "value": 2200,
+      "description": "A ring that remembers being a star: a deep well of spell points."
+    },
+    "talisman_of_the_guardian": {
+      "name": "Talisman of the Guardian",
+      "type": "jewelry_neck",
+      "tier": 4,
+      "save_bonus": 2,
+      "value": 2000,
+      "description": "An old order's seal. Fate reads it and reconsiders."
+    },
+    "duskfang": {
+      "name": "Duskfang",
+      "type": "weapon_med_blade",
+      "tier": 5,
+      "damage": "1d8+2",
+      "hit": 2,
+      "finesse": true,
+      "enchanted": true,
+      "detect": 10,
+      "abilities": {
+        "dex": 1
+      },
+      "value": 6000,
+      "description": "UNIQUE. A black katana that drinks the light around it; doors and traps whisper to its bearer."
+    },
+    "aegis_of_dawn": {
+      "name": "Aegis of Dawn",
+      "type": "shield",
+      "tier": 5,
+      "ac": 4,
+      "save_bonus": 2,
+      "value": 6000,
+      "description": "UNIQUE. A tower shield of sunrise-gold; ruin breaks upon it like a tide."
+    },
+    "worldsplitter": {
+      "name": "Worldsplitter",
+      "type": "weapon_heavy_blade",
+      "tier": 5,
+      "damage": "1d12+3",
+      "hit": 2,
+      "hands": 2,
+      "enchanted": true,
+      "value": 6500,
+      "description": "UNIQUE. A great axe said to have opened a mountain. It has not gotten gentler."
+    },
+    "staff_of_the_magi": {
+      "name": "Staff of the Magi",
+      "type": "weapon_light_blunt",
+      "tier": 5,
+      "damage": "1d4+1",
+      "sp": 10,
+      "hit": 1,
+      "enchanted": true,
+      "value": 7000,
+      "description": "UNIQUE. The wizard-kings' walking stick — a reservoir of raw spell points."
+    },
+    "crown_of_the_hierophant": {
+      "name": "Crown of the Hierophant",
+      "type": "helm",
+      "tier": 5,
+      "ac": 2,
+      "abilities": {
+        "wis": 2
+      },
+      "value": 5500,
+      "description": "UNIQUE. A circlet of white gold; the Light leans closer to whoever wears it."
+    },
+    "heartstone_amulet": {
+      "name": "Heartstone Amulet",
+      "type": "jewelry_neck",
+      "tier": 5,
+      "save_bonus": 1,
+      "immune": [
+        "poison",
+        "burning"
+      ],
+      "value": 6000,
+      "description": "UNIQUE. A pulsing red stone that keeps its wearer's blood clean and cool."
     },
     "trophy_of_the_slain": {
       "_comment": "CONTENT FLAG: Rite tier-2 trinket, Way of the Blade — rename/retune freely",
@@ -197,7 +1052,8 @@
       "type": "jewelry_neck",
       "dmg": 1,
       "value": 150,
-      "description": "A cord of grim keepsakes from a hundred rampages. +1 damage on every hit."
+      "description": "A cord of grim keepsakes from a hundred rampages. +1 damage on every hit.",
+      "tier": 3
     },
     "assassins_hood": {
       "_comment": "CONTENT FLAG: Rite tier-2 trinket, Blade Work — rename/retune freely",
@@ -205,7 +1061,8 @@
       "type": "helm",
       "dmg": 1,
       "value": 150,
-      "description": "A soft black cowl that has watched a great many last moments. +1 damage on every hit."
+      "description": "A soft black cowl that has watched a great many last moments. +1 damage on every hit.",
+      "tier": 3
     },
     "ghostwalk_boots": {
       "_comment": "CONTENT FLAG: Rite tier-2 trinket, Shadows — rename/retune freely",
@@ -213,7 +1070,8 @@
       "type": "boots",
       "ac": 1,
       "value": 150,
-      "description": "Boots soled with something that never quite touches the floor."
+      "description": "Boots soled with something that never quite touches the floor.",
+      "tier": 3
     },
     "oathkeepers_band": {
       "_comment": "CONTENT FLAG: Rite tier-2 trinket, Way of the Shield — rename/retune freely",
@@ -221,56 +1079,359 @@
       "type": "jewelry_ring",
       "ac": 1,
       "value": 150,
-      "description": "An iron band engraved with the names of everyone it has kept alive."
-    },
-    "scroll_witchfire": {
-      "name": "Scroll of Witchfire",
-      "type": "scroll",
-      "spell": "witchfire",
-      "value": 120,
-      "description": "Green clinging flame in cramped handwriting — spellbook lore for a Wizard"
-    },
-    "scroll_starfall": {
-      "name": "Scroll of Starfall",
-      "type": "scroll",
-      "spell": "starfall",
-      "value": 300,
-      "description": "A night sky pressed flat — spellbook lore for a Wizard"
-    },
-    "scroll_fireball": {
-      "name": "Scroll of Fireball",
-      "type": "scroll",
-      "spell": "fireball",
-      "value": 150,
-      "description": "The classic, transcribed — a Wizard-lane mage can copy it in early"
+      "description": "An iron band engraved with the names of everyone it has kept alive.",
+      "tier": 3
     },
     "grimoire_chain": {
       "name": "Grimoire Chain",
       "type": "jewelry_neck",
       "sp": 2,
       "value": 150,
-      "description": "A closed book on a silver chain — the Rite leaves it with keepers of pages (+2 SP)"
+      "description": "A closed book on a silver chain — the Rite leaves it with keepers of pages (+2 SP)",
+      "tier": 3
     },
     "stormheart_ring": {
       "name": "Stormheart Ring",
       "type": "jewelry_ring",
       "sp": 2,
       "value": 150,
-      "description": "A ring with a storm inside — the Rite leaves it with storm-vessels (+2 SP)"
+      "description": "A ring with a storm inside — the Rite leaves it with storm-vessels (+2 SP)",
+      "tier": 3
     },
     "chaplet_of_grace": {
       "name": "Chaplet of Grace",
       "type": "jewelry_neck",
       "sp": 2,
       "value": 150,
-      "description": "Woven white blossoms that never wilt — the Rite leaves it with shepherds of the fallen (+2 SP)"
+      "description": "Woven white blossoms that never wilt — the Rite leaves it with shepherds of the fallen (+2 SP)",
+      "tier": 3
     },
     "zealots_torc": {
       "name": "Zealot's Torc",
       "type": "jewelry_neck",
       "dmg": 1,
       "value": 150,
-      "description": "A twisted iron collar, warm to the touch — the Rite leaves it with swords of the faith (+1 damage)"
+      "description": "A twisted iron collar, warm to the touch — the Rite leaves it with swords of the faith (+1 damage)",
+      "tier": 3
+    },
+    "scroll_witchfire": {
+      "name": "Scroll of Witchfire",
+      "type": "scroll",
+      "spell": "witchfire",
+      "value": 375,
+      "description": "Green clinging flame in cramped handwriting — lore no school teaches",
+      "tier": 2
+    },
+    "scroll_starfall": {
+      "name": "Scroll of Starfall",
+      "type": "scroll",
+      "spell": "starfall",
+      "value": 1350,
+      "description": "A night sky pressed flat — lore no school teaches",
+      "tier": 4
+    },
+    "scroll_fireball": {
+      "name": "Scroll of Fireball",
+      "type": "scroll",
+      "spell": "fireball",
+      "value": 500,
+      "description": "The classic, transcribed — read it once in a pinch, or copy it into a spellbook",
+      "tier": 3
+    },
+    "necklace_of_protection": {
+      "name": "Necklace of Protection",
+      "type": "jewelry_neck",
+      "tier": 2,
+      "ac": 1,
+      "value": 300,
+      "description": "A warded chain; blades slide off its wearer."
+    },
+    "minor_mana_necklace": {
+      "name": "Minor Mana Necklace",
+      "type": "jewelry_neck",
+      "tier": 2,
+      "sp": 5,
+      "value": 350,
+      "description": "A pendant of veined lapis, humming with stored spell points."
+    },
+    "emberweave_chain": {
+      "name": "Emberweave Chain",
+      "type": "armor_heavy",
+      "tier": 3,
+      "ac": 5,
+      "enchanted": true,
+      "resist": [
+        "fire"
+      ],
+      "value": 1100,
+      "description": "Armor +1, woven with wards — its wearer takes half fire damage."
+    },
+    "rimeward_scale": {
+      "name": "Rimeward Scale",
+      "type": "armor_med",
+      "tier": 3,
+      "ac": 4,
+      "enchanted": true,
+      "resist": [
+        "frost"
+      ],
+      "value": 1100,
+      "description": "Armor +1, woven with wards — its wearer takes half frost damage."
+    },
+    "stormward_ring_mail": {
+      "name": "Stormward Ring Mail",
+      "type": "armor_med",
+      "tier": 3,
+      "ac": 3,
+      "enchanted": true,
+      "resist": [
+        "lightning"
+      ],
+      "value": 1100,
+      "description": "Armor +1, woven with wards — its wearer takes half lightning damage."
+    },
+    "serpentward_leather": {
+      "name": "Serpentward Leather",
+      "type": "armor_light",
+      "tier": 3,
+      "ac": 2,
+      "enchanted": true,
+      "resist": [
+        "poison"
+      ],
+      "value": 1100,
+      "description": "Armor +1, woven with wards — its wearer takes half poison damage."
+    },
+    "robes_of_the_magi": {
+      "name": "Robes of the Magi",
+      "type": "armor_robe",
+      "tier": 3,
+      "ac": 2,
+      "sp": 4,
+      "value": 900,
+      "description": "Robes written over with silver formulae; the air itself steps aside."
+    },
+    "cloak_of_protection": {
+      "name": "Cloak of Protection",
+      "type": "cloak",
+      "tier": 3,
+      "ac": 1,
+      "save_bonus": 1,
+      "value": 800,
+      "description": "A grey mantle that shrugs off both blade and misfortune."
+    },
+    "clasp_of_purity": {
+      "name": "Clasp of Purity",
+      "type": "jewelry_neck",
+      "tier": 4,
+      "immune": [
+        "poison"
+      ],
+      "value": 2200,
+      "description": "A white-gold clasp. No venom, blade-borne or bottled, can touch its wearer."
+    },
+    "winterwall_cloak": {
+      "name": "Winterwall Cloak",
+      "type": "cloak",
+      "tier": 4,
+      "immune": [
+        "frost"
+      ],
+      "value": 2000,
+      "description": "White fur that no cold has ever crossed."
+    },
+    "stormshelter_cloak": {
+      "name": "Stormshelter Cloak",
+      "type": "cloak",
+      "tier": 4,
+      "immune": [
+        "lightning"
+      ],
+      "value": 2000,
+      "description": "A slate-grey cloak; lightning grounds itself elsewhere."
+    },
+    "serpents_hide_cloak": {
+      "name": "Serpent's-Hide Cloak",
+      "type": "cloak",
+      "tier": 4,
+      "immune": [
+        "poison"
+      ],
+      "value": 2000,
+      "description": "Supple scales that sweat every poison back out."
+    },
+    "flamebrand": {
+      "name": "Flamebrand",
+      "type": "weapon_med_blade",
+      "tier": 4,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "bonus_damage": {
+        "dice": "1d6",
+        "element": "fire"
+      },
+      "value": 3000,
+      "description": "A longsword +1 sheathed in living fire: +1d6 fire on every blow."
+    },
+    "frostbite": {
+      "name": "Frostbite",
+      "type": "weapon_heavy_blade",
+      "tier": 4,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "bonus_damage": {
+        "dice": "1d6",
+        "element": "frost"
+      },
+      "value": 3000,
+      "description": "A battle axe +1 rimed with eternal frost: +1d6 frost on every blow."
+    },
+    "stormfang": {
+      "name": "Stormfang",
+      "type": "weapon_med_blade",
+      "tier": 4,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "finesse": true,
+      "bonus_damage": {
+        "dice": "1d6",
+        "element": "lightning"
+      },
+      "value": 3200,
+      "description": "A katana +1 that hums like a coming storm: +1d6 lightning on every blow."
+    },
+    "venombite": {
+      "name": "Venombite",
+      "type": "weapon_light_blade",
+      "tier": 4,
+      "damage": "1d4+1",
+      "hit": 1,
+      "enchanted": true,
+      "finesse": true,
+      "bonus_damage": {
+        "dice": "1d6",
+        "element": "poison"
+      },
+      "value": 2800,
+      "description": "A dagger +1 weeping green: +1d6 poison on every blow."
+    },
+    "ancient_warhammer": {
+      "name": "Ancient Warhammer",
+      "type": "weapon_heavy_blunt",
+      "tier": 4,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "double_vs": "undead",
+      "flavor": "holy",
+      "value": 3200,
+      "description": "A relic hammer of the first temples — its holy weight falls DOUBLE upon the undead."
+    },
+    "ancient_longsword": {
+      "name": "Ancient Longsword",
+      "type": "weapon_med_blade",
+      "tier": 4,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "double_vs": "undead",
+      "flavor": "holy",
+      "value": 3200,
+      "description": "A tomb-found blade that remembers the sun: double holy damage to the undead."
+    },
+    "banesword": {
+      "name": "Banesword",
+      "type": "weapon_med_blade",
+      "tier": 4,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "double_vs": "outsider",
+      "flavor": "bane",
+      "value": 3200,
+      "description": "A longsword +1 forged to close doors between worlds: double damage to outsiders."
+    },
+    "fiendcleaver": {
+      "name": "Fiendcleaver",
+      "type": "weapon_heavy_blade",
+      "tier": 4,
+      "damage": "1d12+1",
+      "hit": 1,
+      "enchanted": true,
+      "hands": 2,
+      "double_vs": "outsider",
+      "flavor": "bane",
+      "value": 3400,
+      "description": "A great axe +1 that hates what does not belong here: double damage to outsiders."
+    },
+    "plate_of_hardiness": {
+      "name": "Plate of Hardiness",
+      "type": "armor_heavy",
+      "tier": 4,
+      "ac": 7,
+      "enchanted": true,
+      "save_bonus": 2,
+      "value": 4200,
+      "description": "Plate mail +2 whose wearer seems simply harder to end: +2 to every save."
+    },
+    "flame_blade": {
+      "name": "Flame Blade",
+      "type": "weapon_med_blade",
+      "tier": 3,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "bonus_damage": {
+        "dice": "1",
+        "element": "fire"
+      },
+      "value": 1000,
+      "description": "A longsword +1 with a heart of fire: +1 fire damage on every blow."
+    },
+    "frost_blade": {
+      "name": "Frost Blade",
+      "type": "weapon_med_blade",
+      "tier": 3,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "bonus_damage": {
+        "dice": "1",
+        "element": "frost"
+      },
+      "value": 1000,
+      "description": "A longsword +1 with a heart of frost: +1 frost damage on every blow."
+    },
+    "storm_blade": {
+      "name": "Storm Blade",
+      "type": "weapon_med_blade",
+      "tier": 3,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "bonus_damage": {
+        "dice": "1",
+        "element": "lightning"
+      },
+      "value": 1000,
+      "description": "A longsword +1 with a heart of lightning: +1 lightning damage on every blow."
+    },
+    "venom_blade": {
+      "name": "Venom Blade",
+      "type": "weapon_med_blade",
+      "tier": 3,
+      "damage": "1d8+1",
+      "hit": 1,
+      "enchanted": true,
+      "bonus_damage": {
+        "dice": "1",
+        "element": "poison"
+      },
+      "value": 1000,
+      "description": "A longsword +1 with a heart of poison: +1 poison damage on every blow."
     }
   }
 }

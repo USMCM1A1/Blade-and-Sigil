@@ -5,8 +5,53 @@ import { DataError } from './loader.js';
 import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
 import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier } from './progression.js';
-import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots } from './magic.js';
+import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool } from './magic.js';
 import * as audio from './audio.js';
+
+// Itemization v2: friendly boot-time validation for the new item fields.
+export function validateItems(data) {
+  const ABILITIES = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
+  const EFFECTS = ['heal', 'cure', 'mana', 'invisibility'];
+  const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
+  const FAMILIES = ['undead', 'outsider', 'beast', 'vermin', 'humanoid', 'construct', 'ooze', 'aberration', 'dragon', 'elemental'];
+  for (const [id, d] of Object.entries(data.items.items)) {
+    if (d.tier !== undefined && ![1, 2, 3, 4, 5].includes(d.tier)) {
+      throw new DataError('data/items.json', `"${id}" has tier ${JSON.stringify(d.tier)} — tiers run 1 (regular) to 5 (unique).`);
+    }
+    if (d.effect && d.type === 'consumable' && !EFFECTS.includes(d.effect)) {
+      throw new DataError('data/items.json', `"${id}" has effect "${d.effect}". Valid potion effects: ${EFFECTS.join(', ')}.`);
+    }
+    for (const c of d.immune ?? []) {
+      if (!data.conditions.conditions[c] && !ELEMENTS.includes(c)) {
+        throw new DataError('data/items.json', `"${id}" grants immunity to "${c}" — use a condition (${Object.keys(data.conditions.conditions).join(', ')}) or an element (${ELEMENTS.join(', ')}).`);
+      }
+    }
+    for (const e of d.resist ?? []) {
+      if (!ELEMENTS.includes(e)) {
+        throw new DataError('data/items.json', `"${id}" resists "${e}". Valid elements: ${ELEMENTS.join(', ')}.`);
+      }
+    }
+    if (d.bonus_damage && (!/^\d+(d\d+([+-]\d+)?)?$/.test(d.bonus_damage.dice ?? '') || !ELEMENTS.includes(d.bonus_damage.element))) {
+      throw new DataError('data/items.json', `"${id}" bonus_damage needs {dice, element}: dice like "1d6" (or a flat "1"), element from: ${ELEMENTS.join(', ')}.`);
+    }
+    if (d.double_vs && !FAMILIES.includes(d.double_vs)) {
+      throw new DataError('data/items.json', `"${id}" doubles vs "${d.double_vs}". Valid monster families: ${FAMILIES.join(', ')}.`);
+    }
+    for (const ab of Object.keys(d.abilities ?? {})) {
+      if (!ABILITIES.includes(ab)) {
+        throw new DataError('data/items.json', `"${id}" boosts ability "${ab}". Valid: ${ABILITIES.join(', ')}.`);
+      }
+    }
+  }
+  for (const [id, m] of Object.entries(data.monsters.monsters)) {
+    if (m.family && !FAMILIES.includes(m.family)) {
+      throw new DataError('data/monsters.json', `"${id}" has family "${m.family}". Valid: ${FAMILIES.join(', ')}.`);
+    }
+    if (m.element && !ELEMENTS.includes(m.element)) {
+      throw new DataError('data/monsters.json', `"${id}" attacks with element "${m.element}". Valid: ${ELEMENTS.join(', ')}.`);
+    }
+  }
+}
 
 const VISION_RADIUS = 6.5;
 const MONSTER_AGGRO_RANGE = 7;
@@ -72,7 +117,7 @@ export class Game {
     }
     if (!ch.alive) { this.log(`${ch.name} is beyond study.`, 'info'); return false; }
     if (magicModel(this.data, ch) !== 'spellbook') {
-      this.log(`Only a spellbook can hold a scroll's lore — and ${ch.name} keeps none. (The Wizard's Spellbook lane copies scrolls; anyone can sell them.)`, 'info');
+      this.log(`Only a spellbook can hold a scroll's lore — and ${ch.name} keeps none. (A Wizard's book copies scrolls; an arcane caster may still read one in battle; anyone can sell them.)`, 'info');
       return false;
     }
     if (ch.spellbook.includes(def.spell)) {
@@ -82,6 +127,7 @@ export class Game {
     this.inventory[id]--;
     ch.spellbook.push(def.spell);
     audio.play('spell_arcane');
+    if (ch.prepared.length < preparedSlots(this.data, ch) && spell.level <= maxSpellLevel(ch.level)) ch.prepared.push(def.spell); // the new page takes a free slot — nothing else is touched
     this.log(`${ch.name} copies ${spell.name} into the spellbook — the scroll crumbles as the ink takes.${spell.level > maxSpellLevel(ch.level) ? ` (A level-${spell.level} spell: castable at character level ${[0, 1, 4, 8, 12, 16][spell.level]}.)` : ' Prepare it at any rest.'}`, 'good');
     return true;
   }
@@ -98,18 +144,34 @@ export class Game {
       const model = magicModel(this.data, ch);
       if (model === 'spellbook') {
         refreshSpellbook(this.data, ch);
-        this.log(`A spellbook opens in ${ch.name}'s hands — ${ch.spellbook.length} spells inked, ${preparedSlots(this.data, ch)} prepared at a time (re-pick at any rest).`, 'good');
+        this.log(`${ch.name} keeps the book — ${ch.spellbook.length} spells inked, ${preparedSlots(this.data, ch)} prepared at a time (re-pick at any rest), and every scroll found is a page to be.`, 'good');
       } else if (model === 'known') {
-        this.log(`${ch.name}'s magic runs in the blood now — fewer spells, deeper wells. Choose them.`, 'good');
+        // The Raw Gift: the book is set aside. Its pages may still be
+        // chosen as bloodline (spellPicksOwed offers the former book).
+        ch.formerBook = [...(ch.spellbook ?? [])];
+        ch.spellbook = [];
+        ch.prepared = [];
+        ch.studyOwed = 0;
+        ch.prepFresh = false;
+        this.log(`${ch.name} closes the spellbook for the last time — the magic runs in the blood now: fewer spells, deeper wells. Choose them (the old pages may be chosen too).`, 'good');
       }
     } else if (choice.type === 'focus') {
       ch.focusType = value;
       this.log(`${ch.name}'s hands know the ${value.replace('_', ' ')} now — Weapon Focus (+1 damage with it).`, 'good');
     } else if (choice.type === 'spell') {
-      // The Sorcerer's pick: one spell, known forever.
+      // The Sorcerer's pick: one spell, known forever. A wild pick (any
+      // level, from bonus_pick_levels) counts against the bonus tally.
       (ch.knownSpells ??= []).push(value);
+      if (choice.level === 'any') ch.bonusPicksTaken = (ch.bonusPicksTaken ?? 0) + 1;
       const s = this.data.spells.spells[value];
       this.log(`${ch.name} seizes ${s?.name ?? value} — it is in the blood now, never to be unlearned.`, 'good');
+    } else if (choice.type === 'study') {
+      // Study (magic v3): a free page into the spellbook.
+      (ch.spellbook ??= []).push(value);
+      ch.studyOwed = Math.max(0, (ch.studyOwed ?? 0) - 1);
+      const s = this.data.spells.spells[value];
+      if (ch.prepared.length < preparedSlots(this.data, ch) && (s?.level ?? 9) <= maxSpellLevel(ch.level)) ch.prepared.push(value); // the new page takes a free slot — nothing else is touched
+      this.log(`${ch.name} studies ${s?.name ?? value} — a new page in the spellbook.${ch.prepared.includes(value) ? ' It is prepared.' : ' Prepare it at any rest.'}`, 'good');
     }
     audio.play('leveling');
     this.refreshDerived(ch); // lane offsets land immediately
@@ -180,8 +242,8 @@ export class Game {
     if (this.mode !== 'dungeon') return;
     this.floors[this.depth] = {
       level: this.level, grid: this.grid, monsters: this.monsters,
-      seen: this.seen, traps: this.traps, revealed: this.revealed,
-      triedDoors: this.triedDoors,
+      seen: this.seen, traps: this.traps, chestTraps: this.chestTraps,
+      revealed: this.revealed,
     };
   }
 
@@ -197,26 +259,29 @@ export class Game {
 
   enterFloor(depth, dir) {
     this.saveFloor();
+    // Generate the new floor BEFORE committing to it: if the tier's data is
+    // bad, the error must not leave the depth counter pointing at a floor we
+    // never reached (the bug that once "descended" from 4 straight to 9).
+    const cached = this.floors[depth];
+    const fresh = cached ? null
+      : depth === 'boss' ? this.data.dungeon.boss
+      : depth === 1 ? this.data.level
+      : generateFloor(this.data, depth);
     this.mode = 'dungeon';
     this.depth = depth;
-    const cached = this.floors[depth];
     if (cached) {
       this.level = cached.level;
       this.grid = cached.grid;
       this.monsters = cached.monsters;
       this.seen = cached.seen;
       this.traps = cached.traps;
+      this.chestTraps = cached.chestTraps || [];
       this.revealed = cached.revealed;
-      this.triedDoors = cached.triedDoors;
       // Arriving from above, you stand on the up-stairs; from below, the down-stairs.
       this.partyPos = (dir === 'down' ? this.stairsAt('<') : this.stairsAt('>')) || this.partyPos;
       this.updateVision();
-    } else if (depth === 'boss') {
-      this.loadLevel(this.data.dungeon.boss);
-    } else if (depth === 1) {
-      this.loadLevel(this.data.level);
     } else {
-      this.loadLevel(generateFloor(this.data, depth));
+      this.loadLevel(fresh);
     }
     this.log(depth === 'boss'
       ? `The stairs twist into darkness no map has charted. This is ${this.level.name}.`
@@ -299,6 +364,22 @@ export class Game {
   heroPortrait(ch) { return ch.look?.portrait || ch.cls.portrait || this.heroSprite(ch); }
 
   // ---- Character building (design doc rules) ----
+  // A hero's appearance: creation saves the full {sprite, portrait} object,
+  // while party.json may say just "look": "m1" (m1/m2/f1/f2) — the friendly
+  // form, expanded to the generated-art paths here.
+  resolveLook(def) {
+    if (!def.look) return null;
+    if (typeof def.look !== 'string') return def.look;
+    const variants = ['m1', 'm2', 'f1', 'f2'];
+    if (!variants.includes(def.look)) {
+      throw new DataError('data/party.json', `${def.name}: unknown look "${def.look}". Valid: ${variants.join(', ')} (or leave it out for the old class art).`);
+    }
+    return {
+      sprite: `assets/heroes/gen/${def.race}_${def.class}_${def.look}.png`,
+      portrait: `assets/heroes/gen/${def.race}_${def.class}_${def.look}_face.png`,
+    };
+  }
+
   buildCharacter(def) {
     const cls = this.data.classes.classes[def.class];
     if (!cls) throw new DataError('data/party.json', `Unknown class "${def.class}" for ${def.name}. Valid: ${Object.keys(this.data.classes.classes).join(', ')}`);
@@ -339,7 +420,8 @@ export class Game {
       // counters that will feed the level-20 Rite's titles.
       // Appearance (2026-08-26): creation lets each hero pick one of four
       // race+sex body/portrait variants; null falls back to the class art.
-      look: def.look ?? null,
+      // party.json may use the friendly variant key ("m1"/"f2"), expanded here.
+      look: this.resolveLook(def),
       lane: def.lane ?? null,
       focusType: def.focus ?? null,
       timedBuffs: [],
@@ -351,22 +433,41 @@ export class Game {
       spellbook: [],
       prepared: [],
       knownSpells: [],
+      formerBook: null, // magic v3: the Raw Gift sets the book aside here (its pages may be picked as bloodline)
+      studyOwed: 0,     // magic v3: free spellbook picks banked from study levels
+      bonusPicksTaken: 0, // magic v3: the Sorcerer's wild picks already made
       spentRest: {},   // {archmage: true, miracle: true, ...} — cleared by a full rest
       prepFresh: false, // Prepared Mind: the re-pick window a rest opens
       // The paper doll: item ids from items.json. Hands hold weapons or a
       // shield; a hero always keeps at least one weapon in hand.
       equipment: {
         hand1: cls.starting_weapon, hand2: null,
-        head: null, necklace: null, armor: null, boots: null,
+        head: null, necklace: null, armor: null, cloak: null, boots: null,
         ring1: null, ring2: null,
       },
       buffs: { hit: 0, dmg: 0 },
       conditions: [], // {id, rounds, mapCounter} — see data/conditions.json
       alive: true,
     };
-    // A hero built already walking a caster lane (premade parties, saved
-    // parties, bench jumps) opens their book / repertoire on the spot.
+    // The spellbook (magic v3): a wizard opens the class kit at level 1 — or
+    // the pages party.json names ("spells": [...]). A hero built above
+    // level 1 (premade parties, test parties) has studied on the road: the
+    // study credits they are owed are spent automatically so nobody faces
+    // a stack of modals on arrival.
+    if (def.spells) {
+      for (const id of def.spells) {
+        const sd = this.data.spells.spells[id];
+        if (!sd) throw new DataError('data/party.json', `${def.name}'s "spells" names "${id}", which isn't in spells.json.`);
+        if (!sd.classes.includes(def.class)) throw new DataError('data/party.json', `${def.name}'s "spells" names "${id}", which a ${cls.name} cannot cast.`);
+      }
+      ch.spellbook = [...def.spells];
+    }
     refreshSpellbook(this.data, ch);
+    if (magicModel(this.data, ch) === 'spellbook' && def.level > 1) {
+      const kit = (cls.spellbook?.starting_spells ?? []).length;
+      ch.studyOwed = Math.max(0, studiesGrantedBy(ch) - Math.max(0, ch.spellbook.length - kit));
+      autoStudy(this.data, ch);
+    }
     this.refreshDerived(ch);
     ch.sp = ch.maxSp;
     return ch;
@@ -380,8 +481,20 @@ export class Game {
     const lane = laneOf(this.data, ch); // v2 lanes: permanent stat leans on top of the base tables
     const off = lane?.offsets ?? {};
     const pieces = Object.values(ch.equipment).filter(Boolean).map(id => this.itemDef(id));
+    // Ability-boosting gear (itemization v2): the rolled scores are the
+    // baseline; worn "abilities": {str: 1, ...} stacks on top, and everything
+    // downstream (mods, AC, attack math, spell DCs) reads the boosted scores.
+    if (!ch.baseAbilities) ch.baseAbilities = { ...ch.abilities };
+    ch.abilities = { ...ch.baseAbilities };
+    for (const d of pieces) {
+      for (const [ab, bonus] of Object.entries(d.abilities ?? {})) ch.abilities[ab] += bonus;
+    }
     ch.weapon = pieces.find(d => d.type.startsWith('weapon_')); // battle.js reads name/damage/range
     ch.gearDmg = pieces.reduce((sum, d) => sum + (d.dmg || 0), 0); // worn 'dmg' stacks onto every hit
+    // Worn 'hit' (enchanted weapons and finer things) — battle.js names each
+    // piece in the attack math, per the named-bonus rule.
+    ch.gearHit = pieces.reduce((sum, d) => sum + (d.hit || 0), 0);
+    ch.hitPieces = pieces.filter(d => d.hit).map(d => ({ name: d.name, hit: d.hit }));
     ch.hitBase = ch.cls.hit_bonus[lvlIdx] + (off.hit ?? 0);
     ch.attacks = ch.cls.attacks_per_round[lvlIdx];
     ch.ac = 10 + ch.cls.ac_bonus[lvlIdx] + abilityMod(ch.abilities.dex) + (off.ac ?? 0)
@@ -441,12 +554,15 @@ export class Game {
     const { rolled, rerolled, gain: hpGain } = this.rollHp(ch.cls, conMod);
     ch.maxHp += hpGain;
     ch.hp += hpGain; // the surge of a new level heals what it grants
-    // A new spell level unlocked: the Wizard-lane book grows its own pages;
-    // the Sorcerer's picks arrive via refreshChoices below.
-    const newPages = refreshSpellbook(this.data, ch);
-    if (newPages.length) {
-      this.log(`New pages write themselves into ${ch.name}'s spellbook: ${newPages.map(id => this.data.spells.spells[id]?.name ?? id).join(', ')}.`, 'good');
-    }
+    // Magic v3: a study level owes the spellbook a free page (the pick
+    // pops on the map, after this flow); the Sorcerer's picks likewise.
+    // Revelations (rare prayers) simply arrive.
+    const slotsBefore = magicModel(this.data, ch) === 'spellbook' ? preparedSlots(this.data, { ...ch, level: ch.level - 1 }) : 0;
+    const studied = magicModel(this.data, ch) === 'spellbook' && (ch.cls.spellbook?.study_levels ?? []).includes(ch.level);
+    if (studied) ch.studyOwed = (ch.studyOwed ?? 0) + 1;
+    refreshSpellbook(this.data, ch); // preparation stays legal as slots grow
+    const revealed = revelationsAt(this.data, ch, ch.level);
+    for (const r of revealed) this.log(`A revelation: ${r.name} comes to ${ch.name} unbidden — a prayer no book teaches.`, 'good');
     this.refreshDerived(ch); // hit/attacks/AC/spell points follow the tables (+ lane offsets)
     this.refreshChoices();   // fork levels owe a choice (pops once back on the map)
     audio.play('leveling');
@@ -462,6 +578,10 @@ export class Game {
     if (newTier > 1 && spellPointsFor(ch.cls, ch.level) > 0) {
       milestones.push({ kind: 'spelltier', tier: newTier, text: `Deeper magic: level-${newTier} spells are within reach!` });
     }
+    if (studied) milestones.push({ kind: 'study', text: 'A study is owed: a new page for the spellbook — choose it next.' });
+    const slotsAfter = magicModel(this.data, ch) === 'spellbook' ? preparedSlots(this.data, ch) : 0;
+    if (slotsAfter > slotsBefore) milestones.push({ kind: 'slot', slots: slotsAfter, text: `Prepared spells: ${slotsBefore} → ${slotsAfter} at a time.` });
+    for (const r of revealed) milestones.push({ kind: 'revelation', spell: r.id, text: `A revelation: ${r.name}.` });
     if (prog && ch.level === prog.fork_level && !ch.lane) {
       milestones.push({ kind: 'fork', text: `The ${ch.cls.name}'s road forks here.` });
     }
@@ -489,6 +609,10 @@ export class Game {
       chestGold: levelData.chest_gold || '2d20+10',
       chestItems: levelData.chest_items || [],
       chestRandom: levelData.chest_random || 0, // guaranteed random items per chest
+      // Rigged chests (2026-08-27): each chest rolls this chance to hide a
+      // trap in its latch, drawn from the floor's chest_traps pool.
+      chestTrapChance: levelData.chest_trap_chance ?? this.data.dungeon.chest_trap_chance ?? 0,
+      chestTrapPool: levelData.chest_traps || [],
       restAmbush: levelData.rest_ambush ?? 0,   // chance camp is interrupted
       legend: levelData.legend || {},           // this floor's monster roster (camp ambushes draw from it)
       tacticsNames: levelData.tactics,          // which battle templates fit this floor's style
@@ -509,14 +633,35 @@ export class Game {
     this.seen = Array.from({ length: rows.length }, () => new Array(w).fill(false));
     this.partyPos = null;
     // Hidden dangers: traps [{x, y, id}] and secret doors ('S' on the map).
-    this.traps = (levelData.traps || []).map(t => ({ ...t, detected: false, tried: false }));
+    this.traps = (levelData.traps || []).map(t => ({ ...t, detected: false }));
     for (const t of this.traps) {
       if (!this.data.dungeon.traps[t.id]) {
         throw new DataError('data/dungeon.json', `A floor placed trap "${t.id}" but the "traps" section doesn't define it. Valid: ${Object.keys(this.data.dungeon.traps).join(', ')}`);
       }
     }
+    // Rigged chests: roll each chest on the floor once, here, so a chest is
+    // trapped (or not) for the whole run — leaving and returning changes nothing.
+    const ctc = this.level.chestTrapChance;
+    if (typeof ctc !== 'number' || ctc < 0 || ctc > 1) {
+      throw new DataError(src, `"chest_trap_chance" must be a number between 0 and 1 (e.g. 0.25 = one chest in four is rigged).`);
+    }
+    for (const id of this.level.chestTrapPool) {
+      if (!this.data.dungeon.traps[id]) {
+        throw new DataError(src, `"chest_traps" lists "${id}" but dungeon.json's traps section doesn't define it. Valid: ${Object.keys(this.data.dungeon.traps).join(', ')}`);
+      }
+    }
+    this.chestTraps = [];
+    if (ctc > 0 && this.level.chestTrapPool.length) {
+      for (let y = 0; y < rows.length; y++) {
+        for (let x = 0; x < w; x++) {
+          if ((this.grid[y][x] === '$' || this.grid[y][x] === '*') && Math.random() < ctc) {
+            const id = this.level.chestTrapPool[Math.floor(Math.random() * this.level.chestTrapPool.length)];
+            this.chestTraps.push({ x, y, id, detected: false });
+          }
+        }
+      }
+    }
     this.revealed = new Set();   // secret doors the party has spotted ("x,y")
-    this.triedDoors = new Set(); // walls already searched (Space re-searches)
 
     for (let y = 0; y < rows.length; y++) {
       for (let x = 0; x < w; x++) {
@@ -530,8 +675,8 @@ export class Game {
           if (!def) throw new DataError(src, `Legend says "${c}" = "${id}" but there is no monster "${id}" in monsters.json. Valid: ${Object.keys(this.data.monsters.monsters).join(', ')}`);
           this.monsters.push({ ...def, id, x, y, maxHp: def.hp, conditions: [] });
           this.grid[y][x] = '.';
-        } else if (!'#.+>$<S'.includes(c)) {
-          throw new DataError(src, `Unknown map symbol "${c}" at row ${y + 1}, column ${x + 1}. Use # . + > < $ S @ or a letter from the legend.`);
+        } else if (!'#.+>$<S*'.includes(c)) {
+          throw new DataError(src, `Unknown map symbol "${c}" at row ${y + 1}, column ${x + 1}. Use # . + > < $ * S @ or a letter from the legend.`);
         }
       }
     }
@@ -607,27 +752,11 @@ export class Game {
       this.grid[ny][nx] = "'";
       audio.play('door');
       this.log('You push open the heavy door.', 'info');
-    } else if (cell === '$') {
-      const amount = roll(this.level.chestGold);
-      this.gold += amount;
-      this.grid[ny][nx] = '.';
-      audio.play('coins');
-      const found = [], left = [];
-      for (const entry of this.level.chestItems) {
-        if (Math.random() < entry.chance) {
-          (this.addItem(entry.id) ? found : left).push(this.itemDef(entry.id).name);
-        }
-      }
-      // Guaranteed surprises: N items drawn at random from the whole catalog.
-      const ids = Object.keys(this.data.items.items);
-      for (let i = 0; i < this.level.chestRandom; i++) {
-        const id = ids[Math.floor(Math.random() * ids.length)];
-        (this.addItem(id) ? found : left).push(this.itemDef(id).name);
-      }
-      this.log(found.length
-        ? `You pry open the chest — ${amount} gold and: ${found.join(', ')}! (I — inventory)`
-        : `You pry open the chest — ${amount} gold!`, 'gold');
-      if (left.length) this.log(`The party can carry no more and leaves behind: ${left.join(', ')}.`, 'info');
+    } else if (cell === '$' || cell === '*') {
+      // A rigged latch fires (or is picked apart) before any loot changes hands.
+      const chestTrap = this.chestTraps?.find(t => t.x === nx && t.y === ny);
+      if (chestTrap && !this.resolveChestTrap(chestTrap)) return; // the party fell
+      this.openChest(nx, ny, cell === '*');
     } else if (cell === '>') {
       if (this.allAtPinnacle() && this.depth !== 'boss') {
         this.preBossDepth = this.depth;
@@ -659,13 +788,58 @@ export class Game {
   heroSkill(ch) {
     const base = ch.cls.detect?.[ch.level - 1] ?? 0;
     const racial = ch.race.detect_bonus ?? 0;
-    if (base + racial <= 0) return 0; // this class has no eye for it at all
+    // Worn 'detect' (Cloak of Elvenkind and kin) sharpens the eye too — and
+    // magic works even for a class with no training of its own.
+    const gear = Object.values(ch.equipment).filter(Boolean)
+      .reduce((sum, id) => sum + (this.itemDef(id).detect || 0), 0);
+    if (base + racial + gear <= 0) return 0; // no eye for it at all
     const lane = laneOf(this.data, ch);
     const p = passiveOf(this.data, ch);
-    return base + racial
+    return base + racial + gear
       + (lane?.offsets?.detect ?? 0)
       + (p?.id === 'keen_senses' ? (p.bonus ?? 10) : 0)
       + 5 * abilityMod(ch.abilities.dex);
+  }
+
+  // Elemental protection (tier abilities, 2026-08-27): a worn piece with
+  // "immune": ["fire"] zeroes that element's damage; "resist": ["fire"]
+  // halves it (designer ruling: half damage only). Returns the guarding
+  // piece so every halving can wear its name.
+  elementGuard(ch, element) {
+    if (!element || !ch.equipment) return null;
+    const pieces = Object.values(ch.equipment).filter(Boolean).map(id => this.itemDef(id));
+    const immune = pieces.find(d => d.immune?.includes(element));
+    if (immune) return { kind: 'immune', name: immune.name };
+    const resist = pieces.find(d => d.resist?.includes(element));
+    if (resist) return { kind: 'resist', name: resist.name };
+    // Magic v3: a warding spell (Sanctified Ground) resists too, by name.
+    const ward = (ch.timedBuffs ?? []).find(b => b.resist === 'all' || b.resist?.includes?.(element));
+    if (ward) return { kind: 'resist', name: ward.name };
+    return null;
+  }
+
+  // Worn 'save_bonus' pieces (talismans, rings of protection) stack with the
+  // racial save bonus on every saving throw.
+  heroSaveBonus(ch) {
+    return (ch.race.save_bonus ?? 0) + Object.values(ch.equipment).filter(Boolean)
+      .reduce((sum, id) => sum + (this.itemDef(id).save_bonus || 0), 0)
+      + (ch.timedBuffs ?? []).reduce((sum, b) => sum + (b.saves || 0), 0)
+      + this.condStat(ch, 'saves');
+  }
+
+  // Stat conditions (magic v3): the sum of one modifier across everything
+  // afflicting this creature (hero or monster) — 'hit', 'dmg', 'ac', 'saves'.
+  condStat(ref, key) {
+    return (ref.conditions ?? []).reduce((sum, c) => {
+      const def = this.conditionDef(c.id);
+      return sum + (def?.effect === 'stat' ? (def[key] || 0) : 0);
+    }, 0);
+  }
+
+  // Named stat-condition parts for the combat math: [[value, name], ...].
+  condParts(ref, key) {
+    return (ref.conditions ?? []).map(c => this.conditionDef(c.id)).filter(d => d?.effect === 'stat' && d[key])
+      .map(d => [d[key], d.name]);
   }
 
   // The party's best chance of noticing hidden things as they explore.
@@ -673,35 +847,138 @@ export class Game {
     return Math.max(0, ...this.party.filter(ch => ch.alive).map(ch => this.heroSkill(ch)));
   }
 
-  // Called after every step (once per hidden feature) and again on Space —
-  // waiting is active searching, so a suspicious party can re-check a wall.
-  searchNearby(force = false) {
+  // Called after every step: each hidden feature beside the party gets a
+  // fresh detection roll (designer ruling 2026-08-27 — walking past gives a
+  // few chances, lingering nearby will find it; Space is the sure thing).
+  searchNearby() {
     if (this.mode !== 'dungeon') return;
     const chance = this.detectChance();
     if (chance <= 0) return;
     const near = (x, y) => Math.max(Math.abs(x - this.partyPos.x), Math.abs(y - this.partyPos.y)) <= 1;
     for (const t of this.traps) {
-      if (t.detected || !near(t.x, t.y) || (t.tried && !force)) continue;
-      t.tried = true;
+      if (t.detected || !near(t.x, t.y)) continue;
       if (Math.random() * 100 < chance) {
         t.detected = true;
         audio.play('discover');
         this.log(`Sharp eyes catch a ${this.data.dungeon.traps[t.id].name.toLowerCase()} hidden in the floor!`, 'good');
       }
     }
+    for (const t of this.chestTraps ?? []) {
+      if (t.detected || !near(t.x, t.y)) continue;
+      if (Math.random() * 100 < chance) {
+        t.detected = true;
+        audio.play('discover');
+        this.log(`Sharp eyes spot a ${this.data.dungeon.traps[t.id].name.toLowerCase()} rigged to the chest's latch!`, 'good');
+      }
+    }
     for (let y = this.partyPos.y - 1; y <= this.partyPos.y + 1; y++) {
       for (let x = this.partyPos.x - 1; x <= this.partyPos.x + 1; x++) {
         if (this.grid[y]?.[x] !== 'S' || this.revealed.has(`${x},${y}`)) continue;
-        const key = `${x},${y}`;
-        if (this.triedDoors.has(key) && !force) continue;
-        this.triedDoors.add(key);
         if (Math.random() * 100 < chance) {
-          this.revealed.add(key);
+          this.revealed.add(`${x},${y}`);
           audio.play('discover');
           this.log('A seam in the stonework — there is a secret door here!', 'good');
         }
       }
     }
+  }
+
+  // Prying open a chest ('$'), or a secret vault's chest ('*') — the vault
+  // pays out per dungeon.json's vault_loot: multiplied gold plus real gear,
+  // drawn from the finest pieces this depth can offer.
+  openChest(x, y, vault) {
+    const v = this.data.dungeon.vault_loot || {};
+    const amount = roll(this.level.chestGold) * (vault ? (v.gold_multiplier ?? 3) : 1);
+    this.gold += amount;
+    this.grid[y][x] = '.';
+    audio.play('coins');
+    const found = [], left = [];
+    for (const entry of this.level.chestItems) {
+      if (Math.random() < entry.chance) {
+        (this.addItem(entry.id) ? found : left).push(this.itemDef(entry.id).name);
+      }
+    }
+    // Guaranteed surprises: N items drawn at random from the whole catalog.
+    const ids = Object.keys(this.data.items.items);
+    for (let i = 0; i < this.level.chestRandom; i++) {
+      const id = ids[Math.floor(Math.random() * ids.length)];
+      (this.addItem(id) ? found : left).push(this.itemDef(id).name);
+    }
+    // Magic v3: a scroll may lie among the coin (dungeon.json scroll_drops).
+    const scroll = this.rollScroll(vault);
+    if (scroll) (this.addItem(scroll) ? found : left).push(this.itemDef(scroll).name);
+    if (vault) {
+      // The vault's promise: gear from the floor's TIER (itemization v2 —
+      // depth 1-4 draws tier 1, 5-8 tier 2, up to tier 5 at 17+; an empty
+      // tier falls back down a band). Never the rusty starters, and never a
+      // Rite trinket — those are earned in the ceremony, not fished from a box.
+      const depth = this.depth === 'boss' ? 20 : this.depth;
+      const wearable = t => t.startsWith('weapon_') || t.startsWith('armor_') || t.startsWith('jewelry_')
+        || t === 'shield' || t === 'helm' || t === 'cloak' || t === 'boots';
+      const offLimits = new Set(Object.values(this.data.classes.classes).map(c => c.starting_weapon));
+      for (const cls of Object.values(this.data.progression.classes ?? {})) {
+        for (const lane of Object.values(cls.lanes ?? {})) {
+          for (const tier of lane.rite?.tiers ?? []) if (tier.trinket) offLimits.add(tier.trinket);
+        }
+      }
+      const shelfAt = band => Object.entries(this.data.items.items)
+        .filter(([id, d]) => wearable(d.type) && (d.tier ?? 1) === band && !offLimits.has(id));
+      for (let i = 0; i < (v.gear_pieces ?? 1); i++) {
+        let band = Math.min(5, Math.ceil(depth / 4));
+        let shelf = shelfAt(band);
+        while (!shelf.length && band > 1) shelf = shelfAt(--band);
+        if (!shelf.length) break;
+        const [id, def] = shelf[Math.floor(Math.random() * shelf.length)];
+        (this.addItem(id) ? found : left).push(def.name);
+      }
+    }
+    const opener = vault ? 'The vault\'s chest is heavy with riches' : 'You pry open the chest';
+    this.log(found.length
+      ? `${opener} — ${amount} gold and: ${found.join(', ')}! (I — inventory)`
+      : `${opener} — ${amount} gold!`, 'gold');
+    if (left.length) this.log(`The party can carry no more and leaves behind: ${left.join(', ')}.`, 'info');
+  }
+
+  // dungeon.json → scroll_drops: does this chest hold a scroll, and which?
+  // Regular chests use the band's own knobs, vaults the band's 'vault'
+  // block. Rare/common pools fall back to each other; nothing drops for
+  // spell levels with no scroll items. Returns an item id or null.
+  rollScroll(vault) {
+    const bands = this.data.dungeon.scroll_drops?.bands ?? [];
+    const depth = this.depth === 'boss' ? 20 : (this.depth || 1);
+    const band = bands.find(b => depth >= b.floors[0] && depth <= b.floors[1]);
+    const knobs = vault ? band?.vault : band;
+    if (!knobs || Math.random() >= (knobs.chance ?? 0)) return null;
+    const pool = rare => Object.entries(this.data.items.items)
+      .filter(([, d]) => d.type === 'scroll' && (knobs.levels ?? []).includes(this.data.spells.spells[d.spell]?.level)
+        && !!this.data.spells.spells[d.spell]?.rare === rare)
+      .map(([id]) => id);
+    const wantRare = Math.random() < (knobs.rare_chance ?? 0);
+    let ids = pool(wantRare);
+    if (!ids.length) ids = pool(!wantRare);
+    if (!ids.length) return null;
+    return ids[Math.floor(Math.random() * ids.length)];
+  }
+
+  // A rigged chest latch: a detected one lets the thief pick it apart first;
+  // an unseen one simply fires on whoever opens the lid.
+  // Returns false if the party wiped.
+  resolveChestTrap(trap) {
+    const def = this.data.dungeon.traps[trap.id];
+    this.chestTraps = this.chestTraps.filter(t => t !== trap); // spent either way
+    const disarmer = trap.detected
+      ? this.party.find(ch => ch.alive && ch.cls.disarms)
+      : null;
+    if (disarmer) {
+      if (Math.random() * 100 < this.heroSkill(disarmer)) {
+        audio.play('disarm');
+        this.log(`${disarmer.name} eases the ${def.name.toLowerCase()} out of the chest's latch — disarmed!`, 'good');
+        return true;
+      }
+      this.log(`${disarmer.name} slips — the ${def.name.toLowerCase()} in the latch goes off!`, 'death');
+      return this.springTrap(def, disarmer);
+    }
+    return this.springTrap(def);
   }
 
   // A trap goes off (or a thief defuses it). Returns false if the party wiped.
@@ -729,8 +1006,19 @@ export class Game {
     const living = this.party.filter(ch => ch.alive);
     const ch = victim && victim.alive ? victim : living[Math.floor(Math.random() * living.length)];
     let dmg = Math.max(1, roll(def.dice));
-    const saved = d20() + abilityMod(ch.abilities[def.save ?? 'dex']) + (ch.race.save_bonus ?? 0) >= def.dc;
+    const saved = d20() + abilityMod(ch.abilities[def.save ?? 'dex']) + this.heroSaveBonus(ch) >= def.dc;
     if (saved) dmg = Math.floor(dmg / 2);
+    // Typed traps meet elemental protection: immunity shrugs the whole thing
+    // off; resistance halves what got through the save.
+    const guard = this.elementGuard(ch, def.element);
+    if (guard?.kind === 'immune') {
+      this.log(`${def.name}! The ${guard.name} drinks the ${def.element} — ${ch.name} is untouched.`, 'good');
+      return true;
+    }
+    if (guard?.kind === 'resist') {
+      dmg = Math.max(1, Math.floor(dmg / 2));
+      this.log(`The ${guard.name} turns half the ${def.element} aside.`, 'good');
+    }
     ch.hp -= dmg;
     this.log(saved
       ? `${def.name}! ${ch.name} twists away — ${dmg} damage.`
@@ -749,10 +1037,46 @@ export class Game {
     return true;
   }
 
+  // Space: a deliberate, thorough search (designer ruling 2026-08-27). The
+  // party combs every adjacent wall and floor tile — it ALWAYS finds what is
+  // hidden, provided anyone has the eye for it, but it takes real time
+  // (dungeon.json search_turns; poison ticks and monsters keep moving).
   wait() {
     if (this.over || this.victory || this.battle || this.mode === 'town') return;
-    this.searchNearby(true); // waiting is searching: re-check the nearby walls and floor
-    this.endPlayerTurn();
+    if (this.detectChance() <= 0) {
+      this.log('The party pokes at the nearby walls, but no one has the eye for hidden things.', 'info');
+      this.endPlayerTurn();
+      return;
+    }
+    const turns = this.data.dungeon.search_turns ?? 5;
+    const near = (x, y) => Math.max(Math.abs(x - this.partyPos.x), Math.abs(y - this.partyPos.y)) <= 1;
+    let found = 0;
+    for (const t of this.traps) {
+      if (t.detected || !near(t.x, t.y)) continue;
+      t.detected = true; found++;
+      this.log(`The search uncovers a ${this.data.dungeon.traps[t.id].name.toLowerCase()} hidden in the floor!`, 'good');
+    }
+    for (const t of this.chestTraps ?? []) {
+      if (t.detected || !near(t.x, t.y)) continue;
+      t.detected = true; found++;
+      this.log(`The search uncovers a ${this.data.dungeon.traps[t.id].name.toLowerCase()} rigged to the chest's latch!`, 'good');
+    }
+    for (let y = this.partyPos.y - 1; y <= this.partyPos.y + 1; y++) {
+      for (let x = this.partyPos.x - 1; x <= this.partyPos.x + 1; x++) {
+        if (this.grid[y]?.[x] !== 'S' || this.revealed.has(`${x},${y}`)) continue;
+        this.revealed.add(`${x},${y}`); found++;
+        this.log('A seam in the stonework — there is a secret door here!', 'good');
+      }
+    }
+    if (found) audio.play('discover');
+    else this.log(`The party searches every nearby crack and seam — nothing is hidden here. (${turns} turns pass)`, 'info');
+    // The time cost: the dungeon does not hold its breath while you search.
+    for (let i = 0; i < turns; i++) {
+      this.advanceTime(1);
+      if (this.over || this.battle) return;
+      this.monstersAct();
+      if (this.over || this.battle) return;
+    }
   }
 
   // Make camp: restore HP and spell points. Only safe when no enemy is in
@@ -858,12 +1182,20 @@ export class Game {
       const prog = classProg(this.data, ch);
       if (prog && n < prog.fork_level) {
         ch.lane = null; ch.focusType = null;
-        ch.spellbook = []; ch.prepared = []; ch.knownSpells = []; // un-walk the caster lanes too
+        // Un-walk the caster lanes: the Raw Gift's set-aside book returns.
+        if (ch.formerBook) { ch.spellbook = [...ch.formerBook]; ch.formerBook = null; }
+        ch.knownSpells = []; ch.bonusPicksTaken = 0;
       }
       if (n < 20) ch.rite = null; // dropping below the pinnacle un-runs the Rite (re-testable)
       ch.spentRest = {}; // the jump is a fresh day — once-per-rest powers return
-      refreshSpellbook(this.data, ch); // a Wizard-lane book grows into the new level
-      if (magicModel(this.data, ch) === 'spellbook') ch.prepFresh = true;
+      refreshSpellbook(this.data, ch); // the kit opens if the book is empty; preparation stays legal
+      if (magicModel(this.data, ch) === 'spellbook') {
+        // Study credits for the jump are spent on the spot (no modal avalanche).
+        const kit = (ch.cls.spellbook?.starting_spells ?? []).length;
+        ch.studyOwed = Math.max(0, studiesGrantedBy(ch) - Math.max(0, ch.spellbook.length - kit));
+        autoStudy(this.data, ch);
+        ch.prepFresh = true;
+      }
       // Same HP rule as real play: max die at level 1, rolled (rerolling
       // ones) for every level after — simulated fresh for the jump.
       const conMod = abilityMod(ch.abilities.con);
@@ -1041,6 +1373,25 @@ export class Game {
       .filter(it => it.def && it.def.type === 'consumable');
   }
 
+  // Scrolls in the pouch, for the battle item menu: [{id, def, spell, count,
+  // reason}] — reason is null when this hero may read it (magic v3).
+  readableScrolls(ch) {
+    return Object.entries(this.inventory)
+      .filter(([id, n]) => n > 0 && this.itemDef(id)?.type === 'scroll')
+      .map(([id, n]) => {
+        const def = this.itemDef(id);
+        const spell = this.data.spells.spells[def.spell];
+        return { id, def, spell: spell ? { id: def.spell, ...spell } : null, count: n,
+          reason: spell ? scrollReadable(this.data, ch, spell) : `names an unknown spell "${def.spell}"` };
+      });
+  }
+
+  // The words burn off the page (the arena keeps its scrolls).
+  consumeScroll(id) {
+    if (this.arena) return;
+    if (this.inventory[id] > 0) this.inventory[id]--;
+  }
+
   // Camp supplies (rations etc.), for the inventory screen: [{id, def, count}]
   heldSupplies() {
     return Object.entries(this.inventory)
@@ -1062,6 +1413,7 @@ export class Game {
     if (def.type === 'shield' || def.type.startsWith('weapon_')) return 'hand';
     if (def.type.startsWith('armor_')) return 'armor';
     if (def.type === 'helm') return 'head';
+    if (def.type === 'cloak') return 'cloak'; // itemization v2: the 9th slot, fits anyone
     if (def.type === 'boots') return 'boots';
     if (def.type === 'jewelry_neck') return 'necklace';
     if (def.type === 'jewelry_ring') return 'ring';
@@ -1149,7 +1501,7 @@ export class Game {
     const t = def.type;
     if (t === 'weapon_bow' || id.includes('staff')) return 'equip_wood';
     if (t.startsWith('weapon')) return 'equip_metal';
-    if (id.includes('robe') || id.includes('cape')) return 'equip_robe';
+    if (t === 'cloak' || id.includes('robe') || id.includes('cape')) return 'equip_robe';
     if (t.startsWith('armor') || t === 'shield') return 'equip_armor';
     if (t === 'helm' || t === 'boots') return 'equip_clothing';
     if (t.startsWith('jewelry')) return 'equip_jewelry';
@@ -1175,10 +1527,20 @@ export class Game {
   // Blocking wasteful sips keeps a misclick from burning a rare potion.
   itemBlockReason(def, ch) {
     if (!ch.alive) return `${ch.name} is beyond potions.`;
+    if (def.type === 'scroll') return 'A scroll is read in battle (I) — or copied into a spellbook on the character sheet.';
     if (def.effect === 'heal' && ch.hp >= ch.maxHp) return `${ch.name} is unhurt.`;
     if (def.effect === 'cure' && !ch.conditions.some(c => c.id === def.cures)) {
       const cond = this.conditionDef(def.cures);
       return `${ch.name} is not ${cond ? cond.name.toLowerCase() : def.cures}.`;
+    }
+    if (def.effect === 'mana') {
+      if (ch.maxSp <= 0) return `${ch.name} has no wellspring of magic to refill.`;
+      if (ch.sp >= ch.maxSp) return `${ch.name}'s spell points are already full.`;
+    }
+    if (def.effect === 'invisibility') {
+      // Designer ruling 2026-08-27: battle-only, exactly the thief's Vanish.
+      if (!this.battle) return 'There is no one here to hide from — save it for battle.';
+      if (ch.hidden) return `${ch.name} is already unseen.`;
     }
     return null;
   }
@@ -1204,6 +1566,18 @@ export class Game {
       this.log(`${ch.name} drinks the ${def.name} — ${cond.name.toLowerCase()} no more.${this.arena ? ' (arena: not consumed)' : ''}`, 'good');
       return { ok: true, fxText: 'cured!', fxColor: '#6ad46a' };
     }
+    if (def.effect === 'mana') {
+      const restored = Math.min(roll(def.dice), ch.maxSp - ch.sp);
+      ch.sp += restored;
+      this.log(`${ch.name} drinks the ${def.name} — ${restored} spell points return.${this.arena ? ' (arena: not consumed)' : ''}`, 'good');
+      return { ok: true, fxText: `+${restored} SP`, fxColor: '#6a9ad4' };
+    }
+    if (def.effect === 'invisibility') {
+      audio.play('vanish');
+      ch.hidden = true; // battle.js: unseen until they strike, exactly like Vanish
+      this.log(`${ch.name} drinks the ${def.name} — and is simply not there anymore.`, 'good');
+      return { ok: true, fxText: 'unseen!', fxColor: '#b9a7e8' };
+    }
     return { ok: false };
   }
 
@@ -1222,6 +1596,24 @@ export class Game {
   applyCondition(ref, id, rounds) {
     const def = this.conditionDef(id);
     if (!def) return;
+    // Protective gear (itemization v2): a worn piece with "immune": ["poison"]
+    // simply refuses the condition — and says which piece did it. Elemental
+    // immunity covers the element's condition too (fire blocks burning).
+    const ELEMENT_OF = { burning: 'fire', poison: 'poison' };
+    if (ref.equipment) {
+      const guard = Object.values(ref.equipment).filter(Boolean).map(i => this.itemDef(i))
+        .find(d => d.immune?.includes(id) || (ELEMENT_OF[id] && d.immune?.includes(ELEMENT_OF[id])));
+      if (guard) {
+        this.log(`The ${guard.name} turns the ${def.name.toLowerCase()} aside!`, 'good');
+        return;
+      }
+    }
+    // A warding spell (Sanctified Ground) refuses every affliction while it holds.
+    const ward = (ref.timedBuffs ?? []).find(b => b.immune_conditions);
+    if (ward) {
+      this.log(`${ward.name} refuses the ${def.name.toLowerCase()} — nothing foul takes hold of ${ref.name}.`, 'good');
+      return;
+    }
     const existing = ref.conditions.find(c => c.id === id);
     if (existing) existing.rounds = Math.max(existing.rounds, rounds); // re-poisoning refreshes, no stacking
     else ref.conditions.push({ id, rounds, mapCounter: 0 });

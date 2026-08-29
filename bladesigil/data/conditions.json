@@ -1,5 +1,5 @@
 {
-  "_comment": "Conditions (afflictions and lingering effects). 'effect': damage = lose dice HP per tick, skip = lose the turn. In battle a condition ticks at the START of the afflicted creature's own initiative turn. 'lingers': false = it expires when the battle ends; true = it follows you onto the map, ticking every 'map_tick_every' map turns (camp is 50 turns — sleep off a poison at your peril). 'save': which ability resists when something tries to inflict it (monsters use their save bonus). 'color' paints the floating text and status pips. Edit freely and refresh!",
+  "_comment": "Conditions (afflictions and lingering effects). 'effect': damage = lose 'dice' HP per tick · skip = lose the turn · stat = while it lasts, the listed modifiers apply (hit / dmg / ac / saves — negative numbers weaken; the combat log names the condition beside the number) · slow = acts on even rounds only, like a speed-2 monster. 'breaks_on_damage': true (Sleep) = any damage shakes it off. In battle a condition ticks at the START of the afflicted creature's own initiative turn. 'lingers': false = it expires when the battle ends; true = it follows you onto the map, ticking every 'map_tick_every' map turns (camp is 50 turns — sleep off a poison at your peril). 'save': which ability resists when something tries to inflict it (monsters use their save bonus). 'color' paints the floating text and status pips. Magic v3 (2026-08-28) added sleep/slowed/weakened/frightened/blinded — monsters' 'inflicts' and gear 'immune' lists may use them too. Edit freely and refresh!",
   "conditions": {
     "burning": {
       "name": "Burning",
@@ -34,6 +34,52 @@
       "save": "wis",
       "color": "#8fb8e8",
       "description": "Frozen stiff — the turn is lost"
+    },
+    "sleep": {
+      "name": "Asleep",
+      "effect": "skip",
+      "breaks_on_damage": true,
+      "lingers": false,
+      "save": "wis",
+      "color": "#b8a8e8",
+      "description": "Slumped and dreaming — the turn is lost, until something hurts"
+    },
+    "slowed": {
+      "name": "Slowed",
+      "effect": "slow",
+      "lingers": false,
+      "save": "dex",
+      "color": "#e8e8e8",
+      "description": "Mired — acts only every other round"
+    },
+    "weakened": {
+      "name": "Weakened",
+      "effect": "stat",
+      "hit": -2,
+      "dmg": -2,
+      "lingers": false,
+      "save": "con",
+      "color": "#a070c0",
+      "description": "Strength runs out like water — −2 to hit and damage"
+    },
+    "frightened": {
+      "name": "Frightened",
+      "effect": "stat",
+      "hit": -2,
+      "saves": -2,
+      "lingers": false,
+      "save": "wis",
+      "color": "#c8b8e8",
+      "description": "Cowed — −2 to hit and −2 on every save"
+    },
+    "blinded": {
+      "name": "Blinded",
+      "effect": "stat",
+      "hit": -4,
+      "lingers": false,
+      "save": "con",
+      "color": "#fff3c8",
+      "description": "Dazzled — −4 to hit"
     }
   }
 }

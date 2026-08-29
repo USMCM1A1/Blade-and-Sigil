@@ -72,16 +72,30 @@ export class Renderer {
       }
     }
 
-    // Spotted traps: a warning sigil the party can now walk around.
+    // Spotted traps: the revealed mechanism itself, drawn on the tile so the
+    // party can walk around it (⚠ stands in until the art loads).
+    const drawTrapMark = (x, y, size, dx, dy) => {
+      const tx = x - camX, ty = y - camY;
+      if (tx < 0 || ty < 0 || tx >= this.cols || ty >= this.rows) return;
+      const art = this.image('assets/misc/trap_marker.png');
+      if (art) {
+        ctx.drawImage(art, tx * TILE + dx, ty * TILE + dy, size, size);
+      } else {
+        ctx.fillStyle = '#e0912f';
+        ctx.font = `bold ${Math.floor(size * 0.6)}px Georgia`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚠', tx * TILE + dx + size / 2, ty * TILE + dy + size / 2);
+      }
+    };
     for (const t of game.traps || []) {
       if (!t.detected || !game.seen[t.y]?.[t.x]) continue;
-      const tx = t.x - camX, ty = t.y - camY;
-      if (tx < 0 || ty < 0 || tx >= this.cols || ty >= this.rows) continue;
-      ctx.fillStyle = '#e0912f';
-      ctx.font = `bold ${Math.floor(TILE / 2)}px Georgia`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('⚠', tx * TILE + TILE / 2, ty * TILE + TILE / 2);
+      drawTrapMark(t.x, t.y, TILE - 10, 5, 5);
+    }
+    // A spotted rigged chest wears its trap small on the lid's corner.
+    for (const t of game.chestTraps || []) {
+      if (!t.detected || !game.seen[t.y]?.[t.x]) continue;
+      drawTrapMark(t.x, t.y, Math.floor(TILE * 0.55), 2, Math.floor(TILE * 0.45) - 2);
     }
 
     // Monsters (only when currently visible).
@@ -123,17 +137,21 @@ export class Renderer {
       ctx.fillRect(px, py + TILE - 5, TILE, 5);
       return;
     }
-    if (c === 'S') { // revealed secret door: a wall with a telltale seam
-      ctx.fillStyle = COLORS.wall;
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.strokeStyle = '#7fd4c8';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(px + 6, py + 4, TILE - 12, TILE - 8);
-      ctx.fillStyle = '#7fd4c8';
-      ctx.font = `bold ${Math.floor(TILE / 3)}px Georgia`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('?', px + TILE / 2, py + TILE / 2);
+    if (c === 'S') { // revealed secret door: a stone slab betrayed by its seam
+      if (this.image('assets/misc/door_secret.png')) {
+        this.drawSprite('assets/misc/door_secret.png', px, py);
+      } else {
+        ctx.fillStyle = COLORS.wall;
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = '#7fd4c8';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(px + 6, py + 4, TILE - 12, TILE - 8);
+        ctx.fillStyle = '#7fd4c8';
+        ctx.font = `bold ${Math.floor(TILE / 3)}px Georgia`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('?', px + TILE / 2, py + TILE / 2);
+      }
       return;
     }
     // Everything else sits on a floor tile.
@@ -144,27 +162,43 @@ export class Renderer {
     ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
 
     if (c === '+') {
-      const door = this.images['assets/misc/door_1.png'];
-      if (door) this.drawSprite('assets/misc/door_1.png', px, py);
-      else {
+      if (this.image('assets/misc/door_closed.png')) {
+        this.drawSprite('assets/misc/door_closed.png', px, py); // the legacy double door
+      } else {
         ctx.fillStyle = COLORS.doorWood;
         ctx.fillRect(px + 4, py + 2, TILE - 8, TILE - 4);
         ctx.fillStyle = COLORS.doorDark;
         ctx.fillRect(px + 8, py + 6, TILE - 16, TILE - 12);
       }
     } else if (c === "'") {
-      ctx.strokeStyle = COLORS.doorWood; // open door: just the frame
-      ctx.lineWidth = 3;
-      ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
-    } else if (c === '$') {
+      if (this.image('assets/misc/door_open.png')) {
+        this.drawSprite('assets/misc/door_open.png', px, py); // the same door, standing open
+      } else {
+        ctx.strokeStyle = COLORS.doorWood; // fallback: just the frame
+        ctx.lineWidth = 3;
+        ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
+      }
+    } else if (c === '$' || c === '*') { // '*' is a secret vault's chest — same box, richer insides
       this.drawSprite('assets/misc/loot_drop.jpg', px, py);
     } else if (c === '>') {
-      ctx.fillStyle = COLORS.stairs;
-      ctx.font = `bold ${TILE - 10}px Georgia`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('▼', px + TILE / 2, py + TILE / 2 + 2);
+      // The last descent is a gate, not a stair: when every hero stands at 20,
+      // the next '>' leads to the boss, and it wears the grand sealed door.
+      const bossGate = game.depth !== 'boss' && game.allAtPinnacle?.();
+      const art = bossGate ? 'assets/misc/door_boss.png' : 'assets/misc/stairs_down.png';
+      if (this.image(art)) {
+        this.drawSprite(art, px, py);
+      } else {
+        ctx.fillStyle = COLORS.stairs;
+        ctx.font = `bold ${TILE - 10}px Georgia`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('▼', px + TILE / 2, py + TILE / 2 + 2);
+      }
     } else if (c === '<') {
+      if (this.image('assets/misc/stairs_up.png')) {
+        this.drawSprite('assets/misc/stairs_up.png', px, py);
+        return;
+      }
       ctx.fillStyle = COLORS.stairs;
       ctx.font = `bold ${TILE - 10}px Georgia`;
       ctx.textAlign = 'center';
@@ -341,7 +375,7 @@ export class Renderer {
     }
 
     // Area-of-effect preview around the crosshair.
-    if (b.mode === 'target' && b.pending?.spell?.area) {
+    if (b.mode === 'target' && typeof b.pending?.spell?.area === 'number' && b.pending.spell.area > 0) {
       for (let y = 0; y < gh; y++) {
         for (let x = 0; x < gw; x++) {
           if (b.dist(x, y, b.cursor.x, b.cursor.y) <= b.pending.spell.area && b.grid[y][x] !== '#') {
@@ -507,7 +541,11 @@ export class Renderer {
         else if (b.isUnaware(foe, a.ref)) tags.push('💤 unaware');
         if (b.isFlanked(foe)) tags.push('flanked');
         const pct = Math.round(Math.max(5, Math.min(95, (21 + b.attackBonus(a.ref) - (10 + foe.ref.ac)) / 20 * 100)));
-        panelLine(`bump the ${foe.ref.name}: ${tags.some(t => t.startsWith('ASSASSINATE')) ? 'auto-crit' : `${pct}% to hit`}${tags.length ? ` (${tags.join(', ')})` : ''}`, '13px Georgia', '#e8d8a8', 16);
+        if (foe.ref.magic_to_hit && !a.ref.weapon.enchanted) {
+          panelLine(`bump the ${foe.ref.name}: NO EFFECT — it needs magic to hit!`, '13px Georgia', '#e08080', 16);
+        } else {
+          panelLine(`bump the ${foe.ref.name}: ${tags.some(t => t.startsWith('ASSASSINATE')) ? 'auto-crit' : `${pct}% to hit`}${tags.length ? ` (${tags.join(', ')})` : ''}`, '13px Georgia', '#e8d8a8', 16);
+        }
       }
     } else if (b.mode === 'target') {
       ctx.fillStyle = COLORS.stairs;
@@ -525,7 +563,9 @@ export class Renderer {
       if (tgt) {
         const pct = pr => `${Math.round(Math.max(5, Math.min(95, pr * 100)))}%`;
         if (p.kind === 'shoot') {
-          odds = ` · ${pct((21 + b.attackBonus(a.ref) - (10 + tgt.ref.ac)) / 20)} to hit`;
+          odds = tgt.ref.magic_to_hit && !a.ref.weapon.enchanted
+            ? ' · NO EFFECT — it needs magic to hit!'
+            : ` · ${pct((21 + b.attackBonus(a.ref) - (10 + tgt.ref.ac)) / 20)} to hit`;
         } else if (p.kind === 'deathblow') {
           odds = ' · an automatic critical — it cannot miss';
         } else if (p.spell) {
@@ -557,7 +597,7 @@ export class Renderer {
     }
     const hints = b.mode === 'target'
       ? 'arrows — aim · Enter — unleash! · Esc — cancel'
-      : `arrows — move & bump to attack · ${cHint}${a?.kind === 'hero' && b.canShoot(a) ? 'F — shoot · ' : ''}${a?.kind === 'hero' && this.game.heldItems().length ? 'I — item · ' : ''}Space — end turn · Esc — flee`;
+      : `arrows — move & bump to attack · ${cHint}${a?.kind === 'hero' && b.canShoot(a) ? 'F — shoot · ' : ''}${a?.kind === 'hero' && b.usableItems(a).length ? 'I — item · ' : ''}Space — end turn · Esc — flee`;
     panelY += 8;
     for (const hint of hints.split(' · ')) panelLine(hint, '12.5px Georgia', 'rgba(207,196,166,0.65)', 17);
 
@@ -608,7 +648,7 @@ export class Renderer {
     // Item menu overlay — same skin as the spell menu.
     if (b.mode === 'items' && a?.kind === 'hero') {
       const list = b.usableItems(a);
-      const mw = 380, mh = 70 + list.length * 44;
+      const mw = 560, mh = 70 + list.length * 44;
       const mx = PANEL + (W - PANEL - mw) / 2, my = (H - mh) / 2;
       ctx.fillStyle = 'rgba(10,10,16,0.92)';
       ctx.fillRect(mx, my, mw, mh);
@@ -619,21 +659,24 @@ export class Renderer {
       ctx.font = 'bold 17px Georgia';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.fillText(`The party pouch — ${a.ref.name} drinks`, mx + mw / 2, my + 12);
+      ctx.fillText(`The party pouch — ${a.ref.name} drinks or reads`, mx + mw / 2, my + 12);
       list.forEach((it, i) => {
         const ly = my + 48 + i * 44;
         ctx.textAlign = 'left';
         ctx.fillStyle = it.usable ? '#cfc4a6' : '#66605a';
         ctx.font = 'bold 14px Georgia';
-        ctx.fillText(`${i + 1}.  ${it.def.name}  ×${it.count}`, mx + 20, ly);
+        const sp = it.spell;
+        const tag = it.kind === 'scroll' && sp ? `  —  read: L${sp.level} · free${sp.range ? ` · range ${sp.range}` : ''}${sp.area ? ` · burst ${sp.area}` : ''}` : '';
+        ctx.fillText(`${i + 1}.  ${it.def.name}  ×${it.count}${tag}`, mx + 20, ly);
         ctx.font = 'italic 11.5px Georgia';
         ctx.fillStyle = it.usable ? '#8a8a99' : '#55504c';
-        ctx.fillText(it.def.description, mx + 38, ly + 17);
+        const line = it.kind === 'scroll' && it.reason ? it.reason : it.def.description;
+        ctx.fillText(line.length > 88 ? line.slice(0, 86) + '…' : line, mx + 38, ly + 17);
       });
       ctx.textAlign = 'center';
       ctx.fillStyle = '#8a8a99';
       ctx.font = '12px Georgia';
-      ctx.fillText('press a number to drink (ends the turn) · Esc to close', mx + mw / 2, my + mh - 22);
+      ctx.fillText('press a number to drink or read (ends the turn) · Esc to close', mx + mw / 2, my + mh - 22);
     }
 
     // Guardian's Stand: the blow hangs in the air while the player decides.

@@ -18,6 +18,41 @@ export function tierFor(dungeon, depth) {
 }
 
 // ---- Validation (friendly, designer-facing) ----
+// Every tier is checked at BOOT (main.js), not just when a floor generates —
+// a typo in floor 7's loot must fail at launch, not five floors into a run
+// (it once made the stairs silently "skip" from depth 4 to 9).
+export function validateDungeon(data) {
+  for (const tier of data.dungeon.tiers) validateTier(tier, data);
+  // Magic v3: scroll drop bands.
+  const bands = data.dungeon.scroll_drops?.bands;
+  if (bands !== undefined) {
+    if (!Array.isArray(bands)) throw new DataError('data/dungeon.json', `"scroll_drops" needs a "bands" list.`);
+    const check = (knobs, where) => {
+      for (const k of ['chance', 'rare_chance']) {
+        if (knobs[k] !== undefined && (typeof knobs[k] !== 'number' || knobs[k] < 0 || knobs[k] > 1)) throw new DataError('data/dungeon.json', `${where} "${k}" must be a number between 0 and 1.`);
+      }
+      if (!Array.isArray(knobs.levels) || knobs.levels.some(l => ![1, 2, 3, 4, 5].includes(l))) throw new DataError('data/dungeon.json', `${where} "levels" must list spell levels 1-5 (e.g. [1, 2]).`);
+    };
+    bands.forEach((b, i) => {
+      const where = `scroll_drops band ${i + 1}`;
+      if (!Array.isArray(b.floors) || b.floors.length !== 2 || b.floors[0] > b.floors[1]) throw new DataError('data/dungeon.json', `${where} needs "floors": [first, last].`);
+      check(b, where);
+      if (b.vault) check(b.vault, `${where} vault`);
+    });
+  }
+  const boss = data.dungeon.boss || {};
+  for (const entry of boss.chest_items || []) {
+    if (!data.items.items[entry.id]) {
+      throw new DataError('data/dungeon.json', `The boss floor's chest_items lists "${entry.id}" but items.json has no such item.`);
+    }
+  }
+  for (const id of Object.values(boss.legend || {})) {
+    if (!data.monsters.monsters[id]) {
+      throw new DataError('data/dungeon.json', `The boss floor's legend names monster "${id}" but monsters.json has no such monster.`);
+    }
+  }
+}
+
 function validateTier(tier, data) {
   for (const id of Object.keys(tier.monsters || {})) {
     if (!data.monsters.monsters[id]) {
@@ -234,30 +269,44 @@ function farthestFrom(g, from) {
 }
 
 // A secret vault: a wall-enclosed chamber behind an 'S' door, chest inside.
+// Every candidate wall on the floor is considered (in random order), and if
+// no rock is thick enough for a grand chamber, smaller ones are tried —
+// secret rooms are a promise, not a coin flip.
 function carveVault(g, W, H) {
-  for (let tries = 0; tries < 200; tries++) {
-    const vw = rint(3, 5), vh = rint(3, 4);
-    const [dx, dy] = pick([[1, 0], [-1, 0], [0, 1], [0, -1]]);
-    const fx = rint(1, W - 2), fy = rint(1, H - 2);
-    if (g[fy][fx] !== '.') continue;           // must open off walked floor
-    const doorX = fx + dx, doorY = fy + dy;
-    if (g[doorY]?.[doorX] !== '#') continue;   // through a wall...
-    const rx0 = dx === 1 ? doorX + 1 : dx === -1 ? doorX - vw : doorX - Math.floor(vw / 2);
-    const ry0 = dy === 1 ? doorY + 1 : dy === -1 ? doorY - vh : doorY - Math.floor(vh / 2);
-    let solid = true;
-    for (let y = ry0 - 1; y <= ry0 + vh && solid; y++) {
-      for (let x = rx0 - 1; x <= rx0 + vw && solid; x++) {
-        if (x === doorX && y === doorY) continue;
-        if (g[y]?.[x] !== '#') solid = false;  // ...into untouched rock, fully sealed
+  const spots = [];
+  for (let y = 1; y < H - 1; y++) {
+    for (let x = 1; x < W - 1; x++) {
+      if (g[y][x] !== '.') continue;           // must open off walked floor
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (g[y + dy]?.[x + dx] === '#') spots.push({ x, y, dx, dy });
       }
     }
-    if (!solid) continue;
-    for (let y = ry0; y < ry0 + vh; y++) for (let x = rx0; x < rx0 + vw; x++) g[y][x] = '.';
-    g[doorY][doorX] = 'S';
-    g[ry0 + Math.floor(vh / 2)][rx0 + Math.floor(vw / 2)] = '$';
-    return true;
   }
-  return false; // no rock thick enough — this floor keeps its walls honest
+  for (let i = spots.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [spots[i], spots[j]] = [spots[j], spots[i]];
+  }
+  const sizes = [[rint(3, 5), rint(3, 4)], [3, 3], [3, 2], [2, 2]]; // grand first, then humbler
+  for (const [vw, vh] of sizes) {
+    for (const s of spots) {
+      const doorX = s.x + s.dx, doorY = s.y + s.dy;
+      const rx0 = s.dx === 1 ? doorX + 1 : s.dx === -1 ? doorX - vw : doorX - Math.floor(vw / 2);
+      const ry0 = s.dy === 1 ? doorY + 1 : s.dy === -1 ? doorY - vh : doorY - Math.floor(vh / 2);
+      let solid = true;
+      for (let y = ry0 - 1; y <= ry0 + vh && solid; y++) {
+        for (let x = rx0 - 1; x <= rx0 + vw && solid; x++) {
+          if (x === doorX && y === doorY) continue;
+          if (g[y]?.[x] !== '#') solid = false; // into untouched rock, fully sealed
+        }
+      }
+      if (!solid) continue;
+      for (let y = ry0; y < ry0 + vh; y++) for (let x = rx0; x < rx0 + vw; x++) g[y][x] = '.';
+      g[doorY][doorX] = 'S';
+      g[ry0 + Math.floor(vh / 2)][rx0 + Math.floor(vw / 2)] = '*'; // a vault chest — rich loot (dungeon.json vault_loot)
+      return true;
+    }
+  }
+  return false; // truly no rock anywhere — this floor keeps its walls honest
 }
 
 // ---- The generator ----
@@ -347,6 +396,9 @@ export function generateFloor(data, depth) {
     legend,
     chest_gold: tier.chest_gold,
     chest_items: tier.chest_items || [],
+    chest_trap_chance: tier.chest_trap_chance, // undefined falls back to dungeon.json's top-level chance
+    chest_traps: tier.traps || [],             // a rigged chest carries one of this floor's trap flavors
+
     rest_ambush: tier.rest_ambush ?? 0,
     tactics: style === 'caves' ? ['cave'] : ['room'],
     traps,

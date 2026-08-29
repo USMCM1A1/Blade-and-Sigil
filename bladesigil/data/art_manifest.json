@@ -1,13 +1,15 @@
 {
-  "_comment": "THE ART PIPELINE (yours to edit!). Each entry in 'assets' is one image the generator can produce: run `python3 tools/genart.py` from the bladesigil folder and it creates every asset whose output file doesn't exist yet (already-generated art is never touched \u2014 delete a file, or run with --force sigil_shape_blade, to redo it). 'styles' are shared style preambles: an asset's full prompt = its style text + its own 'prompt', so a whole category stays consistent and you tune the look in ONE place. Fields per asset: 'id' (for --force/--only), 'style' (a key from styles, optional), 'prompt' (the art direction \u2014 this is where you work), 'out' (game-ready file, written after post-processing), 'size' (longest edge in px for the game copy; the full-size original is always kept in assets/_originals/gen/), 'post' = 'alpha' (for sigil layers: white-art-on-black-background becomes white-with-transparency so the engine can tint it any color) or omit it for normal opaque art (monster cards, portraits). Optional 'reference': path to an existing image sent along with the prompt \u2014 'like this, but...' consistency with art you already have. The Gemini model and your API key are read by tools/genart.py (key lives in tools/gemini_key.txt, NEVER in this file). ALL prompts below are first drafts \u2014 CONTENT FLAGS, rewrite freely!",
+  "_comment": "THE ART PIPELINE (yours to edit!). Each entry in 'assets' is one image the generator can produce: run `python3 tools/genart.py` from the bladesigil folder and it creates every asset whose output file doesn't exist yet (already-generated art is never touched — delete a file, or run with --force sigil_shape_blade, to redo it). 'styles' are shared style preambles: an asset's full prompt = its style text + its own 'prompt', so a whole category stays consistent and you tune the look in ONE place. Fields per asset: 'id' (for --force/--only), 'style' (a key from styles, optional), 'prompt' (the art direction — this is where you work), 'out' (game-ready file, written after post-processing), 'size' (longest edge in px for the game copy; the full-size original is always kept in assets/_originals/gen/), 'post' = 'alpha' (for sigil layers: white-art-on-black-background becomes white-with-transparency so the engine can tint it any color) or omit it for normal opaque art (monster cards, portraits). Optional 'reference': path to an existing image sent along with the prompt — 'like this, but...' consistency with art you already have. The Gemini model and your API key are read by tools/genart.py (key lives in tools/gemini_key.txt, NEVER in this file). ALL prompts below are first drafts — CONTENT FLAGS, rewrite freely!",
   "model": "gemini-2.5-flash-image",
   "styles": {
     "sigil_shape": "A heraldic emblem for a fantasy RPG sigil system: a single bold flat symbol in PURE WHITE on a PURE BLACK background. Woodcut / coat-of-arms stencil style, thick confident silhouette with simple interior cut lines, perfectly centered, filling about 70% of a square frame. No color, no gradients, no text, no border, nothing else in the frame. The subject:",
-    "sigil_bearing": "A heraldic OVERLAY layer for a fantasy RPG sigil system, designed to be composited OVER a separate central emblem: PURE WHITE linework on a PURE BLACK background, woodcut style, bold and simple. CRITICAL: the CENTER of the frame must stay almost entirely black/empty so the emblem beneath shows through \u2014 this layer lives at the edges, top, or as thin lines crossing the middle. No color, no text, no central object. The overlay:",
+    "sigil_bearing": "A heraldic OVERLAY layer for a fantasy RPG sigil system, designed to be composited OVER a separate central emblem: PURE WHITE linework on a PURE BLACK background, woodcut style, bold and simple. CRITICAL: the CENTER of the frame must stay almost entirely black/empty so the emblem beneath shows through — this layer lives at the edges, top, or as thin lines crossing the middle. No color, no text, no central object. The overlay:",
     "monster_card": "A fantasy RPG monster illustration in the style of a dark painted card: dramatic lighting, muted dungeon palette, the creature framed as a full scene with a simple dark stone background, painterly detail, no text, no border, square composition.",
     "fx_sprite": "A spell-effect sprite for a fantasy RPG battle: a single glowing element in PURE WHITE on a PURE BLACK background, soft luminous edges, bold simple readable silhouette, centered, filling most of a square frame. No color, no text, no border, nothing else. The element:",
-    "hero_portrait": "A fantasy RPG character PORTRAIT: an EXTREME CLOSE-UP of the head and shoulders ONLY \u2014 the face fills most of the frame, cropped at the upper chest. NO waist, NO hands, NO weapons in frame. Dark painted card style: dramatic lighting, muted palette, painterly detail, simple dark background, no text, no border, square composition. The character:",
-    "hero_cutout": "A paperdoll cutout sprite for a fantasy RPG: ONE character, FULL BODY from the top of the head to the soles of the boots, standing in a relaxed heroic pose. The figure is ISOLATED on a plain flat PURE WHITE background \u2014 no scene, no floor, no shadow, no glow, no vignette, nothing but the figure. Painterly detail, dramatic lighting on the figure itself, no text, no border. Paint the SAME character as the reference portrait \u2014 same face, same hair, same armor. The character:"
+    "hero_portrait": "A fantasy RPG character PORTRAIT: an EXTREME CLOSE-UP of the head and shoulders ONLY — the face fills most of the frame, cropped at the upper chest. NO waist, NO hands, NO weapons in frame. Dark painted card style: dramatic lighting, muted palette, painterly detail, simple dark background, no text, no border, square composition. The character:",
+    "hero_cutout": "A paperdoll cutout sprite for a fantasy RPG: ONE character, FULL BODY from the top of the head to the soles of the boots, standing in a relaxed heroic pose. The figure is ISOLATED on a plain flat PURE WHITE background — no scene, no floor, no shadow, no glow, no vignette, nothing but the figure. Painterly detail, dramatic lighting on the figure itself, no text, no border. Paint the SAME character as the reference portrait — same face, same hair, same armor. The character:",
+    "prop_cutout": "A dungeon-prop cutout sprite for a fantasy RPG, seen from a high three-quarter angle as if resting on a dungeon floor: ONE object, ISOLATED on a plain flat PURE WHITE background — no scene, no floor, no shadow, no glow, no text, no border, nothing but the object. Painterly detail, dramatic lighting on the object itself, a bold silhouette that stays readable at very small size. The object:",
+    "dungeon_tile": "A single square dungeon map tile for a fantasy RPG, in crisp 16-bit pixel-art style, seen from the same straight-on or top-down angle as the reference image when one is given. The subject fills the ENTIRE square frame edge to edge — no white mat, no border, no text, muted dungeon stone palette. The tile:"
   },
   "assets": [
     {
@@ -149,7 +151,7 @@
     {
       "id": "fx_dart",
       "style": "fx_sprite",
-      "prompt": "a small comet-like dart of energy streaking toward the RIGHT \u2014 a bright teardrop head with a short tapering trail behind it.",
+      "prompt": "a small comet-like dart of energy streaking toward the RIGHT — a bright teardrop head with a short tapering trail behind it.",
       "out": "assets/fx/fx_dart.png",
       "size": 128,
       "post": "alpha"
@@ -221,7 +223,7 @@
     {
       "id": "monster_zombie_dead",
       "style": "monster_card",
-      "prompt": "a shambling rotted corpse in grave-soiled rags, jaw hanging, arms outstretched \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a shambling rotted corpse in grave-soiled rags, jaw hanging, arms outstretched — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/zombie_dead.png",
       "size": 1024,
       "post": "trim"
@@ -237,7 +239,7 @@
     {
       "id": "monster_hobgoblin_dead",
       "style": "monster_card",
-      "prompt": "a disciplined goblinoid soldier in banded iron armor with a longsword and a scarred crimson face \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a disciplined goblinoid soldier in banded iron armor with a longsword and a scarred crimson face — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/hobgoblin_dead.png",
       "size": 1024,
       "post": "trim"
@@ -253,7 +255,7 @@
     {
       "id": "monster_ghoul_dead",
       "style": "monster_card",
-      "prompt": "a gaunt grey corpse-eater crouched on all fours, long black claws and a mouth full of needle teeth \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a gaunt grey corpse-eater crouched on all fours, long black claws and a mouth full of needle teeth — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/ghoul_dead.png",
       "size": 1024,
       "post": "trim"
@@ -261,7 +263,7 @@
     {
       "id": "monster_animated_sword",
       "style": "monster_card",
-      "prompt": "a single enchanted longsword floating upright in mid-air in an empty dungeon corridor, NO creature, NO person, NO wielder, NO hands \u2014 only the lone hovering sword, wrapped in a pale ghostly glow, its point leveled forward as if held by an invisible duelist.",
+      "prompt": "a single enchanted longsword floating upright in mid-air in an empty dungeon corridor, NO creature, NO person, NO wielder, NO hands — only the lone hovering sword, wrapped in a pale ghostly glow, its point leveled forward as if held by an invisible duelist.",
       "out": "assets/enemies/gen/animated_sword.png",
       "size": 1024,
       "post": "trim"
@@ -269,7 +271,7 @@
     {
       "id": "monster_animated_sword_dead",
       "style": "monster_card",
-      "prompt": "a single broken longsword lying on the dungeon flagstones, NO creature, NO person \u2014 only the shattered blade in pieces, its ghostly glow fading out.",
+      "prompt": "a single broken longsword lying on the dungeon flagstones, NO creature, NO person — only the shattered blade in pieces, its ghostly glow fading out.",
       "reference": "assets/enemies/gen/animated_sword.png",
       "out": "assets/enemies/gen/animated_sword_dead.png",
       "size": 1024,
@@ -286,7 +288,7 @@
     {
       "id": "monster_mephit_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a small winged imp of smoke and cinders, grinning wickedly, sparks dripping from its claws \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a small winged imp of smoke and cinders, grinning wickedly, sparks dripping from its claws — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/mephit.png",
       "out": "assets/enemies/gen/mephit_dead.png",
       "size": 1024,
@@ -303,7 +305,7 @@
     {
       "id": "monster_bugbear_dead",
       "style": "monster_card",
-      "prompt": "a hulking hairy goblinoid with a spiked club, yellow eyes, and a silent predatory stance \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a hulking hairy goblinoid with a spiked club, yellow eyes, and a silent predatory stance — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/bugbear_dead.png",
       "size": 1024,
       "post": "trim"
@@ -319,7 +321,7 @@
     {
       "id": "monster_wight_dead",
       "style": "monster_card",
-      "prompt": "a barrow-corpse in ancient rusted mail, eyes burning with cold blue light, sword black with age \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a barrow-corpse in ancient rusted mail, eyes burning with cold blue light, sword black with age — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/wight_dead.png",
       "size": 1024,
       "post": "trim"
@@ -383,7 +385,7 @@
     {
       "id": "monster_shadow_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a patch of living darkness in vaguely human shape gliding across a torchlit wall, torchlight dying around it \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a patch of living darkness in vaguely human shape gliding across a torchlit wall, torchlight dying around it — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/shadow.png",
       "out": "assets/enemies/gen/shadow_dead.png",
       "size": 1024,
@@ -400,7 +402,7 @@
     {
       "id": "monster_animated_armor_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 an empty suit of full plate armor striding forward, nothing behind the visor's black slit, sword raised \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — an empty suit of full plate armor striding forward, nothing behind the visor's black slit, sword raised — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/animated_armor.png",
       "out": "assets/enemies/gen/animated_armor_dead.png",
       "size": 1024,
@@ -433,7 +435,7 @@
     {
       "id": "monster_elemental_small_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a small churning vortex of stone, flame and water bound into a rough humanoid shape \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a small churning vortex of stone, flame and water bound into a rough humanoid shape — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/elemental_small.png",
       "out": "assets/enemies/gen/elemental_small_dead.png",
       "size": 1024,
@@ -450,7 +452,7 @@
     {
       "id": "monster_succubus_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a beautiful winged fiend with curling horns and a knowing smile, elegant and utterly dangerous \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a beautiful winged fiend with curling horns and a knowing smile, elegant and utterly dangerous — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/succubus.png",
       "out": "assets/enemies/gen/succubus_dead.png",
       "size": 1024,
@@ -467,7 +469,7 @@
     {
       "id": "monster_red_slaad_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a hulking red toad-like humanoid with enormous flat head, wide grinning mouth, and heavy hooked claws \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a hulking red toad-like humanoid with enormous flat head, wide grinning mouth, and heavy hooked claws — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/red_slaad.png",
       "out": "assets/enemies/gen/red_slaad_dead.png",
       "size": 1024,
@@ -484,7 +486,7 @@
     {
       "id": "monster_blue_slaad_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a towering blue toad-like humanoid with long bone hooks jutting from the backs of its hands \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a towering blue toad-like humanoid with long bone hooks jutting from the backs of its hands — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/blue_slaad.png",
       "out": "assets/enemies/gen/blue_slaad_dead.png",
       "size": 1024,
@@ -501,7 +503,7 @@
     {
       "id": "monster_spectre_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a translucent wailing dead man drifting through the air, face twisted in hatred, trailing grave-mist \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a translucent wailing dead man drifting through the air, face twisted in hatred, trailing grave-mist — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/spectre.png",
       "out": "assets/enemies/gen/spectre_dead.png",
       "size": 1024,
@@ -518,7 +520,7 @@
     {
       "id": "monster_illithid_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a mind flayer in flowing robes, mauve skin, four writhing facial tentacles, eyes white and pupilless \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a mind flayer in flowing robes, mauve skin, four writhing facial tentacles, eyes white and pupilless — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/illithid.png",
       "out": "assets/enemies/gen/illithid_dead.png",
       "size": 1024,
@@ -535,7 +537,7 @@
     {
       "id": "monster_elemental_medium_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a man-sized roaring elemental of braided flame, stone and storm-wind towering over the flagstones \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a man-sized roaring elemental of braided flame, stone and storm-wind towering over the flagstones — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/elemental_medium.png",
       "out": "assets/enemies/gen/elemental_medium_dead.png",
       "size": 1024,
@@ -552,7 +554,7 @@
     {
       "id": "monster_flesh_golem_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a giant stitched together from mismatched corpses, iron bolts in its neck, dead eyes and heavy fists \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a giant stitched together from mismatched corpses, iron bolts in its neck, dead eyes and heavy fists — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/flesh_golem.png",
       "out": "assets/enemies/gen/flesh_golem_dead.png",
       "size": 1024,
@@ -569,7 +571,7 @@
     {
       "id": "monster_incubus_dead",
       "style": "monster_card",
-      "prompt": "a darkly handsome winged fiend in fine black clothes, smile like a knife, shadows curling at his feet \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a darkly handsome winged fiend in fine black clothes, smile like a knife, shadows curling at his feet — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/incubus_dead.png",
       "size": 1024,
       "post": "trim"
@@ -585,7 +587,7 @@
     {
       "id": "monster_green_slaad_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a green toad-like humanoid crackling with sorcerous energy between its long clawed fingers \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a green toad-like humanoid crackling with sorcerous energy between its long clawed fingers — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/green_slaad.png",
       "out": "assets/enemies/gen/green_slaad_dead.png",
       "size": 1024,
@@ -602,7 +604,7 @@
     {
       "id": "monster_vampire_dead",
       "style": "monster_card",
-      "prompt": "a pale aristocrat in a high-collared cloak, red eyes and bared fangs, elegant and predatory \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a pale aristocrat in a high-collared cloak, red eyes and bared fangs, elegant and predatory — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/vampire_dead.png",
       "size": 1024,
       "post": "trim"
@@ -618,7 +620,7 @@
     {
       "id": "monster_grey_slaad_dead",
       "style": "monster_card",
-      "prompt": "a lean grey toad-like humanoid wielding an oversized greatsword with unnatural grace \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a lean grey toad-like humanoid wielding an oversized greatsword with unnatural grace — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/grey_slaad_dead.png",
       "size": 1024,
       "post": "trim"
@@ -634,7 +636,7 @@
     {
       "id": "monster_mummy_dead",
       "style": "monster_card",
-      "prompt": "a bandage-wrapped corpse trailing rotted linen, one fist raised, dust and curse-light seeping from its wrappings \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a bandage-wrapped corpse trailing rotted linen, one fist raised, dust and curse-light seeping from its wrappings — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/mummy_dead.png",
       "size": 1024,
       "post": "trim"
@@ -650,7 +652,7 @@
     {
       "id": "monster_elemental_large_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a towering elemental colossus of magma, bedrock and hurricane filling the chamber to the ceiling \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a towering elemental colossus of magma, bedrock and hurricane filling the chamber to the ceiling — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/elemental_large.png",
       "out": "assets/enemies/gen/elemental_large_dead.png",
       "size": 1024,
@@ -683,7 +685,7 @@
     {
       "id": "monster_clay_golem_dead",
       "style": "monster_card",
-      "prompt": "a massive man-shape of cracked river clay, faceless but for a carved rune glowing in its brow \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a massive man-shape of cracked river clay, faceless but for a carved rune glowing in its brow — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/clay_golem_dead.png",
       "size": 1024,
       "post": "trim"
@@ -699,7 +701,7 @@
     {
       "id": "monster_drider_dead",
       "style": "monster_card",
-      "prompt": "a dark elf torso rising from the body of a giant spider, twin blades drawn, silver hair and cold eyes \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a dark elf torso rising from the body of a giant spider, twin blades drawn, silver hair and cold eyes — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/drider_dead.png",
       "size": 1024,
       "post": "trim"
@@ -715,7 +717,7 @@
     {
       "id": "monster_dao_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 an earth genie with skin of polished stone veined in gold and gems, rising from the floor in a whirl of gravel \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — an earth genie with skin of polished stone veined in gold and gems, rising from the floor in a whirl of gravel — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/dao.png",
       "out": "assets/enemies/gen/dao_dead.png",
       "size": 1024,
@@ -732,7 +734,7 @@
     {
       "id": "monster_alhoon_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 an undead mind flayer lich in tattered arcane robes, desiccated tentacles, sockets burning with violet light \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — an undead mind flayer lich in tattered arcane robes, desiccated tentacles, sockets burning with violet light — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/alhoon.png",
       "out": "assets/enemies/gen/alhoon_dead.png",
       "size": 1024,
@@ -749,7 +751,7 @@
     {
       "id": "monster_death_slaad_dead",
       "style": "monster_card",
-      "prompt": "an obsidian-skinned slaad with burning eyes, part toad and part nightmare, wreathed in black flame \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "an obsidian-skinned slaad with burning eyes, part toad and part nightmare, wreathed in black flame — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/death_slaad_dead.png",
       "size": 1024,
       "post": "trim"
@@ -765,7 +767,7 @@
     {
       "id": "monster_djinn_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 an air genie of storm-wind and lightning, upper body of a regal giant dissolving into a cyclone below the waist \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — an air genie of storm-wind and lightning, upper body of a regal giant dissolving into a cyclone below the waist — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/djinn.png",
       "out": "assets/enemies/gen/djinn_dead.png",
       "size": 1024,
@@ -782,7 +784,7 @@
     {
       "id": "monster_death_knight_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a fallen paladin in black full plate, hellfire glowing through the visor, greatsword wrapped in dark flame \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a fallen paladin in black full plate, hellfire glowing through the visor, greatsword wrapped in dark flame — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/death_knight.png",
       "out": "assets/enemies/gen/death_knight_dead.png",
       "size": 1024,
@@ -799,7 +801,7 @@
     {
       "id": "monster_iron_golem_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a colossus of riveted black iron, furnace-light glowing in its chest seams, each footfall cracking stone \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a colossus of riveted black iron, furnace-light glowing in its chest seams, each footfall cracking stone — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/iron_golem.png",
       "out": "assets/enemies/gen/iron_golem_dead.png",
       "size": 1024,
@@ -816,7 +818,7 @@
     {
       "id": "monster_efreet_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a fire genie with skin of burning brass, smoke for hair, and a scimitar of solid flame \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a fire genie with skin of burning brass, smoke for hair, and a scimitar of solid flame — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/efreet.png",
       "out": "assets/enemies/gen/efreet_dead.png",
       "size": 1024,
@@ -833,7 +835,7 @@
     {
       "id": "monster_mummy_lord_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a crowned mummy on a dais of funerary gold, ancient regalia over rotted wrappings, eyes of burning embers \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a crowned mummy on a dais of funerary gold, ancient regalia over rotted wrappings, eyes of burning embers — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/mummy_lord.png",
       "out": "assets/enemies/gen/mummy_lord_dead.png",
       "size": 1024,
@@ -850,7 +852,7 @@
     {
       "id": "monster_drow_priestess_dead",
       "style": "monster_card",
-      "prompt": "a female dark elf priestess lying dead on her back on the dungeon flagstones, spider-silk vestments pooled around her, her snake-whip fallen from her open hand \u2014 she is COMPLETELY ALONE, no spider, no monster, nothing else in the empty room.",
+      "prompt": "a female dark elf priestess lying dead on her back on the dungeon flagstones, spider-silk vestments pooled around her, her snake-whip fallen from her open hand — she is COMPLETELY ALONE, no spider, no monster, nothing else in the empty room.",
       "out": "assets/enemies/gen/drow_priestess_dead.png",
       "size": 1024,
       "post": "trim"
@@ -866,7 +868,7 @@
     {
       "id": "monster_drow_blademaster_dead",
       "style": "monster_card",
-      "prompt": "a male dark elf duelist lying dead face-down on the dungeon flagstones, his twin curved swords dropped beside his outstretched hands, white hair spilled across the stone \u2014 he is COMPLETELY ALONE, no spider, no monster, nothing else in the empty room.",
+      "prompt": "a male dark elf duelist lying dead face-down on the dungeon flagstones, his twin curved swords dropped beside his outstretched hands, white hair spilled across the stone — he is COMPLETELY ALONE, no spider, no monster, nothing else in the empty room.",
       "out": "assets/enemies/gen/drow_blademaster_dead.png",
       "size": 1024,
       "post": "trim"
@@ -882,7 +884,7 @@
     {
       "id": "monster_white_slaad_dead",
       "style": "monster_card",
-      "prompt": "a bone-white slaad radiating wrongness, its outline flickering as if reality disagrees about its shape \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a bone-white slaad radiating wrongness, its outline flickering as if reality disagrees about its shape — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/white_slaad_dead.png",
       "size": 1024,
       "post": "trim"
@@ -898,7 +900,7 @@
     {
       "id": "monster_vampire_lord_dead",
       "style": "monster_card",
-      "prompt": "an ancient vampire in regal armor beneath a storm of bats, half-transformed, claws long and black \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "an ancient vampire in regal armor beneath a storm of bats, half-transformed, claws long and black — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/vampire_lord_dead.png",
       "size": 1024,
       "post": "trim"
@@ -914,7 +916,7 @@
     {
       "id": "monster_mad_wizard_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a wild-eyed wizard in scorched robes, hair aflame with wild magic, reality warping around his raised staff \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a wild-eyed wizard in scorched robes, hair aflame with wild magic, reality warping around his raised staff — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/mad_wizard.png",
       "out": "assets/enemies/gen/mad_wizard_dead.png",
       "size": 1024,
@@ -931,7 +933,7 @@
     {
       "id": "monster_undead_beholder_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a rotted beholder, hide split over bone, half its eyestalks withered, the great central eye milky and dead \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a rotted beholder, hide split over bone, half its eyestalks withered, the great central eye milky and dead — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/undead_beholder.png",
       "out": "assets/enemies/gen/undead_beholder_dead.png",
       "size": 1024,
@@ -948,7 +950,7 @@
     {
       "id": "monster_lich_dead",
       "style": "monster_card",
-      "prompt": "a skeletal archmage in ornate rotted robes, a phylactery chained at its breast, cold green fire in its sockets \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a skeletal archmage in ornate rotted robes, a phylactery chained at its breast, cold green fire in its sockets — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/lich_dead.png",
       "size": 1024,
       "post": "trim"
@@ -964,7 +966,7 @@
     {
       "id": "monster_black_slaad_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a void-black slaad whose body drinks the torchlight, edges dissolving into entropy \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a void-black slaad whose body drinks the torchlight, edges dissolving into entropy — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/black_slaad.png",
       "out": "assets/enemies/gen/black_slaad_dead.png",
       "size": 1024,
@@ -981,7 +983,7 @@
     {
       "id": "monster_efreeti_lord_dead",
       "style": "monster_card",
-      "prompt": "the same creature slain \u2014 a sultan of the fire genies crowned in white flame, brass skin cracked with magma, palace-fire swirling behind him \u2014 now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "prompt": "the same creature slain — a sultan of the fire genies crowned in white flame, brass skin cracked with magma, palace-fire swirling behind him — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
       "reference": "assets/enemies/gen/efreeti_lord.png",
       "out": "assets/enemies/gen/efreeti_lord_dead.png",
       "size": 1024,
@@ -998,7 +1000,7 @@
     {
       "id": "monster_pit_fiend_dead",
       "style": "monster_card",
-      "prompt": "a colossal devil-general with bat wings, blackened scales, a flaming mace, and eyes of burning contempt \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a colossal devil-general with bat wings, blackened scales, a flaming mace, and eyes of burning contempt — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/pit_fiend_dead.png",
       "size": 1024,
       "post": "trim"
@@ -1014,7 +1016,7 @@
     {
       "id": "monster_slaad_lord_dead",
       "style": "monster_card",
-      "prompt": "a slaad demigod of living chaos, its toad-shape constantly reforming, colors that do not exist crawling over its skin \u2014 but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
+      "prompt": "a slaad demigod of living chaos, its toad-shape constantly reforming, colors that do not exist crawling over its skin — but SLAIN: the creature lies flat ON THE GROUND on its back, sprawled limp across the dungeon flagstones, weapon fallen, eyes dark, unmistakably dead. Nothing stands. The room is otherwise empty and still.",
       "out": "assets/enemies/gen/slaad_lord_dead.png",
       "size": 1024,
       "post": "trim"
@@ -1574,6 +1576,38 @@
       "reference": "assets/heroes/gen/wood_elf_warrior_f2_face.png",
       "out": "assets/heroes/gen/wood_elf_warrior_f2.png",
       "size": 1024
+    },
+    {
+      "id": "trap_marker",
+      "style": "prop_cutout",
+      "prompt": "a revealed dungeon floor trap: a rusted iron trap mechanism — a sprung pressure plate ringed by cruel upturned spikes, dark aged metal with a faint ominous orange glint along the edges.",
+      "out": "assets/misc/trap_marker.png",
+      "size": 256,
+      "post": "cutout"
+    },
+    {
+      "id": "door_open",
+      "style": "dungeon_tile",
+      "prompt": "the SAME wooden double door as the reference, but standing wide open: both wooden leaves swung back against the stone frame, pitch darkness in the opening between them. Same stone frame, same palette, same pixel style.",
+      "reference": "assets/misc/door_closed.png",
+      "out": "assets/misc/door_open.png",
+      "size": 224
+    },
+    {
+      "id": "door_secret",
+      "style": "dungeon_tile",
+      "prompt": "a secret stone door, discovered: a slab of dungeon wall exactly matching the surrounding gray stone blocks, betrayed only by a thin pale glowing seam outlining its rectangular shape and a small worn keystone notch. Subtle — it should still read mostly as wall. Match the reference's pixel style and stone palette.",
+      "reference": "assets/misc/door_closed.png",
+      "out": "assets/misc/door_secret.png",
+      "size": 224
+    },
+    {
+      "id": "stairs_down",
+      "style": "dungeon_tile",
+      "prompt": "stone dungeon stairs seen from directly above, descending: pale well-lit gray stone steps like the reference, clearly readable, with ONLY the last two steps at the bottom fading into black shadow to show the descent. Surrounding floor tiles pale worn stone. Same top-down angle, step shape, and pixel style as the reference, aged gray dungeon stone with NO grass or vegetation.",
+      "reference": "assets/misc/stairs_up.png",
+      "out": "assets/misc/stairs_down.png",
+      "size": 224
     }
   ]
 }

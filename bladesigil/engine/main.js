@@ -1,11 +1,12 @@
 // Boot: load data files, build the game, wire input, run the render loop.
 
 import { loadJSON, showFatal } from './loader.js';
-import { Game } from './game.js';
+import { Game, validateItems } from './game.js';
 import { Renderer, preloadImages } from './render.js';
-import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding, maybeOpenChoice, choiceOpen, choicePick, togglePlaytest, playtestOpen, levelupOpen, dismissLevelup } from './ui.js';
+import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding, maybeOpenChoice, choiceOpen, choicePick, togglePlaytest, playtestOpen, levelupOpen, dismissLevelup, toggleSpellbook, spellbookOpen, flipToSheet, flipToBook } from './ui.js';
 import { validateProgression } from './progression.js';
-import { validateMagic } from './magic.js';
+import { validateDungeon } from './dungeon.js';
+import { validateMagic, deriveScrollItems } from './magic.js';
 import { choosePartyDef } from './creation.js';
 import * as audio from './audio.js';
 
@@ -33,8 +34,11 @@ async function boot() {
   const arenaTemplate = await loadJSON('data/tactics/arena.json');
 
   const data = { classes, races, monsters, party, level, tactics, spells, conditions, items, town, dungeon, progression, arenaTemplate };
+  deriveScrollItems(data);   // magic v3: spells flagged "scroll" become scroll_<id> items
   validateProgression(data); // friendly errors for progression.json typos
   validateMagic(data);       // …and for spells.json / scroll items
+  validateItems(data);       // …and for items.json (tiers, immunities, potion effects)
+  validateDungeon(data);     // …and for every dungeon tier's roster/loot/traps
   const partyDef = await choosePartyDef(data);
   const game = new Game({ ...data, party: { ...party, party: partyDef } });
 
@@ -187,8 +191,16 @@ async function boot() {
       return;
     }
     if (equipmentOpen()) {
-      // The character sheet is modal on the map: I, E, C, or Esc puts it away.
+      // The character sheet is modal on the map: I, E, C, or Esc puts it away;
+      // B flips straight to the Spellbook screen.
       if ('iIeEcC'.includes(e.key) || e.key === 'Escape') toggleEquipment(game, false);
+      else if (e.key === 'b' || e.key === 'B') flipToBook(game);
+      return;
+    }
+    if (spellbookOpen()) {
+      // The Spellbook screen: B or Esc closes; C flips to the character sheet.
+      if (e.key === 'b' || e.key === 'B' || e.key === 'Escape') toggleSpellbook(game, false);
+      else if ('iIeEcC'.includes(e.key)) flipToSheet(game);
       return;
     }
     if (playtestOpen()) {
@@ -205,6 +217,8 @@ async function boot() {
       game.rest();
     } else if ('iIeEcC'.includes(e.key)) {
       if (!game.over && !game.victory) toggleEquipment(game);
+    } else if (e.key === 'b' || e.key === 'B') {
+      if (!game.over && !game.victory) toggleSpellbook(game);
     } else if (e.key === '`' || e.key === '~') {
       game.startArena();
     } else if (e.key === 'p' || e.key === 'P') {

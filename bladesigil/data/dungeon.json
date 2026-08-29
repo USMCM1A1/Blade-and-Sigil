@@ -1,5 +1,113 @@
 {
-  "_comment": "The endless dungeon (Phase 5). Floors are generated from these TIERS (2026-08-26: one per floor 1-20, the designer's monster-by-level list; floors 21+ reuse floor 20's) \u2014 each covers a span of floor depths and says what spawns there. 'styles': 'rooms' (halls and corridors) or 'caves' (twisting caverns; caves have no doors). 'monsters': id -> weight (higher = more common; ids from monsters.json). 'monster_count'/'chest_count'/'trap_count'/'secret_doors': dice strings rolled per floor. 'traps': which trap ids (from 'traps' below) this tier uses. 'rest_ambush': camp-attack chance. Floors deeper than the last tier keep using it. TRAPS: 'dice' damage, 'save' ability + 'dc' for half, optional 'condition' on a failed save. The BOSS floor is hand-drawn here \u2014 same format as a level file \u2014 and unlocks when every hero is level 20. Edit freely!",
+  "_comment": "The endless dungeon (Phase 5). Floors are generated from these TIERS (2026-08-26: one per floor 1-20, the designer's monster-by-level list; floors 21+ reuse floor 20's) — each covers a span of floor depths and says what spawns there. 'styles': 'rooms' (halls and corridors) or 'caves' (twisting caverns; caves have no doors). 'monsters': id -> weight (higher = more common; ids from monsters.json). 'monster_count'/'chest_count'/'trap_count'/'secret_doors': dice strings rolled per floor. 'traps': which trap ids (from 'traps' below) this tier uses. 'rest_ambush': camp-attack chance. Floors deeper than the last tier keep using it. TRAPS: 'dice' damage, 'save' ability + 'dc' for half, optional 'condition' on a failed save. The BOSS floor is hand-drawn here — same format as a level file — and unlocks when every hero is level 20. Edit freely! 'chest_trap_chance': chance (0-1) any chest is rigged (a tier may override it; the trap is drawn from that tier's 'traps' list). 'vault_loot': what makes a secret vault's chest (*) rich — gold_multiplier scales the tier's chest_gold roll, gear_pieces = how many pieces of real gear it holds, drawn from the floor's item TIER band (depth 1-4 draws tier 1, 5-8 tier 2, 9-12 tier 3, 13-16 tier 4, 17+ tier 5; an empty tier falls back down). 'search_turns': how many map turns a deliberate Space-search costs — it always finds every adjacent hidden thing (if anyone in the party has any detect skill), but monsters keep moving and poison keeps ticking while you comb the walls. 'scroll_drops' (magic v3, 2026-08-28): scrolls in chests by floor band — 'chance' = odds a regular chest ($) holds ONE scroll, 'levels' = which spell levels it may be, 'rare_chance' = of those, the share that are rare lore; 'vault' = the same knobs for a secret vault's chest (*), rolled IN ADDITION to the vault's gear. A scroll never drops for a spell with no scroll item (rare pools fall back to common, and vice versa). These odds are the lethality dial — proposals, tune freely.",
+  "chest_trap_chance": 0.25,
+  "search_turns": 5,
+  "vault_loot": {
+    "gold_multiplier": 3,
+    "gear_pieces": 1
+  },
+  "scroll_drops": {
+    "bands": [
+      {
+        "floors": [
+          1,
+          4
+        ],
+        "chance": 0.08,
+        "levels": [
+          1
+        ],
+        "rare_chance": 0.0,
+        "vault": {
+          "chance": 0.3,
+          "levels": [
+            1,
+            2
+          ],
+          "rare_chance": 0.15
+        }
+      },
+      {
+        "floors": [
+          5,
+          8
+        ],
+        "chance": 0.1,
+        "levels": [
+          1,
+          2
+        ],
+        "rare_chance": 0.0,
+        "vault": {
+          "chance": 0.35,
+          "levels": [
+            2,
+            3
+          ],
+          "rare_chance": 0.25
+        }
+      },
+      {
+        "floors": [
+          9,
+          12
+        ],
+        "chance": 0.12,
+        "levels": [
+          2,
+          3
+        ],
+        "rare_chance": 0.05,
+        "vault": {
+          "chance": 0.4,
+          "levels": [
+            3,
+            4
+          ],
+          "rare_chance": 0.3
+        }
+      },
+      {
+        "floors": [
+          13,
+          16
+        ],
+        "chance": 0.12,
+        "levels": [
+          3,
+          4
+        ],
+        "rare_chance": 0.08,
+        "vault": {
+          "chance": 0.4,
+          "levels": [
+            4,
+            5
+          ],
+          "rare_chance": 0.35
+        }
+      },
+      {
+        "floors": [
+          17,
+          99
+        ],
+        "chance": 0.15,
+        "levels": [
+          4,
+          5
+        ],
+        "rare_chance": 0.1,
+        "vault": {
+          "chance": 0.5,
+          "levels": [
+            5
+          ],
+          "rare_chance": 0.4
+        }
+      }
+    ]
+  },
   "floor_size": {
     "w": [
       38,
@@ -46,7 +154,7 @@
         "spike_pit"
       ],
       "trap_count": "1d2-1",
-      "secret_doors": "1d2-1",
+      "secret_doors": "1d2",
       "rest_ambush": 0.25
     },
     {
@@ -85,7 +193,7 @@
         "spike_pit"
       ],
       "trap_count": "1d2-1",
-      "secret_doors": "1d2-1",
+      "secret_doors": "1d2",
       "rest_ambush": 0.25
     },
     {
@@ -118,13 +226,17 @@
         {
           "id": "rations",
           "chance": 0.4
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
         }
       ],
       "traps": [
         "spike_pit"
       ],
       "trap_count": "1d2-1",
-      "secret_doors": "1d2-1",
+      "secret_doors": "1d2",
       "rest_ambush": 0.25
     },
     {
@@ -157,13 +269,17 @@
         {
           "id": "rations",
           "chance": 0.4
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
         }
       ],
       "traps": [
         "spike_pit"
       ],
       "trap_count": "1d2-1",
-      "secret_doors": "1d2-1",
+      "secret_doors": "1d2",
       "rest_ambush": 0.25
     },
     {
@@ -202,8 +318,24 @@
           "chance": 0.1
         },
         {
-          "id": "wooden_shield",
+          "id": "buckler",
           "chance": 0.1
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
         }
       ],
       "traps": [
@@ -211,7 +343,7 @@
         "dart_trap"
       ],
       "trap_count": "1d3-1",
-      "secret_doors": "1d2-1",
+      "secret_doors": "1d2",
       "rest_ambush": 0.3
     },
     {
@@ -253,8 +385,24 @@
           "chance": 0.1
         },
         {
-          "id": "wooden_shield",
+          "id": "buckler",
           "chance": 0.1
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
         }
       ],
       "traps": [
@@ -262,7 +410,7 @@
         "dart_trap"
       ],
       "trap_count": "1d3-1",
-      "secret_doors": "1d2-1",
+      "secret_doors": "1d2",
       "rest_ambush": 0.3
     },
     {
@@ -303,8 +451,24 @@
           "chance": 0.1
         },
         {
-          "id": "wooden_shield",
+          "id": "buckler",
           "chance": 0.1
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
         }
       ],
       "traps": [
@@ -312,7 +476,7 @@
         "dart_trap"
       ],
       "trap_count": "1d3-1",
-      "secret_doors": "1d2-1",
+      "secret_doors": "1d2",
       "rest_ambush": 0.3
     },
     {
@@ -354,8 +518,24 @@
           "chance": 0.1
         },
         {
-          "id": "wooden_shield",
+          "id": "buckler",
           "chance": 0.1
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
         }
       ],
       "traps": [
@@ -363,7 +543,7 @@
         "dart_trap"
       ],
       "trap_count": "1d3-1",
-      "secret_doors": "1d2-1",
+      "secret_doors": "1d2",
       "rest_ambush": 0.3
     },
     {
@@ -407,6 +587,30 @@
         {
           "id": "spell_ring",
           "chance": 0.08
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -414,7 +618,7 @@
         "flame_jet"
       ],
       "trap_count": "1d3",
-      "secret_doors": "1d3-1",
+      "secret_doors": "1d3",
       "rest_ambush": 0.35
     },
     {
@@ -459,6 +663,30 @@
         {
           "id": "spell_ring",
           "chance": 0.08
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -466,7 +694,7 @@
         "flame_jet"
       ],
       "trap_count": "1d3",
-      "secret_doors": "1d3-1",
+      "secret_doors": "1d3",
       "rest_ambush": 0.35
     },
     {
@@ -510,6 +738,30 @@
         {
           "id": "spell_ring",
           "chance": 0.08
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -517,7 +769,7 @@
         "flame_jet"
       ],
       "trap_count": "1d3",
-      "secret_doors": "1d3-1",
+      "secret_doors": "1d3",
       "rest_ambush": 0.35
     },
     {
@@ -562,6 +814,30 @@
         {
           "id": "spell_ring",
           "chance": 0.08
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -569,7 +845,7 @@
         "flame_jet"
       ],
       "trap_count": "1d3",
-      "secret_doors": "1d3-1",
+      "secret_doors": "1d3",
       "rest_ambush": 0.35
     },
     {
@@ -612,6 +888,30 @@
         {
           "id": "warding_amulet",
           "chance": 0.1
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -619,7 +919,7 @@
         "crushing_block"
       ],
       "trap_count": "1d3",
-      "secret_doors": "1d3-1",
+      "secret_doors": "1d3",
       "rest_ambush": 0.4
     },
     {
@@ -663,6 +963,30 @@
         {
           "id": "warding_amulet",
           "chance": 0.1
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -670,7 +994,7 @@
         "crushing_block"
       ],
       "trap_count": "1d3",
-      "secret_doors": "1d3-1",
+      "secret_doors": "1d3",
       "rest_ambush": 0.4
     },
     {
@@ -714,6 +1038,30 @@
         {
           "id": "warding_amulet",
           "chance": 0.1
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -721,7 +1069,7 @@
         "crushing_block"
       ],
       "trap_count": "1d3",
-      "secret_doors": "1d3-1",
+      "secret_doors": "1d3",
       "rest_ambush": 0.4
     },
     {
@@ -763,6 +1111,30 @@
         {
           "id": "warding_amulet",
           "chance": 0.1
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -770,7 +1142,7 @@
         "crushing_block"
       ],
       "trap_count": "1d3",
-      "secret_doors": "1d3-1",
+      "secret_doors": "1d3",
       "rest_ambush": 0.4
     },
     {
@@ -813,6 +1185,30 @@
         {
           "id": "spell_ring",
           "chance": 0.15
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -861,6 +1257,30 @@
         {
           "id": "spell_ring",
           "chance": 0.15
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -909,6 +1329,30 @@
         {
           "id": "spell_ring",
           "chance": 0.15
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -958,6 +1402,30 @@
         {
           "id": "spell_ring",
           "chance": 0.15
+        },
+        {
+          "id": "mana_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_healing_potion",
+          "chance": 0.25
+        },
+        {
+          "id": "extra_mana_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "invisibility_potion",
+          "chance": 0.08
+        },
+        {
+          "id": "greater_healing_potion",
+          "chance": 0.15
+        },
+        {
+          "id": "greater_mana_potion",
+          "chance": 0.1
         }
       ],
       "traps": [
@@ -984,7 +1452,8 @@
       "condition": {
         "id": "poison",
         "rounds": 3
-      }
+      },
+      "element": "poison"
     },
     "flame_jet": {
       "name": "Flame Jet",
@@ -994,7 +1463,8 @@
       "condition": {
         "id": "burning",
         "rounds": 2
-      }
+      },
+      "element": "fire"
     },
     "crushing_block": {
       "name": "Crushing Block",
@@ -1010,7 +1480,8 @@
       "condition": {
         "id": "burning",
         "rounds": 3
-      }
+      },
+      "element": "fire"
     }
   },
   "boss": {

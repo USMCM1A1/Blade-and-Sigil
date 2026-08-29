@@ -6,7 +6,7 @@
 // themselves are applied in game.js (stat offsets) and battle.js (abilities).
 
 import { DataError } from './loader.js';
-import { spellPicksOwed } from './magic.js';
+import { spellPicksOwed, studiesOwed, bonusPicksOwed } from './magic.js';
 
 const PASSIVES = ['weapon_focus', 'braced_stance', 'vital_strike', 'keen_senses',
   'prepared_mind', 'overchannel', 'blessed_hands', 'sacred_weapon'];
@@ -49,6 +49,12 @@ export function validateProgression(data) {
       if (!lane.id || !lane.name) throw new DataError(laneWhere, `Every lane needs an "id" and a "name".`);
       if (lane.passive && !PASSIVES.includes(lane.passive.id)) {
         throw new DataError(laneWhere, `Unknown passive "${lane.passive.id}". The engine knows: ${PASSIVES.join(', ')}`);
+      }
+      for (const l of lane.passive?.bonus_pick_levels ?? []) {
+        if (typeof l !== 'number' || l < 1 || l > 20) throw new DataError(laneWhere, `overchannel "bonus_pick_levels" must list character levels 1-20.`);
+      }
+      if (lane.passive?.slots_bonus !== undefined && typeof lane.passive.slots_bonus !== 'number') {
+        throw new DataError(laneWhere, `prepared_mind "slots_bonus" must be a number of extra prepared slots.`);
       }
       if (lane.verb && !VERBS.includes(lane.verb.id)) {
         throw new DataError(laneWhere, `Unknown verb "${lane.verb.id}". The engine knows: ${VERBS.join(', ')}`);
@@ -170,10 +176,17 @@ export function pendingChoices(data, ch) {
   if (ch.level >= prog.fork_level && !ch.lane) out.push({ type: 'lane', ch, prog });
   const passive = passiveOf(data, ch);
   if (passive?.id === 'weapon_focus' && !ch.focusType) out.push({ type: 'focus', ch });
-  // The Sorcerer's narrow gift: each unlocked spell level owes its picks.
+  // The Sorcerer's narrow gift: each unlocked spell level owes its picks,
+  // and the blood remembers a wild pick at each bonus level.
   for (const owed of spellPicksOwed(data, ch)) {
     for (let i = 0; i < owed.remaining; i++) out.push({ type: 'spell', ch, level: owed.level });
   }
+  const bonus = bonusPicksOwed(data, ch);
+  if (bonus.options.length) for (let i = 0; i < bonus.remaining; i++) out.push({ type: 'spell', ch, level: 'any' });
+  // The spellbook's study: a free page at each study level (magic v3) —
+  // only offered while there is something left to learn at this tier.
+  const study = studiesOwed(data, ch);
+  if (study.options.length) for (let i = 0; i < study.remaining; i++) out.push({ type: 'study', ch });
   // The Level 20 Rite: owed once the lane is walked and the pinnacle reached.
   const lane = laneOf(data, ch);
   if (lane?.rite && ch.level >= 20 && !ch.rite) out.push({ type: 'rite', ch, lane });

@@ -160,8 +160,8 @@
   .inv-count { color: var(--gold); font-size: 13px; }
   .inv-empty { color: var(--dim); font-style: italic; }
   .inv-stats { color: var(--dim); font-size: 12px; margin-left: 6px; }
-  /* ---- Paper doll (equipment screen) ---- */
-  #equipment {
+  /* ---- Paper doll (equipment screen) — and the Spellbook screen shares its frame ---- */
+  #equipment, #spellbook {
     display: none;
     position: fixed;
     top: 50%; left: 50%;
@@ -175,7 +175,30 @@
     z-index: 50;
     box-shadow: 0 10px 50px rgba(0,0,0,0.8);
   }
-  #equipment h2 { color: var(--gold); font-variant: small-caps; letter-spacing: 1px; margin-bottom: 10px; text-align: center; }
+  #equipment h2, #spellbook h2 { color: var(--gold); font-variant: small-caps; letter-spacing: 1px; margin-bottom: 10px; text-align: center; }
+  /* ---- The Spellbook screen (B): pages by level, scrolls, the day's preparation ---- */
+  #sb-body { display: flex; gap: 18px; }
+  #sb-main { flex: 1; min-width: 0; display: grid; grid-template-columns: 1.25fr 1fr; column-gap: 24px; align-content: start; }
+  #sb-name, #sb-stats { grid-column: 1 / -1; }
+  #sb-name { text-align: center; color: var(--gold); font-variant: small-caps; letter-spacing: 2px; font-size: 18px; }
+  #sb-stats { color: var(--dim); font-size: 12.5px; margin-bottom: 12px; text-align: center; }
+  #sb-pages { grid-column: 1; }
+  #sb-side { grid-column: 2; min-width: 0; }
+  #sb-tabs { display: flex; flex-direction: column; gap: 6px; width: 86px; flex-shrink: 0; }
+  .sb-level { margin-top: 12px; }
+  .sb-level:first-child { margin-top: 0; }
+  .sb-level .eq-sec span { color: var(--dim); font-variant: normal; letter-spacing: 0; font-size: 11.5px; margin-left: 8px; }
+  .sb-page { border-top: 1px solid var(--panel-edge); padding: 6px 2px; display: flex; gap: 10px; align-items: flex-start; }
+  .sb-page .sb-page-main { flex: 1; min-width: 0; }
+  .sb-page b { color: var(--parchment); }
+  .sb-page.prepared b { color: var(--gold); }
+  .sb-page.deep { opacity: 0.5; }
+  .sb-page small { display: block; color: var(--dim); font-size: 11.5px; margin-top: 1px; }
+  .sb-page button { font-family: Georgia, serif; background: #1d1d28; color: var(--parchment); border: 1px solid var(--panel-edge); border-radius: 4px; padding: 3px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .sb-page button:hover:not(:disabled) { border-color: var(--gold); }
+  .sb-page button:disabled { opacity: 0.4; cursor: default; }
+  .sb-open { font-family: Georgia, serif; background: #1d1d28; color: var(--gold); border: 1px solid var(--gold); border-radius: 4px; padding: 4px 12px; font-size: 12.5px; cursor: pointer; margin-top: 4px; }
+  .sb-open:hover { background: #2a2210; }
   #eq-body { display: flex; gap: 18px; }
   #eq-main {
     flex: 1; min-width: 0;
@@ -251,7 +274,7 @@
       "necklace head  armor"
       "hand1    figure hand2"
       "ring1    figure ring2"
-      ".        boots  .";
+      "cloak    boots  .";
     gap: 7px;
     margin-bottom: 14px;
     background: radial-gradient(ellipse at 50% 45%, #191722 0%, #0e0d14 75%);
@@ -554,7 +577,7 @@
   </div>
   <div id="log"></div>
   <div id="controls">
-    <b>H — controls</b> &nbsp;•&nbsp; <b>G — how the game works</b> &nbsp;•&nbsp; Arrows / WASD — move (walk into things!) &nbsp;•&nbsp; T — camp &nbsp;•&nbsp; C — character sheet &nbsp;•&nbsp; M — mute &nbsp;•&nbsp; R — restart
+    <b>H — controls</b> &nbsp;•&nbsp; <b>G — how the game works</b> &nbsp;•&nbsp; Arrows / WASD — move (walk into things!) &nbsp;•&nbsp; T — camp &nbsp;•&nbsp; C — character sheet &nbsp;•&nbsp; B — spellbook &nbsp;•&nbsp; M — mute &nbsp;•&nbsp; R — restart
   </div>
   <div id="equipment">
     <h2>Character Sheet</h2>
@@ -578,6 +601,19 @@
     </div>
     <p class="dismiss">Click a worn piece to remove it &middot; drinking passes a turn &middot; I or C closes</p>
   </div>
+  <div id="spellbook">
+    <h2>Spellbook</h2>
+    <div id="sb-body">
+      <div id="sb-main">
+        <div id="sb-name"></div>
+        <div id="sb-stats"></div>
+        <div id="sb-pages"></div>
+        <div id="sb-side"></div>
+      </div>
+      <div id="sb-tabs"></div>
+    </div>
+    <p class="dismiss" id="sb-foot">B or Esc closes &middot; C — character sheet</p>
+  </div>
   <div id="playtest">
     <h2>Playtest Bench</h2>
     <p class="pt-sub">Designer tools — nothing here is part of the real game.</p>
@@ -599,16 +635,17 @@
     <table>
       <tr><td colspan="2" class="key-group">Exploring</td></tr>
       <tr><td>Arrows / WASD</td><td>move — walk into monsters, doors, chests, and stairs to interact</td></tr>
-      <tr><td>Space</td><td>wait one turn &amp; search for hidden things</td></tr>
+      <tr><td>Space</td><td>search thoroughly — always finds adjacent hidden things, costs several turns</td></tr>
       <tr><td>T</td><td>make camp (1 ration per living hero)</td></tr>
       <tr><td>I, C, or E</td><td>character sheet — stats, gear, XP &amp; leveling up</td></tr>
+      <tr><td>B</td><td>spellbook — a caster's pages by level, the day's prepared spells, scrolls to copy</td></tr>
       <tr><td>` (backtick)</td><td>training arena</td></tr>
       <tr><td>P</td><td>playtest bench — set party level, summon test fights</td></tr>
       <tr><td colspan="2" class="key-group">In battle</td></tr>
       <tr><td>Arrows / WASD</td><td>move — walk into a monster to attack</td></tr>
       <tr><td>C</td><td>abilities — spells AND battle arts (Rage, Vanish, your Rite power…)</td></tr>
       <tr><td>F</td><td>shoot (ranged weapon)</td></tr>
-      <tr><td>I</td><td>drink a potion</td></tr>
+      <tr><td>I</td><td>drink a potion — or read a scroll (arcane casters)</td></tr>
       <tr><td>Space</td><td>end the hero's turn</td></tr>
       <tr><td>Esc</td><td>flee the battle</td></tr>
       <tr><td colspan="2" class="key-group">Anywhere</td></tr>
@@ -668,12 +705,17 @@
     strike from the dark. Monsters that catch <i>you</i> were ready all
     along: no surprise for the ambushed.</p>
     <h3>Traps &amp; secret doors</h3>
-    <p>Deeper floors hide traps in the floor and doors in the walls. Thieves
-    and archers sense them as the party passes (their class tables + 5% per
-    DEX modifier; wood elves are naturally sharp-eyed) — pressing <b>Space</b>
-    searches again on purpose. A spotted trap shows ⚠: walk around it, or
-    walk onto it to let your thief try to disarm it. A spotted secret door
-    glows — walk into it to swing it open.</p>
+    <p>Deeper floors hide traps in the floor, traps in chest latches, and
+    doors in the walls. Thieves and archers sense them as the party passes —
+    every step beside a hidden thing is a fresh chance (their class tables +
+    5% per DEX modifier; wood elves are naturally sharp-eyed). Pressing
+    <b>Space</b> searches thoroughly: it <i>always</i> finds whatever hides
+    beside the party, but the combing takes several turns — poison ticks and
+    monsters keep prowling. A spotted trap shows its mechanism: walk around
+    it, or walk onto it to let your thief try to disarm it. A spotted secret
+    door shows a pale seam — walk into it to swing it open. Every floor
+    hides at least one sealed vault, and its chest is always worth the
+    hunt.</p>
     <h3>Battle</h3>
     <p>Bumping a monster (or being caught) pulls every nearby monster onto a
     tactical battlefield. <b>Initiative</b> (d20 + DEX for heroes) sets the

@@ -1,5 +1,5 @@
 {
-  "_comment": "MAGIC v2 (design doc v3). Every spell has a 'level' 1-5; its COST IS COMPUTED by the engine (level x 2 + 1 = 3/5/7/9/11 SP) so a cost can never desync from a level — do not add a 'cost' field. WHO can cast: 'classes' (ids from classes.json), gated by character level (spell level 1 at char levels 1-3, 2 at 4-7, 3 at 8-11, 4 at 12-15, 5 at 16-20). Fields: stat = ability whose modifier boosts the spell (int = arcane, wis = divine); type = damage | heal | buff | afflict; range/area in battle squares (area 1 = a 3x3 burst, area 2 = 5x5). Damage spells never miss: each target rolls a save (d20 + bonus vs DC 10 + spell level + caster's stat mod) — 'save' names the resisting ability; success = half damage. auto = true means no save at all. Buffs last the battle: 'hit' adds to attack rolls, 'dmg' to damage; targets = self | allies. 'condition': {id, rounds} lands on targets that FAIL their save. type 'afflict' = no damage, just the condition (save or suffer). 'rare': true = scroll-only lore — nobody learns it from training; only a Wizard-lane spellbook can copy it in from a scroll (items.json 'scroll' items name a spell id). DAMAGE GUIDELINE (doc): ~2d6 per spell level. All spells below level 1 are new CONTENT-FLAG drafts — rename, retune, add, and cut freely! VISUALS: optional \"fx\" per spell — {\"kind\": bolt (a dart travels caster→target) | beam (a straight ray connects them) | lightning (a jagged crack) | burst (no travel — the blast just blooms at the target, washing every square it caught) | sparkle | wisp, \"color\": any hex, \"burst\": fire | frost | holy (adds that blast sprite at impact — bolts and beams may carry one)}. Spells without fx get sensible defaults by type. Sprites live in assets/fx/ (regenerate via the art manifest). SOUND: fx may also carry \"sound\": fire | frost | lightning | light | arcane — the element's voice from data/sounds.json (spell_fire etc.); heals and buffs are automatic.",
+  "_comment": "MAGIC v3 (design doc v3; designer session 2026-08-28). Every spell has a 'level' 1-5; its COST IS COMPUTED (level x 2 + 1 = 3/5/7/9/11 SP) — never add a 'cost'. WHO CASTS: 'classes' (ids from classes.json), gated by character level (spell level 1 at char 1-3, 2 at 4-7, 3 at 8-11, 4 at 12-15, 5 at 16-20). Wizards keep a SPELLBOOK from level 1 (classes.json 'spellbook'): they start with a kit, STUDY one common spell at set levels, and copy scrolls in. Priests know every common prayer; 'rare' prayers arrive as revelations (classes.json 'revelation_levels'). 'rare': true on an arcane spell = scroll-only lore (never studied — found on a scroll and copied in, or picked at the fork if it was already in the book). 'scroll': true = the engine makes a 'scroll_<id>' item (items.json 'scroll_values' ladder by level, 'rare_multiplier'); or {\"value\": N, \"tier\": T} to set them. Any ARCANE caster may read a scroll once in battle (I menu, 0 SP, up to max spell level + 1); only a spellbook may copy one. FIELDS: stat = ability whose modifier boosts the spell (int = arcane, wis = divine); type = damage | heal | buff | afflict | cure | raise; range/area in battle squares (area 1 = a 3x3 burst, 2 = 5x5, \"all\" = every foe on the field, range 0 = centered on the caster). Damage spells never miss: each target rolls a save (d20 + bonus vs DC 10 + spell level + caster's stat mod) — 'save' names the resisting ability; success = half damage; auto = true means no save at all. Damage bursts do NOT spare your friends (afflictions touch only foes). 'condition': {id, rounds} lands on targets that FAIL their save. AFFLICT = no damage, just the condition (save or suffer) — it honors 'area', and 'only_family': [\"undead\", ...] skips everyone else. 'double_vs': a monster family that takes double total damage (like Ancient weapons). 'drain': 0.5 = that fraction of damage dealt heals the caster. BUFFS: targets = self | ally (aim at one hero) | allies (the whole living party); fields hit, dmg, ac, saves, attacks (extra attacks per round), absorb (dice — a shield that drinks that much damage first), bonus_damage {dice, element} on every weapon hit, hidden (= the thief's Vanish), resist (elements, or \"all\" — half damage), immune_conditions; 'rounds' makes it timed (absent = the whole battle). Every buff wears its NAME in the combat math. HEAL: 'dice' to one ally at the crosshair, or targets 'allies' for the whole party; 'cures' also strips conditions. CURE: 'cures': [ids] or \"all\", optional dice. RAISE: a FALLEN ally rises with 'hp' (fraction of max). SCALE (caster-level growth, named 'caster level' in the log): {\"per_levels\": N, \"max\": M, and ONE of dice | flat | rounds | extra_targets | ac | area} — one step every N caster levels past the level the spell unlocked at (1/4/8/12/16), at most M steps. Magic Missile's extra_targets fires more darts at the nearest other foes. DAMAGE GUIDELINE (doc): ~2d6 per spell level. ALL numbers are CONTENT-FLAG proposals — rename, retune, add, and cut freely! VISUALS: optional \"fx\" — {\"kind\": bolt | beam | lightning | burst | sparkle | wisp, \"color\": hex, \"burst\": fire | frost | holy}. SOUND: fx \"sound\": fire | frost | lightning | light | arcane | sonic | cloud | web (heals and buffs are automatic); fire/frost/lightning/poison also decide which worn resistances guard a hero caught in the blast.",
   "spells": {
     "magic_missile": {
       "name": "Magic Missile",
@@ -13,15 +13,21 @@
       "range": 4,
       "area": 0,
       "auto": true,
-      "description": "A dart of force that never misses",
+      "scale": {
+        "per_levels": 2,
+        "max": 3,
+        "extra_targets": 1
+      },
+      "description": "A dart of force that never misses — more darts as you grow",
       "fx": {
         "kind": "bolt",
         "color": "#9fc8ff",
         "sound": "arcane"
-      }
+      },
+      "scroll": true
     },
     "lesser_fireball": {
-      "name": "Lesser Fireball",
+      "name": "Flame Burst",
       "level": 1,
       "classes": [
         "wizard"
@@ -31,18 +37,24 @@
       "dice": "3d6",
       "range": 6,
       "area": 1,
-      "description": "A burst of flame — it does not spare your friends!",
       "save": "dex",
       "condition": {
         "id": "burning",
         "rounds": 2
       },
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "A burst of flame — it does not spare your friends!",
       "fx": {
         "kind": "bolt",
         "color": "#ff9a3a",
         "burst": "fire",
         "sound": "fire"
-      }
+      },
+      "scroll": true
     },
     "poison_dart": {
       "name": "Poison Dart",
@@ -60,12 +72,99 @@
         "id": "poison",
         "rounds": 3
       },
+      "scale": {
+        "per_levels": 2,
+        "max": 3,
+        "rounds": 1
+      },
       "description": "A sliver of venom — the wound is small, the poison is not",
       "fx": {
         "kind": "bolt",
         "color": "#7ec850",
         "sound": "arcane"
-      }
+      },
+      "scroll": true
+    },
+    "sleep": {
+      "name": "Sleep",
+      "level": 1,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "afflict",
+      "range": 5,
+      "area": 1,
+      "condition": {
+        "id": "sleep",
+        "rounds": 2
+      },
+      "scale": {
+        "per_levels": 4,
+        "max": 1,
+        "rounds": 1
+      },
+      "description": "A soft word — the weak-willed in the burst slump where they stand, until something hurts them",
+      "fx": {
+        "kind": "wisp",
+        "color": "#b8a8e8",
+        "sound": "arcane"
+      },
+      "scroll": true
+    },
+    "shield": {
+      "name": "Shield",
+      "level": 1,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "ac": 3,
+      "absorb": "1d8",
+      "scale": {
+        "per_levels": 4,
+        "max": 1,
+        "ac": 1
+      },
+      "description": "A disc of force before you — +3 AC and it drinks the first blows",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#9fc8ff",
+        "sound": "buff"
+      },
+      "scroll": true
+    },
+    "ray_of_enfeeblement": {
+      "name": "Ray of Enfeeblement",
+      "level": 1,
+      "rare": true,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "afflict",
+      "range": 5,
+      "area": 0,
+      "condition": {
+        "id": "weakened",
+        "rounds": 3
+      },
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "rounds": 1
+      },
+      "description": "Strength runs out of the target like water — Weakened (−2 hit, −2 damage)",
+      "fx": {
+        "kind": "beam",
+        "color": "#a070c0",
+        "sound": "arcane"
+      },
+      "scroll": true
     },
     "frost_lance": {
       "name": "Frost Lance",
@@ -79,15 +178,74 @@
       "range": 6,
       "area": 0,
       "save": "con",
-      "description": "A spear of killing cold for a single foe",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "A spear of killing cold for one foe",
       "fx": {
         "kind": "bolt",
         "color": "#a8e0f0",
         "sound": "frost"
-      }
+      },
+      "scroll": true
+    },
+    "shatter": {
+      "name": "Shatter",
+      "level": 2,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "damage",
+      "dice": "3d6",
+      "range": 5,
+      "area": 1,
+      "save": "con",
+      "double_vs": "construct",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "A ringing crack — everything in the burst rattles; constructs come apart",
+      "fx": {
+        "kind": "burst",
+        "color": "#e8e0c8",
+        "sound": "sonic"
+      },
+      "scroll": true
+    },
+    "web": {
+      "name": "Web",
+      "level": 2,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "afflict",
+      "range": 5,
+      "area": 1,
+      "condition": {
+        "id": "slowed",
+        "rounds": 3
+      },
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "rounds": 1
+      },
+      "description": "Sticky strands fill the burst — the caught fight at half pace (Slowed)",
+      "fx": {
+        "kind": "burst",
+        "color": "#e8e8e8",
+        "sound": "web"
+      },
+      "scroll": true
     },
     "paralyze": {
-      "name": "Paralyze",
+      "name": "Hold",
       "level": 2,
       "classes": [
         "wizard",
@@ -101,12 +259,38 @@
         "id": "paralysis",
         "rounds": 2
       },
-      "description": "Lock a creature's limbs — it loses its next two turns",
+      "scale": {
+        "per_levels": 4,
+        "max": 1,
+        "rounds": 1
+      },
+      "description": "Lock a creature's limbs — it loses its next turns",
       "fx": {
         "kind": "wisp",
         "color": "#8fb8e8",
         "sound": "arcane"
-      }
+      },
+      "scroll": true
+    },
+    "invisibility": {
+      "name": "Invisibility",
+      "level": 2,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "buff",
+      "range": 3,
+      "area": 0,
+      "targets": "ally",
+      "hidden": true,
+      "description": "One ally fades from sight until they strike — exactly the potion, on demand",
+      "fx": {
+        "kind": "wisp",
+        "color": "#c8c8e8",
+        "sound": "arcane"
+      },
+      "scroll": true
     },
     "witchfire": {
       "name": "Witchfire",
@@ -125,13 +309,19 @@
         "id": "burning",
         "rounds": 3
       },
-      "description": "Green flame that clings and clings — scroll-lore, found not taught",
+      "scale": {
+        "per_levels": 2,
+        "max": 3,
+        "dice": "1d6"
+      },
+      "description": "Green flame that clings and clings",
       "fx": {
         "kind": "bolt",
         "color": "#7ee87e",
         "burst": "fire",
         "sound": "fire"
-      }
+      },
+      "scroll": true
     },
     "fireball": {
       "name": "Fireball",
@@ -149,13 +339,19 @@
         "id": "burning",
         "rounds": 2
       },
-      "description": "The real thing — a roaring sphere of flame",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "The real thing — a roaring sphere of fire",
       "fx": {
         "kind": "bolt",
         "color": "#ff8c3a",
         "burst": "fire",
         "sound": "fire"
-      }
+      },
+      "scroll": true
     },
     "lightning_bolt": {
       "name": "Lightning Bolt",
@@ -169,12 +365,98 @@
       "range": 8,
       "area": 0,
       "save": "dex",
-      "description": "A crack of sky-fire for one unlucky foe",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "Sky-fire for one unlucky foe",
       "fx": {
         "kind": "lightning",
         "color": "#cfe6ff",
         "sound": "lightning"
-      }
+      },
+      "scroll": true
+    },
+    "stinking_cloud": {
+      "name": "Stinking Cloud",
+      "level": 3,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "afflict",
+      "range": 6,
+      "area": 2,
+      "condition": {
+        "id": "weakened",
+        "rounds": 3
+      },
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "rounds": 1
+      },
+      "description": "A retching green fog, 5×5 — everything inside fights feebly (Weakened)",
+      "fx": {
+        "kind": "burst",
+        "color": "#a8c850",
+        "sound": "cloud"
+      },
+      "scroll": true
+    },
+    "haste": {
+      "name": "Haste",
+      "level": 3,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "attacks": 1,
+      "rounds": 3,
+      "scale": {
+        "per_levels": 4,
+        "max": 2,
+        "rounds": 1
+      },
+      "description": "The party moves between heartbeats — an extra attack each turn for 3 rounds",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#ffe070",
+        "sound": "buff"
+      },
+      "scroll": true
+    },
+    "vampiric_touch": {
+      "name": "Vampiric Touch",
+      "level": 3,
+      "rare": true,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "damage",
+      "dice": "5d6",
+      "range": 1,
+      "area": 0,
+      "save": "con",
+      "drain": 0.5,
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "Steal life through a bare hand — half the harm heals you",
+      "fx": {
+        "kind": "beam",
+        "color": "#c03050",
+        "sound": "arcane"
+      },
+      "scroll": true
     },
     "ice_storm": {
       "name": "Ice Storm",
@@ -188,13 +470,23 @@
       "range": 7,
       "area": 1,
       "save": "con",
-      "description": "Hail like fists — a battering burst of frost",
+      "condition": {
+        "id": "slowed",
+        "rounds": 2
+      },
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "Hail like fists — the survivors move as if through syrup (Slowed)",
       "fx": {
         "kind": "burst",
         "color": "#a8e0f0",
         "burst": "frost",
         "sound": "frost"
-      }
+      },
+      "scroll": true
     },
     "arcane_ruin": {
       "name": "Arcane Ruin",
@@ -208,12 +500,66 @@
       "range": 8,
       "area": 0,
       "save": "wis",
-      "description": "Unmaking, aimed — one target's very substance rebels",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "Unmaking, aimed",
       "fx": {
         "kind": "beam",
         "color": "#b08fe8",
         "sound": "arcane"
-      }
+      },
+      "scroll": true
+    },
+    "hold_monsters": {
+      "name": "Hold Monsters",
+      "level": 4,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "afflict",
+      "range": 5,
+      "area": 1,
+      "condition": {
+        "id": "paralysis",
+        "rounds": 2
+      },
+      "scale": {
+        "per_levels": 4,
+        "max": 1,
+        "rounds": 1
+      },
+      "description": "The Hold, thrown wide — a whole knot of foes stands frozen",
+      "fx": {
+        "kind": "burst",
+        "color": "#8fb8e8",
+        "sound": "arcane"
+      },
+      "scroll": true
+    },
+    "arcane_aegis": {
+      "name": "Arcane Aegis",
+      "level": 4,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "ac": 2,
+      "saves": 2,
+      "description": "A shimmering globe over the party — +2 AC and +2 on every save this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#b08fe8",
+        "sound": "buff"
+      },
+      "scroll": true
     },
     "starfall": {
       "name": "Starfall",
@@ -228,13 +574,19 @@
       "range": 8,
       "area": 2,
       "save": "dex",
-      "description": "A piece of the night sky, called down — scroll-lore, found not taught",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "A piece of the night sky, called down on a 5×5",
       "fx": {
         "kind": "burst",
         "color": "#e8e2d0",
         "burst": "holy",
         "sound": "light"
-      }
+      },
+      "scroll": true
     },
     "meteor_swarm": {
       "name": "Meteor Swarm",
@@ -252,13 +604,19 @@
         "id": "burning",
         "rounds": 2
       },
-      "description": "Burning stones from a torn sky, across a great burst",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "Burning stones from a torn sky, 5×5",
       "fx": {
         "kind": "bolt",
         "color": "#ff8c3a",
         "burst": "fire",
         "sound": "fire"
-      }
+      },
+      "scroll": true
     },
     "disintegrate": {
       "name": "Disintegrate",
@@ -272,12 +630,94 @@
       "range": 6,
       "area": 0,
       "save": "con",
-      "description": "A thin green ray. What it touches, mostly, stops being",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "What it touches, mostly, stops being",
       "fx": {
         "kind": "beam",
         "color": "#7ee87e",
         "sound": "arcane"
-      }
+      },
+      "scroll": true
+    },
+    "wail_of_the_banshee": {
+      "name": "Wail of the Banshee",
+      "level": 5,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "afflict",
+      "range": 0,
+      "area": 2,
+      "condition": {
+        "id": "frightened",
+        "rounds": 3
+      },
+      "scale": {
+        "per_levels": 2,
+        "max": 1,
+        "rounds": 1
+      },
+      "description": "A scream from the far side, centered on you — everything near falters (Frightened)",
+      "fx": {
+        "kind": "burst",
+        "color": "#c8b8e8",
+        "sound": "sonic"
+      },
+      "scroll": true
+    },
+    "mantle_of_storms": {
+      "name": "Mantle of Storms",
+      "level": 5,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "bonus_damage": {
+        "dice": "1d6",
+        "element": "lightning"
+      },
+      "description": "Every party blow carries a stroke of lightning (+1d6) this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#cfe6ff",
+        "sound": "lightning"
+      },
+      "scroll": true
+    },
+    "chain_lightning": {
+      "name": "Chain Lightning",
+      "level": 5,
+      "rare": true,
+      "classes": [
+        "wizard"
+      ],
+      "stat": "int",
+      "type": "damage",
+      "dice": "8d6",
+      "range": 8,
+      "area": "all",
+      "save": "dex",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "One bolt, every foe on the field — the Archmage's answer to a crowded room",
+      "fx": {
+        "kind": "lightning",
+        "color": "#ffffff",
+        "sound": "lightning"
+      },
+      "scroll": true
     },
     "cure_light_wounds": {
       "name": "Cure Light Wounds",
@@ -290,7 +730,12 @@
       "dice": "1d8",
       "range": 3,
       "area": 0,
-      "description": "Mends the wounds of one living ally",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d8"
+      },
+      "description": "Mends one ally",
       "fx": {
         "kind": "sparkle",
         "color": "#6ad46a"
@@ -307,8 +752,14 @@
       "dice": "2d6",
       "range": 5,
       "area": 0,
-      "description": "A lance of searing light",
       "save": "wis",
+      "double_vs": "undead",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "A lance of light — the dead burn twice as bright",
       "fx": {
         "kind": "beam",
         "color": "#ffe9a8",
@@ -323,15 +774,85 @@
       ],
       "stat": "wis",
       "type": "buff",
-      "hit": 1,
-      "dmg": 0,
-      "targets": "allies",
       "range": 0,
       "area": 0,
-      "description": "The whole party strikes truer (+1 to hit this battle)",
+      "targets": "allies",
+      "hit": 1,
+      "description": "The party strikes truer: +1 to hit",
       "fx": {
         "kind": "sparkle",
         "color": "#d4a94e"
+      }
+    },
+    "cure_poison": {
+      "name": "Cure Poison",
+      "level": 1,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "cure",
+      "dice": "1d4",
+      "range": 3,
+      "area": 0,
+      "cures": [
+        "poison"
+      ],
+      "description": "Draws the venom out of one ally, and mends a little",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#7ec850",
+        "sound": "heal"
+      }
+    },
+    "turn_undead": {
+      "name": "Turn Undead",
+      "level": 1,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "afflict",
+      "range": 4,
+      "area": 1,
+      "condition": {
+        "id": "frightened",
+        "rounds": 2
+      },
+      "only_family": [
+        "undead"
+      ],
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "rounds": 1
+      },
+      "description": "Brandish the symbol — the dead in the burst cower and strike feebly (Frightened; the living are untouched)",
+      "fx": {
+        "kind": "burst",
+        "color": "#fff3c8",
+        "burst": "holy",
+        "sound": "light"
+      }
+    },
+    "aura_of_courage": {
+      "name": "Aura of Courage",
+      "level": 1,
+      "rare": true,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "saves": 2,
+      "description": "A calm that settles on the whole party — +2 on every save this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#ffe9a8",
+        "sound": "buff"
       }
     },
     "cure_serious_wounds": {
@@ -345,7 +866,12 @@
       "dice": "2d8",
       "range": 3,
       "area": 0,
-      "description": "Closes wounds that would scar a lesser blessing",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d8"
+      },
+      "description": "Closes wounds that would scar",
       "fx": {
         "kind": "sparkle",
         "color": "#6ad46a"
@@ -363,7 +889,13 @@
       "range": 6,
       "area": 0,
       "save": "wis",
-      "description": "Focused daylight, hot enough to judge",
+      "double_vs": "undead",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "Focused daylight, hot enough to judge — the dead burn twice",
       "fx": {
         "kind": "beam",
         "color": "#ffd24a",
@@ -378,15 +910,59 @@
       ],
       "stat": "wis",
       "type": "buff",
-      "hit": 0,
-      "dmg": 1,
-      "targets": "allies",
       "range": 0,
       "area": 0,
-      "description": "A marching song with teeth (+1 damage for the party this battle)",
+      "targets": "allies",
+      "dmg": 1,
+      "description": "A marching song with teeth: +1 damage",
       "fx": {
         "kind": "sparkle",
         "color": "#e0912f"
+      }
+    },
+    "shield_of_faith": {
+      "name": "Shield of Faith",
+      "level": 2,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "buff",
+      "range": 3,
+      "area": 0,
+      "targets": "ally",
+      "ac": 2,
+      "scale": {
+        "per_levels": 4,
+        "max": 1,
+        "ac": 1
+      },
+      "description": "One ally walks inside a ward of light — +2 AC this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#ffe9a8",
+        "sound": "buff"
+      }
+    },
+    "spirit_guardian": {
+      "name": "Spirit Guardian",
+      "level": 2,
+      "rare": true,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "buff",
+      "range": 3,
+      "area": 0,
+      "targets": "ally",
+      "ac": 1,
+      "absorb": "2d8",
+      "description": "An unseen warden beside one ally — +1 AC, and it drinks 2d8 of the blows meant for them",
+      "fx": {
+        "kind": "wisp",
+        "color": "#fff3c8",
+        "sound": "buff"
       }
     },
     "prayer": {
@@ -397,12 +973,12 @@
       ],
       "stat": "wis",
       "type": "buff",
-      "hit": 1,
-      "dmg": 1,
-      "targets": "allies",
       "range": 0,
       "area": 0,
-      "description": "The party fights as if watched over (+1 hit, +1 damage this battle)",
+      "targets": "allies",
+      "hit": 1,
+      "dmg": 1,
+      "description": "The party fights as if watched over: +1 to hit, +1 damage",
       "fx": {
         "kind": "sparkle",
         "color": "#ffe9a8"
@@ -420,10 +996,130 @@
       "range": 6,
       "area": 0,
       "save": "wis",
-      "description": "A column of noon falls on one foe",
+      "double_vs": "undead",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "A column of noon on one foe — the dead burn twice",
       "fx": {
         "kind": "beam",
         "color": "#fff3c8",
+        "sound": "light"
+      }
+    },
+    "healing_word": {
+      "name": "Healing Word",
+      "level": 3,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "heal",
+      "dice": "2d8",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d8"
+      },
+      "description": "One word, and every wound in the party eases",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#8fe8b0"
+      }
+    },
+    "exorcism": {
+      "name": "Exorcism",
+      "level": 3,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "damage",
+      "dice": "5d6",
+      "range": 5,
+      "area": 1,
+      "save": "wis",
+      "condition": {
+        "id": "frightened",
+        "rounds": 1
+      },
+      "only_family": [
+        "undead",
+        "outsider"
+      ],
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "The unclean in the burst are cast out (undead and outsiders only) — and left Frightened",
+      "fx": {
+        "kind": "burst",
+        "color": "#fff3c8",
+        "burst": "holy",
+        "sound": "light"
+      }
+    },
+    "lesser_restoration": {
+      "name": "Lesser Restoration",
+      "level": 3,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "cure",
+      "dice": "1d8",
+      "range": 3,
+      "area": 0,
+      "cures": [
+        "paralysis",
+        "sleep",
+        "slowed",
+        "weakened",
+        "frightened",
+        "blinded",
+        "exhaustion"
+      ],
+      "description": "Shakes an ally loose of paralysis, sleep, webbing, weakness, fear or blindness — and mends a little",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#ffe9a8",
+        "sound": "heal"
+      }
+    },
+    "sunburst": {
+      "name": "Sunburst",
+      "level": 3,
+      "rare": true,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "damage",
+      "dice": "5d6",
+      "range": 6,
+      "area": 2,
+      "save": "wis",
+      "condition": {
+        "id": "blinded",
+        "rounds": 1
+      },
+      "double_vs": "undead",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "A flash of noon across a 5×5 — the dead burn twice, and everything is left Blinded",
+      "fx": {
+        "kind": "burst",
+        "color": "#fff3c8",
+        "burst": "holy",
         "sound": "light"
       }
     },
@@ -438,7 +1134,12 @@
       "dice": "4d8",
       "range": 4,
       "area": 0,
-      "description": "Calls an ally back from death's doorstep",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d8"
+      },
+      "description": "Back from death's doorstep",
       "fx": {
         "kind": "sparkle",
         "color": "#6ad46a"
@@ -456,12 +1157,113 @@
       "range": 6,
       "area": 1,
       "save": "wis",
-      "description": "The sky opens. It is not pleased",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "The sky opens. It is not pleased.",
       "fx": {
         "kind": "burst",
         "color": "#ffe9a8",
         "burst": "holy",
         "sound": "light"
+      }
+    },
+    "restoration": {
+      "name": "Restoration",
+      "level": 4,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "cure",
+      "dice": "2d8",
+      "range": 3,
+      "area": 0,
+      "cures": "all",
+      "description": "Venom, fear, paralysis — all of it, gone from one ally, and 2d8 mended",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#ffe9a8",
+        "sound": "heal"
+      }
+    },
+    "aegis_of_the_faithful": {
+      "name": "Aegis of the Faithful",
+      "level": 4,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "ac": 2,
+      "saves": 2,
+      "description": "The whole party inside the ward — +2 AC and +2 on every save this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#ffe9a8",
+        "sound": "buff"
+      }
+    },
+    "chains_of_light": {
+      "name": "Chains of Light",
+      "level": 4,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "afflict",
+      "range": 5,
+      "area": 1,
+      "condition": {
+        "id": "paralysis",
+        "rounds": 2
+      },
+      "scale": {
+        "per_levels": 4,
+        "max": 1,
+        "rounds": 1
+      },
+      "description": "Bands of light bind a knot of foes — Paralyzed",
+      "fx": {
+        "kind": "burst",
+        "color": "#fff3c8",
+        "burst": "holy",
+        "sound": "light"
+      }
+    },
+    "flame_strike": {
+      "name": "Flame Strike",
+      "level": 4,
+      "rare": true,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "damage",
+      "dice": "8d6",
+      "range": 6,
+      "area": 1,
+      "save": "dex",
+      "condition": {
+        "id": "burning",
+        "rounds": 2
+      },
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "A pillar of holy fire on a 3×3 — it does not spare your friends",
+      "fx": {
+        "kind": "burst",
+        "color": "#ffb04a",
+        "burst": "fire",
+        "sound": "fire"
       }
     },
     "great_restoration": {
@@ -475,7 +1277,12 @@
       "dice": "8d8",
       "range": 4,
       "area": 0,
-      "description": "Near-total renewal for one ally — flesh remembers its best day",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d8"
+      },
+      "description": "Flesh remembers its best day",
       "fx": {
         "kind": "sparkle",
         "color": "#8fe8b0"
@@ -497,11 +1304,109 @@
         "id": "paralysis",
         "rounds": 1
       },
-      "description": "A syllable of the first language. Few remain standing to hear its echo",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d6"
+      },
+      "description": "A syllable of the first language — and the target stands Paralyzed",
       "fx": {
         "kind": "burst",
         "color": "#fff3c8",
         "burst": "holy",
+        "sound": "light"
+      }
+    },
+    "mass_heal": {
+      "name": "Mass Heal",
+      "level": 5,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "heal",
+      "dice": "5d8",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d8"
+      },
+      "description": "Every ally, at once, deeply",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#8fe8b0"
+      }
+    },
+    "resurrection": {
+      "name": "Resurrection",
+      "level": 5,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "raise",
+      "range": 3,
+      "area": 0,
+      "hp": 0.5,
+      "description": "Not today — a fallen ally stands again at half health",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#fff3c8",
+        "sound": "light"
+      }
+    },
+    "sanctified_ground": {
+      "name": "Sanctified Ground",
+      "level": 5,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "resist": "all",
+      "immune_conditions": true,
+      "rounds": 3,
+      "scale": {
+        "per_levels": 4,
+        "max": 1,
+        "rounds": 1
+      },
+      "description": "For 3 rounds nothing foul takes hold of the party — every element halved, no affliction lands",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#fff3c8",
+        "sound": "buff"
+      }
+    },
+    "dawn_of_mercy": {
+      "name": "Dawn of Mercy",
+      "level": 5,
+      "rare": true,
+      "classes": [
+        "priest"
+      ],
+      "stat": "wis",
+      "type": "heal",
+      "dice": "6d8",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "cures": "all",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d8"
+      },
+      "description": "The first light of a new day on the whole party — 6d8 to everyone, every affliction gone",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#fff3c8",
         "sound": "light"
       }
     },
@@ -513,12 +1418,12 @@
       ],
       "stat": "int",
       "type": "buff",
-      "hit": 1,
-      "dmg": 2,
-      "targets": "self",
       "range": 0,
       "area": 0,
-      "description": "The blade hungers (+1 hit, +2 damage this battle)",
+      "targets": "self",
+      "hit": 1,
+      "dmg": 2,
+      "description": "Your blade hungers: +1 to hit, +2 damage this battle",
       "fx": {
         "kind": "sparkle",
         "color": "#b08fe8"
