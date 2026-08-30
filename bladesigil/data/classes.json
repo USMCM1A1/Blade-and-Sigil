@@ -1,5 +1,5 @@
 {
-  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. SPELL POINTS (magic v2, doc formula): casters use \"spell_points\": {\"base\": N, \"multiplier\": M} — max SP = base + (level x multiplier x 3), so a Wizard (4, 1.0) has 7 SP at level 1 and 64 at level 20. A legacy per-level array still works; classes with neither have no magic. hit_bonus applies to attack AND damage rolls. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules. 'detect': per-level % chance (design doc tables, thief & archer) to notice secret doors and traps — the party uses its best detector, +5% per point of DEX modifier, +race detect_bonus. 'disarms': true lets the class defuse a DETECTED trap by stepping onto it (thieves only, per the doc). | \"locked\": true hides a class from character creation until its progression lanes are built (2026-08-26: archer/spellblade/summoner wait; delete the flag to release one). | Itemization v2: 'robe' in armor_types is the armor_robe category (scholar's robes) — every class wears them, including mages. | MAGIC v3 (2026-08-28): 'caster': arcane | divine says which school a class works in — ARCANE casters may READ scrolls in battle. A 'spellbook' block makes the class keep a spellbook FROM LEVEL 1: 'starting_spells' (the kit every new hero opens with), 'study_levels' (each listed level grants one free STUDY pick of any common class spell of castable level — arrives as a card on the map), 'slots_base' (+ max spell level + one per 'extra_slot_levels' reached = prepared spells at a time). 'revelation_levels' (priests): {spell level: character level} — the RARE prayers of that level are revealed automatically on reaching it.",
+  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. SPELL POINTS (magic v2, doc formula): casters use \"spell_points\": {\"base\": N, \"multiplier\": M} — max SP = base + (level x multiplier x 3), so a Wizard (4, 1.0) has 7 SP at level 1 and 64 at level 20. A legacy per-level array still works; classes with neither have no magic. hit_bonus applies to attack AND damage rolls. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules. 'detect': per-level % chance (design doc tables, thief & archer) to notice secret doors and traps — the party uses its best detector, +5% per point of DEX modifier, +race detect_bonus. 'disarms': true lets the class defuse a DETECTED trap by stepping onto it (thieves only, per the doc). | \"locked\": true hides a class from character creation until its progression lanes are built (2026-08-26: archer/spellblade/summoner wait; delete the flag to release one). | Itemization v2: 'robe' in armor_types is the armor_robe category (scholar's robes) — every class wears them, including mages. | MAGIC v3 (2026-08-28): 'caster': arcane | divine says which school a class works in — ARCANE casters may READ scrolls in battle. A 'spellbook' block makes the class keep a spellbook FROM LEVEL 1: 'starting_spells' (the kit every new hero opens with), 'study_levels' (each listed level grants one free STUDY pick of any common class spell of castable level — arrives as a card on the map), 'slots_base' (+ max spell level + one per 'extra_slot_levels' reached = prepared spells at a time). 'revelation_levels' (priests): {spell level: character level} — the RARE prayers of that level are revealed automatically on reaching it. | NEW CLASSES (2026-08-29, companion doc v1): 'magic': 'lane' = the fixed-list half-caster model (Spellblade, Stoneshaper) — the hero knows the class's level-1 spells before the fork (or only the creation-gift spell, if the gift is a spell) and, from the fork on, every spell tagged with their lane in spells.json as its level opens. 'spell_cost': {per_level, base} overrides the level x 2 + 1 cost (default {2, 1}). 'creation_pick' = a level-1 gift chosen in character creation: options carry 'spell' (known from level 1), 'detect' (+% trap/secret skill), or 'ac_vs_element' (+AC vs one element chosen at creation). | RANGER (2026-08-29): the Archer class is DROPPED (doc ruling); see the ranger entry's comment for spell_unlocks / dual_wield / point_blank_penalty / favored_enemy.",
   "classes": {
     "warrior": {
       "name": "Warrior",
@@ -422,117 +422,8 @@
         2
       ]
     },
-    "archer": {
-      "name": "Archer",
-      "sprite": "assets/heroes/archer.png",
-      "sprite_dead": "assets/heroes/archer_dead.png",
-      "portrait": "assets/heroes/portraits/archer_portrait.png",
-      "hp_die": 6,
-      "allowed_races": [
-        "wood_elf"
-      ],
-      "starting_weapon": "splintered_longbow",
-      "detect": [
-        5,
-        5,
-        10,
-        10,
-        10,
-        20,
-        20,
-        20,
-        30,
-        30,
-        30,
-        40,
-        40,
-        40,
-        50,
-        50,
-        50,
-        50,
-        50,
-        50
-      ],
-      "weapon_types": [
-        "any"
-      ],
-      "armor_types": [
-        "light",
-        "med",
-        "robe"
-      ],
-      "shields": false,
-      "hit_bonus": [
-        0,
-        0,
-        1,
-        1,
-        1,
-        2,
-        2,
-        2,
-        3,
-        3,
-        3,
-        4,
-        4,
-        4,
-        5,
-        5,
-        5,
-        6,
-        7,
-        8
-      ],
-      "ac_bonus": [
-        0,
-        0,
-        0,
-        1,
-        1,
-        1,
-        2,
-        2,
-        2,
-        3,
-        3,
-        3,
-        4,
-        4,
-        4,
-        5,
-        5,
-        5,
-        6,
-        6
-      ],
-      "attacks_per_round": [
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        3,
-        3,
-        3,
-        3,
-        4,
-        4
-      ],
-      "locked": true
-    },
     "spellblade": {
-      "name": "Spell Blade",
+      "name": "Spellblade",
       "sprite": "assets/heroes/spellblade.png",
       "sprite_dead": "assets/heroes/spellblade_dead.png",
       "portrait": "assets/heroes/portraits/spellblade_portrait.png",
@@ -615,12 +506,53 @@
         2,
         2
       ],
-      "spell_points": {
-        "base": 2,
-        "multiplier": 0.5
+      "spell_points": [
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        6,
+        6,
+        6,
+        7,
+        7,
+        7,
+        8,
+        9,
+        10
+      ],
+      "caster": "arcane",
+      "_comment": "Elven Spellblade (companion doc v1, 2026-08-29): a half-caster whose whole spell list is self-buffs. High Elf only. Group B hit/dmg, d8 HP, mage AC, spell points from the doc's per-level table (the generic formula overshoots, so the table is canon). 'magic': 'lane' = a FIXED spell list decided by the level-5 lane (spells.json 'lane' field) — no book, no study, no picks. 'spell_cost' (a PROPOSAL, the doc's table gives 2 SP at level 1 against a 3 SP level-1 spell): half-casters pay level + 1 (2/3/4/5/6) instead of level x 2 + 1. 'creation_pick' = the level-1 starting-gift choice (the doc's single-race creation texture): each option is a spell id the hero knows from level 1, before the fork.",
+      "magic": "lane",
+      "spell_cost": {
+        "per_level": 1,
+        "base": 1
       },
-      "locked": true,
-      "caster": "arcane"
+      "creation_pick": {
+        "title": "A first song",
+        "blurb": "Every Spellblade is taught one verse before the road forks. Which?",
+        "options": [
+          {
+            "id": "edge",
+            "name": "Edge of Dawn",
+            "spell": "edge_of_dawn",
+            "blurb": "The blade-verse: a short self-buff to hit and damage."
+          },
+          {
+            "id": "aegis",
+            "name": "Aegis of Dawn",
+            "spell": "aegis_of_dawn",
+            "blurb": "The ward-verse: a short self-buff to armor and saves."
+          }
+        ]
+      }
     },
     "summoner": {
       "name": "Summoner",
@@ -731,6 +663,312 @@
       ],
       "locked": true,
       "caster": "arcane"
+    },
+    "stoneshaper": {
+      "_comment": "Dwarven Stoneshaper (companion doc v1, 2026-08-29): the toughest thing in the party and the weakest attacker of any melee class. Dwarf only. d10 HP, Group B hit/dmg, a slow martial AC climb (0 to +6), the Spellblade's half-caster spell points; every spell is hardiness — self (Bulwark lane) or shared (Hearthstone lane). 'magic': 'lane' as the Spellblade. 'caster': 'divine' — stone-magic reads no arcane scrolls. Weapons: blunt + the new 'axe' category (hammers and axes, the dwarven kit). 'creation_pick' options here are PASSIVE gifts: 'detect' adds trap/secret-door % (Stonespeak), 'ac_vs_element' asks for an element at creation and gives +1 AC against monsters that attack with it (Ironward).",
+      "name": "Stoneshaper",
+      "sprite": "assets/heroes/gen/dwarf_stoneshaper_m1.png",
+      "sprite_dead": "assets/heroes/warrior_dead.png",
+      "portrait": "assets/heroes/gen/dwarf_stoneshaper_m1_face.png",
+      "hp_die": 10,
+      "allowed_races": [
+        "dwarf"
+      ],
+      "starting_weapon": "notched_hand_axe",
+      "weapon_types": [
+        "axe",
+        "light_blunt",
+        "med_blunt",
+        "heavy_blunt"
+      ],
+      "armor_types": [
+        "light",
+        "med",
+        "heavy",
+        "robe"
+      ],
+      "shields": true,
+      "hit_bonus": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        5
+      ],
+      "ac_bonus": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        6,
+        6
+      ],
+      "attacks_per_round": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "spell_points": [
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        6,
+        6,
+        6,
+        7,
+        7,
+        7,
+        8,
+        9,
+        10
+      ],
+      "caster": "divine",
+      "magic": "lane",
+      "spell_cost": {
+        "per_level": 1,
+        "base": 1
+      },
+      "creation_pick": {
+        "title": "Stone-gift",
+        "blurb": "Every Stoneshaper carries one gift of the deep places from the first day. Which?",
+        "options": [
+          {
+            "id": "stonespeak",
+            "name": "Stonespeak",
+            "detect": 10,
+            "blurb": "Stonecunning: +10% to notice traps and secret doors (the stone tells you)."
+          },
+          {
+            "id": "ironward",
+            "name": "Ironward",
+            "ac_vs_element": 1,
+            "blurb": "+1 AC against creatures that attack with one element — choose fire, frost, lightning, or poison."
+          }
+        ]
+      }
+    },
+    "ranger": {
+      "_comment": "Half-Elven Ranger (companion doc v1, 2026-08-29 — REPLACES the Archer, which is dropped). Half-Elf only. Group A hit/dmg (the Warrior's schedule), d8 HP, AC +1 every 3 levels, the Archer's attack progression and tracking (detect) column. A QUARTER CASTER: 'spell_unlocks' says spell level 1 opens at character level 9 and level 2 at 15 — the universal max-spell-level table does NOT apply; the SP column is empty until 9. 'magic': 'lane' (fixed list; the five Ranger spells carry no lane tag so both lanes know them). 'dual_wield': ONLY this class may hold two one-handed weapons — the off-hand swings once per round at −'penalty' to hit (lanes/refinements whittle it down). 'point_blank_penalty' 2 overrides the ranged default (4) — hunter's reflexes. 'favored_enemy': at each of 'levels' choose a monster family (+1 hit/dmg vs it) or deepen a known one, 'cap' 3 max; the first pick happens in character creation. 'creation_pick' knacks: 'free_swaps' (W swaps that cost no turn, per battle), 'recover_all' + 'quiver_bonus' (Fletcher).",
+      "name": "Ranger",
+      "sprite": "assets/heroes/gen/half_elf_ranger_m1.png",
+      "sprite_dead": "assets/heroes/archer_dead.png",
+      "portrait": "assets/heroes/gen/half_elf_ranger_m1_face.png",
+      "hp_die": 8,
+      "allowed_races": [
+        "half_elf"
+      ],
+      "starting_weapon": "splintered_longbow",
+      "detect": [
+        5,
+        5,
+        10,
+        10,
+        10,
+        20,
+        20,
+        20,
+        30,
+        30,
+        30,
+        40,
+        40,
+        40,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "weapon_types": [
+        "any"
+      ],
+      "armor_types": [
+        "light",
+        "med",
+        "robe"
+      ],
+      "shields": true,
+      "hit_bonus": [
+        0,
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        6,
+        7,
+        8
+      ],
+      "ac_bonus": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        6,
+        6
+      ],
+      "attacks_per_round": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4
+      ],
+      "spell_points": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        6,
+        6,
+        7
+      ],
+      "caster": "divine",
+      "magic": "lane",
+      "spell_unlocks": {
+        "1": 9,
+        "2": 15
+      },
+      "dual_wield": {
+        "penalty": 4
+      },
+      "point_blank_penalty": 2,
+      "favored_enemy": {
+        "levels": [
+          1,
+          6,
+          12,
+          18
+        ],
+        "cap": 3
+      },
+      "creation_pick": {
+        "title": "A knack",
+        "blurb": "Every Ranger learned one trick before the wild taught the rest. Which?",
+        "options": [
+          {
+            "id": "quickdraw",
+            "name": "Quickdraw",
+            "free_swaps": 1,
+            "blurb": "Once per battle, swapping between bow and blades (W) costs no turn."
+          },
+          {
+            "id": "fletcher",
+            "name": "Fletcher",
+            "recover_all": true,
+            "quiver_bonus": 12,
+            "blurb": "After a won fight recover ALL missed arrows, not half; the quiver holds 12 more."
+          }
+        ]
+      }
     }
   }
 }

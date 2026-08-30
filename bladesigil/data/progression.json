@@ -1,5 +1,5 @@
 {
-  "_comment": "Class Progression (design doc v3): each class here gets a hard FORK at 'fork_level' into two lanes; classes absent from this file simply level along their base tables. Each lane: 'name' + 'archetype' (the name shown from capstone level on), 'blurb' (shown on the choice card), 'offsets' (permanent adds to the class table: hit = to-hit AND damage, ac = armor class, sp = spell points, detect = trap/secret %), 'passive' (always-on, from the passive list below), 'verb' (the signature action gained at its 'level'), 'capstone' (gained at its 'level'; numbers tunable), 'refinement' (upgrades the verb at its 'level'), and 'rite' (the Level 20 Rite, see below). PASSIVES: weapon_focus (+dmg with a chosen weapon category — the player picks which at the fork), braced_stance (-'reduce' damage taken per hit while a shield is worn), vital_strike, keen_senses, prepared_mind (the Wizard lane's spellbook: only prepared spells are castable; slots = 'slots_base' + max spell level; re-pick freely at each rest), overchannel (the Sorcerer lane: every cast costs 'discount' less SP, floor 1; knows only 'known_per_level' spells per spell level, picked on unlock), blessed_hands (+'heal' HP on every heal spell), sacred_weapon (+'dmg' divine damage on weapon hits). VERBS: rampage, guardians_stand, assassinate, vanish, arcane_insight (once per battle, your action: choose +'hit' to-hit, +'dc' save DC, or +'dmg' spell damage for the rest of the fight), overcast (toggle: pay 'cost_mult'x SP to cast a spell one level higher — +'extra_dice' damage/healing, +'dc_bonus' DC), mercy (free reaction: an ally cut to 0 HP immediately rises with 'dice' + WIS HP), zealous_strike (toggle: each landed melee hit spends 'cost' SP for +'dice' divine damage and 'heal' self-healing). CAPSTONES: rage, bulwark, lethality, set_trap, archmage (once per rest: cast ANY spellbook spell, prepared or not, for ALL remaining SP), twin_surge (once per rest: a spell resolves twice, then you are Exhausted a round), miracle (once per rest, ALL remaining SP, 'min_sp' minimum: the living are fully healed, the fallen rise at half), divine_inspiration (ALL remaining SP, 'min_sp' minimum: +'hit'/+'dmg'/+'ac' for 'rounds' rounds). REFINEMENTS: rampage_crits, stand_half_cost, assassinate_low_hp, vanish_free, insight_double (Arcane Insight grants TWO bonus types), overcast_cheap (Overcast costs 1.5x, rounded up), mercy_cures (Mercy also cures one condition), zealous_immunity (a Zealous Strike grants immunity to conditions until your next turn). TESTING TIP: the Playtest Bench (P) banks XP and bumps playstyle counters — the fastest road to any milestone.",
+  "_comment": "Class Progression (design doc v3): each class here gets a hard FORK at 'fork_level' into two lanes; classes absent from this file simply level along their base tables. Each lane: 'name' + 'archetype' (the name shown from capstone level on), 'blurb' (shown on the choice card), 'offsets' (permanent adds to the class table: hit = to-hit AND damage, ac = armor class, sp = spell points, detect = trap/secret %), 'passive' (always-on, from the passive list below), 'verb' (the signature action gained at its 'level'), 'capstone' (gained at its 'level'; numbers tunable), 'refinement' (upgrades the verb at its 'level'), and 'rite' (the Level 20 Rite, see below). PASSIVES: weapon_focus (+dmg with a chosen weapon category — the player picks which at the fork), braced_stance (-'reduce' damage taken per hit while a shield is worn), vital_strike, keen_senses, prepared_mind (the Wizard lane's spellbook: only prepared spells are castable; slots = 'slots_base' + max spell level; re-pick freely at each rest), overchannel (the Sorcerer lane: every cast costs 'discount' less SP, floor 1; knows only 'known_per_level' spells per spell level, picked on unlock), blessed_hands (+'heal' HP on every heal spell), sacred_weapon (+'dmg' divine damage on weapon hits). VERBS: rampage, guardians_stand, assassinate, vanish, arcane_insight (once per battle, your action: choose +'hit' to-hit, +'dc' save DC, or +'dmg' spell damage for the rest of the fight), overcast (toggle: pay 'cost_mult'x SP to cast a spell one level higher — +'extra_dice' damage/healing, +'dc_bonus' DC), mercy (free reaction: an ally cut to 0 HP immediately rises with 'dice' + WIS HP), zealous_strike (toggle: each landed melee hit spends 'cost' SP for +'dice' divine damage and 'heal' self-healing). CAPSTONES: rage, bulwark, lethality, set_trap, archmage (once per rest: cast ANY spellbook spell, prepared or not, for ALL remaining SP), twin_surge (once per rest: a spell resolves twice, then you are Exhausted a round), miracle (once per rest, ALL remaining SP, 'min_sp' minimum: the living are fully healed, the fallen rise at half), divine_inspiration (ALL remaining SP, 'min_sp' minimum: +'hit'/+'dmg'/+'ac' for 'rounds' rounds). REFINEMENTS: rampage_crits, stand_half_cost, assassinate_low_hp, vanish_free, insight_double (Arcane Insight grants TWO bonus types), overcast_cheap (Overcast costs 1.5x, rounded up), mercy_cures (Mercy also cures one condition), zealous_immunity (a Zealous Strike grants immunity to conditions until your next turn). TESTING TIP: the Playtest Bench (P) banks XP and bumps playstyle counters — the fastest road to any milestone. | NEW (2026-08-29): passives sundered_calm/granite_skin/warding_presence (a passive may carry a 'name' — weapon_focus wears 'Edge Eternal' for the Spellblade); verbs runic_riposte, ward_surge, unyielding, shared_fortitude; capstones whirling_verse, mirror_ward, mountains_heart, deep_roots; refinements riposte_allies, ward_surge_allies, unyielding_allies, fortitude_two; rite verbs crescendo, unbroken_chord, bedrock, hearthfire; counters riposteKills, wardDeflects, unyieldingSaves, alliesFortified. | RANGER (2026-08-29): passives ambidexterity/snap_shot; verbs hunters_surge/volley; capstones storm_of_blades/rain_of_arrows; refinements offhand_free/hawk_on_the_move; rite verbs pack_instinct/true_shot; counters surgeKills/volleyKills.",
   "_rite_comment": "THE LEVEL 20 RITE (doc v3). 'sigil' lists the shared 8x8x8 vocabulary — every hero draws from the same pool. Per lane, 'rite' has: 'ability' (the unique capstone verb — engine knows 'whirlwind' and 'aegis'; name/numbers are CONTENT FLAGS, rename and retune freely), 'tracked' (which playstyle counter gates the title: rampageKills or standSaves), and 'tiers' — three entries, low to high: 'min' (counter needed; thresholds are proposals, doc says TBD pending playtesting) and 'title' (offered wording; the player may re-word it but keeps the tier). Tier 2 grants 'trinket' (an item id); tier 3 also records the lane's vignette-dungeon unlock (the dungeon itself is a later build).",
   "sigil": {
     "shapes": [
@@ -571,6 +571,385 @@
                 "min": 15,
                 "title": "Heaven's Wrath",
                 "dungeon": "A trial of faith — a solo gauntlet under a self-imposed vow",
+                "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "spellblade": {
+      "_comment": "Elven Spellblade (companion doc v1, 2026-08-29): Bladesong (offense) vs Wardsong (defense), a ±1 lean on hit/AC like the Warrior's fork. PASSIVES: weapon_focus wearing the name Edge Eternal (+1 damage with a chosen weapon type — the pick pops at the fork), sundered_calm (+'saves' on every save). VERBS: runic_riposte (a free retaliatory attack whenever a monster's melee blow lands on you; at 18 also when it lands on an ally beside you), ward_surge (a Y/N reaction BEFORE a monster's swing at you resolves: spend 'cost' SP for +'ac' AC and saves against that one attack; at 18 also for an ally beside you). CAPSTONES: whirling_verse ('rounds' rounds: every landed weapon hit grants one free extra strike; each round every OTHER active buff on you drains 'drain_per_buff' SP or fades — the doc's 'double upkeep'), mirror_ward ('rounds' rounds: 'reflect' of every melee wound is thrown back at the attacker; you cannot move while it holds). Tracked: riposteKills / wardDeflects (surges that turned a hit into a miss + wounds reflected).",
+      "fork_level": 5,
+      "lanes": [
+        {
+          "id": "bladesong",
+          "name": "Bladesong",
+          "archetype": "Blade Dancer",
+          "blurb": "The verse is the blade. Hit harder, guard less — and answer every blow with one of your own.",
+          "offsets": {
+            "hit": 1,
+            "ac": -1
+          },
+          "passive": {
+            "id": "weapon_focus",
+            "name": "Edge Eternal",
+            "dmg": 1
+          },
+          "verb": {
+            "id": "runic_riposte",
+            "level": 10,
+            "name": "Runic Riposte",
+            "blurb": "Whenever a foe's melee blow lands on you, you strike back at once — free, every time."
+          },
+          "capstone": {
+            "id": "whirling_verse",
+            "level": 15,
+            "name": "Whirling Verse",
+            "rounds": 3,
+            "drain_per_buff": 2,
+            "blurb": "For 3 rounds every landed hit grants a free extra strike — while every other song you keep singing drains 2 SP a round, or falls silent."
+          },
+          "refinement": {
+            "id": "riposte_allies",
+            "level": 18,
+            "blurb": "Runic Riposte now also answers blows that land on an ally standing beside you."
+          },
+          "rite": {
+            "ability": {
+              "id": "crescendo",
+              "name": "Crescendo",
+              "blurb": "Once per battle, freely: until your next turn, every Runic Riposte is an automatic critical hit.",
+              "_comment": "CONTENT FLAG: placeholder design — the companion doc names no Rite verb for this lane; rename and retune freely"
+            },
+            "tracked": "riposteKills",
+            "tiers": [
+              {
+                "min": 0,
+                "title": "the Quick"
+              },
+              {
+                "min": 5,
+                "title": "Answer of Steel",
+                "trinket": "duelists_band"
+              },
+              {
+                "min": 15,
+                "title": "the Last Word",
+                "dungeon": "Dueling grounds — a running gauntlet of one-on-one challenges",
+                "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
+              }
+            ]
+          }
+        },
+        {
+          "id": "wardsong",
+          "name": "Wardsong",
+          "archetype": "Spell Singer",
+          "blurb": "The verse is the ward. Guard more, hit lighter — and buy the parry that matters with spell points.",
+          "offsets": {
+            "hit": -1,
+            "ac": 1
+          },
+          "passive": {
+            "id": "sundered_calm",
+            "name": "Sundered Calm",
+            "saves": 1
+          },
+          "verb": {
+            "id": "ward_surge",
+            "level": 10,
+            "name": "Ward Surge",
+            "cost": 2,
+            "ac": 4,
+            "blurb": "A reaction: as a foe swings at you, spend 2 SP for +4 AC and saves against that one blow."
+          },
+          "capstone": {
+            "id": "mirror_ward",
+            "level": 15,
+            "name": "Mirror Ward",
+            "rounds": 3,
+            "reflect": 0.5,
+            "blurb": "For 3 rounds half of every wound you take is thrown back at its source — but you cannot move while the mirror holds."
+          },
+          "refinement": {
+            "id": "ward_surge_allies",
+            "level": 18,
+            "blurb": "Ward Surge can now be sung over an ally standing beside you, not only yourself."
+          },
+          "rite": {
+            "ability": {
+              "id": "unbroken_chord",
+              "name": "Unbroken Chord",
+              "blurb": "Once per battle, freely: until your next turn, every Ward Surge costs nothing.",
+              "_comment": "CONTENT FLAG: placeholder design — the companion doc names no Rite verb for this lane; rename and retune freely"
+            },
+            "tracked": "wardDeflects",
+            "tiers": [
+              {
+                "min": 0,
+                "title": "the Calm"
+              },
+              {
+                "min": 5,
+                "title": "Voice of the Ward",
+                "trinket": "singers_circlet"
+              },
+              {
+                "min": 15,
+                "title": "the Unbroken Chord",
+                "dungeon": "A hall of mirrors — an enemy-caster gauntlet that punishes standing still",
+                "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "stoneshaper": {
+      "_comment": "Dwarven Stoneshaper (companion doc v1, 2026-08-29): Bulwark (personal) vs Hearthstone (shared), trading AC against spell points like the Priest's fork. PASSIVES: granite_skin (−'reduce' damage from every un-elemental blow), warding_presence (+'saves' on every save for allies standing beside you). VERBS: unyielding (a blow that would drop you to 0 HP leaves you at 1 instead — UNCAPPED per the doc; at 18 also for an ally beside you), shared_fortitude ('cost' SP: one ally gains 'dice' + your CON of absorbed damage for the battle; at 18 two allies for the same cost). CAPSTONES: mountains_heart ('rounds' rounds: every wound halved, crits cannot land — while your hit/damage bonus is 0 and you cannot move), deep_roots (once per rest, ALL remaining SP, 'min_sp' minimum: every AC/save/resist buff on you is copied to the whole party for 'rounds' rounds). Tracked: unyieldingSaves / alliesFortified (allies fortified, buffed, or sheltered by Deep Roots). Monsters never crit in this engine — Mountain's Heart's crit immunity is recorded for the day they do.",
+      "fork_level": 5,
+      "lanes": [
+        {
+          "id": "bulwark",
+          "name": "Bulwark",
+          "archetype": "Mountain's Heart",
+          "blurb": "Be the mountain. Harder to hurt, fewer spell points — and you simply refuse to fall.",
+          "offsets": {
+            "ac": 1,
+            "sp": -1
+          },
+          "passive": {
+            "id": "granite_skin",
+            "name": "Granite Skin",
+            "reduce": 1
+          },
+          "verb": {
+            "id": "unyielding",
+            "level": 10,
+            "name": "Unyielding",
+            "blurb": "A blow that would drop you to 0 HP leaves you at 1 instead. Every time."
+          },
+          "capstone": {
+            "id": "mountains_heart",
+            "level": 15,
+            "name": "Mountain's Heart",
+            "rounds": 3,
+            "blurb": "For 3 rounds every wound is halved and no critical can land — but your hit and damage bonus is nothing and you cannot move. A wall, not a warrior."
+          },
+          "refinement": {
+            "id": "unyielding_allies",
+            "level": 18,
+            "blurb": "Unyielding now also catches an ally standing beside you."
+          },
+          "rite": {
+            "ability": {
+              "id": "bedrock",
+              "name": "Bedrock",
+              "blurb": "Once per battle, freely: until your next turn, no blow can do you more than 1 damage.",
+              "_comment": "CONTENT FLAG: placeholder design — the companion doc names no Rite verb for this lane; rename and retune freely"
+            },
+            "tracked": "unyieldingSaves",
+            "tiers": [
+              {
+                "min": 0,
+                "title": "the Steady"
+              },
+              {
+                "min": 5,
+                "title": "Unbroken Stone",
+                "trinket": "granite_torc"
+              },
+              {
+                "min": 15,
+                "title": "the Mountain Itself",
+                "dungeon": "A collapsing mine — a solo endurance gauntlet against escalating harm",
+                "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
+              }
+            ]
+          }
+        },
+        {
+          "id": "hearthstone",
+          "name": "Hearthstone",
+          "archetype": "Deep Root",
+          "blurb": "Be the hold. Give your hardiness away — more spell points, thinner skin, and a whole party that stands.",
+          "offsets": {
+            "ac": -1,
+            "sp": 1
+          },
+          "passive": {
+            "id": "warding_presence",
+            "name": "Warding Presence",
+            "saves": 1
+          },
+          "verb": {
+            "id": "shared_fortitude",
+            "level": 10,
+            "name": "Shared Fortitude",
+            "cost": 3,
+            "dice": "2d8",
+            "blurb": "Spend 3 SP: an ally gains 2d8 + your CON of absorbed damage for the rest of the battle."
+          },
+          "capstone": {
+            "id": "deep_roots",
+            "level": 15,
+            "name": "Aegis of the Deep Roots",
+            "rounds": 3,
+            "min_sp": 3,
+            "blurb": "Once per rest, every spell point you have left: every AC, save, and resistance buff on you spreads to the whole party for 3 rounds. Raise your wards first — an empty hold shares nothing."
+          },
+          "refinement": {
+            "id": "fortitude_two",
+            "level": 18,
+            "blurb": "Shared Fortitude now shelters two allies at once for the same spell points."
+          },
+          "rite": {
+            "ability": {
+              "id": "hearthfire",
+              "name": "Hearthfire",
+              "blurb": "Once per battle, freely: every living ally gains absorbed damage equal to your level and +1 on every save for 3 rounds.",
+              "_comment": "CONTENT FLAG: placeholder design — the companion doc names no Rite verb for this lane; rename and retune freely"
+            },
+            "tracked": "alliesFortified",
+            "tiers": [
+              {
+                "min": 0,
+                "title": "the Warm"
+              },
+              {
+                "min": 5,
+                "title": "Keeper of the Hold",
+                "trinket": "hearthstone_amulet"
+              },
+              {
+                "min": 15,
+                "title": "the Deep Root",
+                "dungeon": "A dwarven hold under siege — defend a whole camp at once",
+                "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "ranger": {
+      "_comment": "Half-Elven Ranger (companion doc v1): Way of the Wolf (two blades) vs Way of the Hawk (the bow). The lean lives in the style PENALTIES, not the stat tables (doc's deliberate deviation): no 'offsets'. PASSIVES: ambidexterity (off-hand penalty 4 → 'penalty' 2; +'dmg' with one-handed melee weapons), snap_shot (point-blank penalty → 'point_blank' 0; +'dmg' with bows). VERBS: hunters_surge (a stance: while ON each attack action spends 'cost' SP so the off-hand matches the main hand blow for blow), volley (a bow kill grants a free shot at another foe in range — chains while kills and arrows last). CAPSTONES: storm_of_blades (ALL remaining SP, min 1: 'rounds' rounds of a free off-hand strike after every main-hand hit at no penalty, +'dmg' on every attack), rain_of_arrows ('rounds' rounds: every shot also strikes every foe within 'spread' squares of the target, one arrow per foe struck; you cannot move). REFINEMENTS: offhand_free (no off-hand penalty at all), hawk_on_the_move (steady bows shoot after moving). Tracked: surgeKills (kills during Hunter's Surge / Storm of Blades) / volleyKills. Titles: the 1e ladder Scout / Pathfinder / Ranger Lord, shared by both lanes.",
+      "fork_level": 5,
+      "lanes": [
+        {
+          "id": "wolf",
+          "name": "Way of the Wolf",
+          "archetype": "Strider",
+          "blurb": "Close in, fangs out. Two blades, no asterisks — eventually.",
+          "offsets": {},
+          "passive": {
+            "id": "ambidexterity",
+            "name": "Ambidexterity",
+            "penalty": 2,
+            "dmg": 1
+          },
+          "verb": {
+            "id": "hunters_surge",
+            "level": 10,
+            "name": "Hunter's Surge",
+            "cost": 2,
+            "blurb": "A stance: while it burns, each attack spends 2 SP and the off-hand matches the main hand blow for blow."
+          },
+          "capstone": {
+            "id": "storm_of_blades",
+            "level": 15,
+            "name": "Storm of Blades",
+            "rounds": 3,
+            "dmg": 2,
+            "min_sp": 1,
+            "blurb": "Every spell point at once: for 3 rounds every main-hand hit earns a free off-hand strike at no penalty, and every attack lands +2 harder."
+          },
+          "refinement": {
+            "id": "offhand_free",
+            "level": 18,
+            "blurb": "The off-hand penalty is gone entirely — two full weapons."
+          },
+          "rite": {
+            "ability": {
+              "id": "pack_instinct",
+              "name": "Pack Instinct",
+              "blurb": "Once per battle, freely: until your next turn, Hunter's Surge costs nothing and the off-hand swings without penalty.",
+              "_comment": "CONTENT FLAG: placeholder design — the Ranger doc names no Rite verb; rename and retune freely"
+            },
+            "tracked": "surgeKills",
+            "tiers": [
+              {
+                "min": 0,
+                "title": "Scout"
+              },
+              {
+                "min": 5,
+                "title": "Pathfinder",
+                "trinket": "striders_band"
+              },
+              {
+                "min": 15,
+                "title": "Ranger Lord",
+                "dungeon": "The Long Hunt — track one legendary beast through close warrens",
+                "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
+              }
+            ]
+          }
+        },
+        {
+          "id": "hawk",
+          "name": "Way of the Hawk",
+          "archetype": "Deadeye",
+          "blurb": "Strike from distance. The line breaking is no longer your problem.",
+          "offsets": {},
+          "passive": {
+            "id": "snap_shot",
+            "name": "Snap Shot",
+            "point_blank": 0,
+            "dmg": 1
+          },
+          "verb": {
+            "id": "volley",
+            "level": 10,
+            "name": "Volley",
+            "blurb": "Dropping a foe with a bow shot grants an immediate free shot at another foe in range — kills chain while arrows last."
+          },
+          "capstone": {
+            "id": "rain_of_arrows",
+            "level": 15,
+            "name": "Rain of Arrows",
+            "rounds": 3,
+            "spread": 1,
+            "blurb": "For 3 rounds every shot also strikes each foe beside its target (one arrow per foe struck) — but you cannot move while the rain falls."
+          },
+          "refinement": {
+            "id": "hawk_on_the_move",
+            "level": 18,
+            "blurb": "Longbow and crossbow shoot after moving — the only archer who kites with a war bow."
+          },
+          "rite": {
+            "ability": {
+              "id": "true_shot",
+              "name": "True Shot",
+              "blurb": "Once per battle, free to arm: your next shot cannot miss and is a critical hit.",
+              "_comment": "CONTENT FLAG: placeholder design — the Ranger doc names no Rite verb; rename and retune freely"
+            },
+            "tracked": "volleyKills",
+            "tiers": [
+              {
+                "min": 0,
+                "title": "Scout"
+              },
+              {
+                "min": 5,
+                "title": "Pathfinder",
+                "trinket": "deadeye_charm"
+              },
+              {
+                "min": 15,
+                "title": "Ranger Lord",
+                "dungeon": "The Ford — hold a narrow crossing against advancing waves",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
             ]

@@ -21,10 +21,14 @@ const rollAbilitySet = () => ABILITIES.map(() => roll3d6());
 
 const fmtMod = n => (n >= 0 ? `+${n}` : `${n}`);
 
-function loadSavedParty() {
+function loadSavedParty(data) {
   try {
     const def = JSON.parse(localStorage.getItem(SAVE_KEY));
-    return Array.isArray(def) && def.length ? def : null;
+    if (!Array.isArray(def) || !def.length) return null;
+    // A save from before a class or race was retired (the Archer) is set
+    // aside — the premade party plays instead of a boot error.
+    if (def.some(h => !data.classes.classes[h.class] || !data.races.races[h.race])) return null;
+    return def;
   } catch { return null; }
 }
 
@@ -43,7 +47,7 @@ export function choosePartyDef(data) {
     // Two choices only: make a party, or play one — your saved party if you
     // have one, otherwise the premade party from data/party.json.
     function showTitle() {
-      const saved = loadSavedParty();
+      const saved = loadSavedParty(data);
       const play = saved ?? data.party.party;
       root.style.display = 'flex';
       root.innerHTML = `
@@ -74,6 +78,9 @@ export function choosePartyDef(data) {
           race: 'human',
           class: null,
           look: 'm1', // appearance variant: m1/m2/f1/f2 (2026-08-26)
+          gift: null, // the level-1 creation gift {id, element?} for classes with a creation_pick (2026-08-29)
+          bonusAbility: 'dex', // the Half-Elf's floating +1 (races with floating_bonus)
+          favored: null, // the Ranger's first favored enemy (classes with favored_enemy)
           rolls: rollAbilitySet(),
           row: idx < 2 ? 'front' : 'back',
         };
@@ -93,13 +100,22 @@ export function choosePartyDef(data) {
           const allowed = classesFor(state.race);
           if (!allowed.some(([id]) => id === state.class)) state.class = allowed[0][0];
           const cls = data.classes.classes[state.class];
-          const bonus = ab => race.ability_bonus[ab] ?? 0;
+          // A class with a creation_pick owes a gift; default to its first option.
+          const pick = cls.creation_pick ?? null;
+          if (pick && !pick.options.some(o => o.id === state.gift?.id)) state.gift = { id: pick.options[0].id };
+          if (!pick) state.gift = null;
+          const giftOpt = pick?.options.find(o => o.id === state.gift.id) ?? null;
+          if (giftOpt?.ac_vs_element !== undefined && !state.gift.element) state.gift.element = 'fire';
+          if (giftOpt && giftOpt.ac_vs_element === undefined) delete state.gift.element;
+          if (cls.favored_enemy && !state.favored) state.favored = 'humanoid';
+          if (!cls.favored_enemy) state.favored = null;
+          const bonus = ab => (race.ability_bonus[ab] ?? 0) + (race.floating_bonus && state.bonusAbility === ab ? race.floating_bonus : 0);
           const final = ab => state.rolls[ABILITIES.indexOf(ab)] + bonus(ab);
           const hp = Math.max(1, cls.hp_die + abilityMod(final('con')));
           const ac = 10 + cls.ac_bonus[0] + abilityMod(final('dex'));
           const weap = id => data.items.items[data.classes.classes[id].starting_weapon] ?? { name: '?', damage: '?' };
           const hit = cls.hit_bonus[0] + abilityMod(final(weap(state.class).range ? 'dex' : 'str')); // ranged weapons aim with DEX
-          return { race, allowed, cls, bonus, final, hp, ac, weap, hit };
+          return { race, allowed, cls, bonus, final, hp, ac, weap, hit, pick, giftOpt };
         }
 
         function render() {
@@ -124,7 +140,7 @@ export function choosePartyDef(data) {
                     <img class="cr-lookface" src="assets/heroes/gen/${state.race}_${state.class}_${v}_face.png"
                          onerror="this.style.display='none'" alt="">
                     <span class="cr-lookdoll"><img src="assets/heroes/gen/${state.race}_${state.class}_${v}.png"
-                         onerror="this.closest('button').style.display='none'" alt=""></span>
+                         onerror="this.src='${cls.sprite}'; this.onerror=null" alt=""></span>
                   </button>`).join('')}
               </div>
               <div class="cr-nav">
@@ -153,7 +169,32 @@ export function choosePartyDef(data) {
 
         // ---- Step 1 of 2: the mechanics ----
         function renderBuild() {
-          const { race, allowed, cls, bonus, final, hp, ac, weap, hit } = derive();
+          const { race, allowed, cls, bonus, final, hp, ac, weap, hit, pick, giftOpt } = derive();
+          const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
+          const FAMILIES = ['undead', 'outsider', 'beast', 'vermin', 'humanoid', 'construct', 'ooze', 'aberration', 'dragon', 'elemental'];
+          const favoredHtml = cls.favored_enemy ? `
+                  <label class="cr-label">Favored enemy <span class="cr-dim">(+1 to hit and damage against one kind of monster; more picks at levels ${cls.favored_enemy.levels.slice(1).join('/')})</span></label>
+                  <div class="cr-choices cr-rows">
+                    ${FAMILIES.map(f => `<button class="cr-choice ${f === state.favored ? 'picked' : ''}" data-favored="${f}"><b>${f}</b></button>`).join('')}
+                  </div>` : '';
+          const floatHtml = race.floating_bonus ? `
+                  <label class="cr-label">The floating +${race.floating_bonus} <span class="cr-dim">(a ${race.name} chooses where it lands)</span></label>
+                  <div class="cr-choices cr-rows">
+                    ${ABILITIES.map(ab => `<button class="cr-choice ${ab === state.bonusAbility ? 'picked' : ''}" data-bonus="${ab}"><b>${ab.toUpperCase()}</b></button>`).join('')}
+                  </div>` : '';
+          const giftHtml = pick ? `
+                  <label class="cr-label">${pick.title ?? 'A gift'} <span class="cr-dim">(${pick.blurb ?? 'choose one'})</span></label>
+                  <div class="cr-choices" id="cr-gifts">
+                    ${pick.options.map(o => `
+                      <button class="cr-choice ${o.id === state.gift.id ? 'picked' : ''}" data-gift="${o.id}">
+                        <b>${o.name}</b>
+                        <span>${o.blurb ?? ''}</span>
+                      </button>`).join('')}
+                  </div>
+                  ${giftOpt?.ac_vs_element !== undefined ? `
+                  <div class="cr-choices cr-rows">
+                    ${ELEMENTS.map(e => `<button class="cr-choice ${e === state.gift.element ? 'picked' : ''}" data-element="${e}"><b>${e}</b></button>`).join('')}
+                  </div>` : ''}` : '';
 
           root.innerHTML = `
             <div class="cr-panel">
@@ -177,6 +218,9 @@ export function choosePartyDef(data) {
                         <span>d${c.hp_die} hits · ${weap(id).name} ${weap(id).damage}${spellPointsFor(c, 1) ? ` · ${spellPointsFor(c, 1)} spell points` : ''}</span>
                       </button>`).join('')}
                   </div>
+                  ${floatHtml}
+                  ${favoredHtml}
+                  ${giftHtml}
                 </div>
 
                 <div class="cr-col">
@@ -215,6 +259,10 @@ export function choosePartyDef(data) {
           for (const b of root.querySelectorAll('[data-race]')) b.onclick = () => { state.race = b.dataset.race; render(); };
           for (const b of root.querySelectorAll('[data-class]')) b.onclick = () => { state.class = b.dataset.class; render(); };
           for (const b of root.querySelectorAll('[data-row]')) b.onclick = () => { state.row = b.dataset.row; render(); };
+          for (const b of root.querySelectorAll('[data-gift]')) b.onclick = () => { state.gift = { id: b.dataset.gift }; render(); };
+          for (const b of root.querySelectorAll('[data-favored]')) b.onclick = () => { state.favored = b.dataset.favored; render(); };
+          for (const b of root.querySelectorAll('[data-bonus]')) b.onclick = () => { state.bonusAbility = b.dataset.bonus; render(); };
+          for (const b of root.querySelectorAll('[data-element]')) b.onclick = () => { state.gift.element = b.dataset.element; render(); };
           for (const b of root.querySelectorAll('[data-ab]')) b.onclick = () => {
             const i = Number(b.dataset.ab);
             if (swapFrom === null) { swapFrom = i; }
@@ -244,6 +292,9 @@ export function choosePartyDef(data) {
           level: 1,
           row: h.row,
           abilities: Object.fromEntries(ABILITIES.map((ab, i) => [ab, h.rolls[i]])),
+          gift: h.gift ?? null,
+          favored: h.favored ?? undefined,
+          bonus_ability: data.races.races[h.race].floating_bonus ? (h.bonusAbility ?? 'dex') : undefined,
           look: {
             sprite: `assets/heroes/gen/${h.race}_${h.class}_${h.look ?? 'm1'}.png`,
             portrait: `assets/heroes/gen/${h.race}_${h.class}_${h.look ?? 'm1'}_face.png`,

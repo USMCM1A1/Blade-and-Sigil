@@ -4,8 +4,8 @@
 
 import { roll, d20, maxRoll, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
-import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf } from './progression.js';
-import { spellCost, unpreparedSpells, knownSpells, scaleSteps } from './magic.js';
+import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName } from './progression.js';
+import { spellCost, unpreparedSpells, knownSpells, scaleSteps, giftOf } from './magic.js';
 import * as audio from './audio.js';
 
 // Sum of a field across a hero's timed buffs (Rage etc.).
@@ -46,6 +46,15 @@ export class Battle {
       ch.maelstromArmed = false;
       ch.finalWordArmed = false;
       ch.prepFresh = false;
+      // The half-casters' "until your next turn" Rite verbs (companion doc v1).
+      ch.crescendoArmed = false;
+      ch.chordArmed = false;
+      ch.bedrock = false;
+      // The Ranger's stances and Rite arms (companion doc v1).
+      ch.surgeOn = false;
+      ch.packArmed = false;
+      ch.trueShotArmed = false;
+      ch.freeSwapsUsed = 0;
       // Stealthy classes (thief: "stealthy" in classes.json) slip ahead as
       // the party forces a fight — they BEGIN hidden, so their opening
       // strike always lands on the unaware (the Blade Work rogue's whole
@@ -59,6 +68,12 @@ export class Battle {
       if (owed.type === 'lane') game.log(`${owed.ch.name} walks no path yet — the crossroads (and every power beyond it) waits on the map.`, 'info');
       if (owed.type === 'focus') game.log(`${owed.ch.name} has not chosen a Weapon Focus — that +1 waits on the map.`, 'info');
       if (owed.type === 'rite') game.log(`${owed.ch.name}'s Rite is unfinished — their unique power sleeps until the ceremony is held (it begins on the map).`, 'info');
+    }
+    // The hunter senses a favored enemy before the first blow.
+    for (const ch of game.party) {
+      if (!ch.alive || !ch.favored) continue;
+      const fams = [...new Set(foes.map(m => m.family).filter(f => f && ch.favored[f]))];
+      if (fams.length) game.log(`${ch.name} stiffens — favored prey is near: ${fams.join(', ')}.`, 'info');
     }
     this.parseTemplate(template);
     this.placeCombatants(foes);
@@ -162,6 +177,11 @@ export class Battle {
           this.game.log(`The circle of ${c.ref.rite?.abilityName ?? 'Sanctuary'} fades.`, 'info');
         }
         c.ref.zealousImmune = false;
+        // The half-casters' until-your-next-turn powers lapse here.
+        for (const [flag, what] of [['crescendoArmed', 'Crescendo'], ['chordArmed', 'the Unbroken Chord'], ['bedrock', 'Bedrock'], ['packArmed', 'Pack Instinct']]) {
+          if (c.ref[flag]) { c.ref[flag] = false; this.game.log(`${c.ref.rite?.abilityName ?? what} has run its course.`, 'info'); }
+        }
+        this.surgeSave = null;
         // Timed powers (Rage) burn down at the start of their owner's turn.
         for (const b of [...(c.ref.timedBuffs ?? [])]) {
           if (b.rounds == null) continue; // a battle-long spell buff (magic v3) fades with the fight
@@ -172,6 +192,7 @@ export class Battle {
             this.game.log(`${c.ref.name}'s ${b.name.toLowerCase()} fades.`);
           }
         }
+        this.verseUpkeep(c);
         const verdict = this.tickConditions(c); // burn ticks, paralysis check
         if (this.checkEnd()) return;
         if (verdict === 'dead') continue;
@@ -184,6 +205,13 @@ export class Battle {
           return;
         }
         this.movesLeft = HERO_MOVE;
+        // Mirror Ward / Mountain's Heart: the singer stands where they stand.
+        const root = this.rootedBy(c.ref);
+        if (root) {
+          this.movesLeft = 0;
+          this.addFx(c.x, c.y, 'rooted', '#9a94a8');
+          this.game.log(`${c.ref.name} cannot move while ${root.name} holds.`, 'info');
+        }
         this.busy = false;
         return;
       }
@@ -258,9 +286,10 @@ export class Battle {
       this.game.log(`${ref.name}'s Zealous Strike still burns — no affliction can touch them.`, 'good');
       return;
     }
-    const bonus = targetC.kind === 'monster'
+    let bonus = targetC.kind === 'monster'
       ? (ref.save ?? 0)
       : abilityMod(ref.abilities[def.save ?? 'con']) + this.game.heroSaveBonus(ref);
+    if (targetC.kind === 'hero' && this.surgeSave?.target === ref) bonus += this.surgeSave.ac; // Ward Surge guards the save too
     if (d20() + bonus >= dc) {
       this.addFx(targetC.x, targetC.y, 'resisted', '#9a94a8');
       this.game.log(`${ref.name} resists — not ${def.name.toLowerCase()}!`);
@@ -280,6 +309,43 @@ export class Battle {
     ref.conditions = ref.conditions.filter(c => !broke.includes(c));
     this.fxOn(ref, 'awake!', '#b8a8e8');
     this.game.log(`${ref.name} jolts awake!`);
+  }
+
+  // A buff that plants the hero in place (Mirror Ward, Mountain's Heart).
+  rootedBy(ref) { return (ref.timedBuffs ?? []).find(b => b.rooted) ?? null; }
+
+  // Whirling Verse's price: every OTHER song the singer keeps up drains
+  // spell points each round — or falls silent. Runs at the singer's turn.
+  verseUpkeep(c) {
+    const ref = c.ref;
+    const verse = (ref.timedBuffs ?? []).find(b => b.verse);
+    if (!verse) return;
+    const drain = verse.drain_per_buff ?? 2;
+    for (const b of [...ref.timedBuffs]) {
+      if (b === verse) continue;
+      if (this.game.arena || ref.sp >= drain) {
+        if (!this.game.arena) ref.sp -= drain;
+        this.game.log(`${verse.name} drains ${drain} SP to keep ${b.name} singing (${ref.sp} SP left).`, 'info');
+      } else {
+        ref.timedBuffs = ref.timedBuffs.filter(x => x !== b);
+        this.addFx(c.x, c.y, `${b.name} falls silent`, '#9a94a8');
+        this.game.log(`${ref.name} has no spell points left for ${b.name} — it falls silent under ${verse.name}.`, 'info');
+      }
+    }
+  }
+
+  // Warding Presence (Hearthstone passive): +saves for allies standing
+  // beside the dwarf. game.heroSaveBonus asks here in battle.
+  auraSaves(ref) {
+    const hc = this.combatants.find(cc => cc.ref === ref);
+    if (!hc) return 0;
+    let bonus = 0;
+    for (const other of this.heroes()) {
+      if (other === hc || !other.ref.alive) continue;
+      const p = passiveOf(this.game.data, other.ref);
+      if (p?.id === 'warding_presence' && Math.abs(other.x - hc.x) + Math.abs(other.y - hc.y) === 1) bonus += p.saves ?? 1;
+    }
+    return bonus;
   }
 
   // Squares the active hero can still walk to (for the renderer's highlight).
@@ -311,7 +377,11 @@ export class Battle {
     const nx = c.x + dx, ny = c.y + dy;
     const foe = this.monsterAt(nx, ny);
     if (foe) { this.heroAttack(c, foe); return; }
-    if (this.movesLeft <= 0 || !this.open(nx, ny)) return;
+    if (this.movesLeft <= 0 || !this.open(nx, ny)) {
+      const root = this.movesLeft <= 0 ? this.rootedBy(c.ref) : null;
+      if (root) { this.addFx(c.x, c.y, 'rooted', '#9a94a8'); this.game.log(`${c.ref.name} is rooted by ${root.name}.`, 'info'); }
+      return;
+    }
     c.x = nx; c.y = ny;
     this.movesLeft--;
   }
@@ -342,6 +412,9 @@ export class Battle {
     const classHit = ch.hitBase - laneHit; // the class table's share
     if (classHit) parts.push([classHit, ch.cls.name]);
     if (laneHit) parts.push([laneHit, lane.name]);
+    // Mountain's Heart: a wall, not a warrior — the trained bonus is nothing.
+    const wall = (ch.timedBuffs ?? []).find(b => b.no_hit_bonus);
+    if (wall && classHit + laneHit) parts.push([-(classHit + laneHit), wall.name]);
     // Finesse (light blades): the wielder's better of STR and DEX — the
     // session ruling that lets a DEX thief's dagger finally bite.
     const finesse = ch.weapon.finesse && abilityMod(ch.abilities.dex) > abilityMod(ch.abilities.str);
@@ -351,8 +424,18 @@ export class Battle {
     return parts;
   }
 
-  attackParts(ch) {
+  // Favored Enemy (the Ranger): +N to hit and damage vs a known family.
+  favoredPart(ch, foe) {
+    const fam = foe?.family;
+    const n = fam && ch.favored ? (ch.favored[fam] ?? 0) : 0;
+    return n ? [n, `favored enemy — ${fam}`] : null;
+  }
+
+  attackParts(ch, foe = null) {
     const parts = this.baseParts(ch);
+    const fav = this.favoredPart(ch, foe);
+    if (fav) parts.push(fav);
+    if (this.offhandPenalty) parts.push([-this.offhandPenalty, 'off-hand']);
     // Worn 'hit' pieces (enchanted weapons and finer things), each by name.
     for (const p of ch.hitPieces ?? []) parts.push([p.hit, p.name]);
     if (ch.buffs.hit) parts.push([ch.buffs.hit, ch.buffs.sources?.join(' & ') || 'blessing']);
@@ -372,7 +455,21 @@ export class Battle {
     const c = this.combatants.find(cc => cc.ref === ch);
     if (!c) return 0;
     const near = this.monsters().some(mc => Math.abs(mc.x - c.x) + Math.abs(mc.y - c.y) === 1);
-    return near ? (this.game.rangedRules().point_blank_penalty ?? 4) : 0;
+    if (!near) return 0;
+    // The Ranger's reflexes (classes.json point_blank_penalty), and the
+    // Hawk's Snap Shot passive, undercut the default.
+    const p = passiveOf(this.game.data, ch);
+    if (p?.id === 'snap_shot') return p.point_blank ?? 0;
+    return ch.cls.point_blank_penalty ?? this.game.rangedRules().point_blank_penalty ?? 4;
+  }
+
+  // The off-hand's to-hit penalty for this hero right now (dual_wield class).
+  offhandPenaltyFor(ch) {
+    if (!ch.cls.dual_wield) return 0;
+    if (ch.packArmed || hasRefinement(this.game.data, ch, 'offhand_free')) return 0;
+    const p = passiveOf(this.game.data, ch);
+    if (p?.id === 'ambidexterity') return p.penalty ?? 2;
+    return ch.cls.dual_wield.penalty ?? 4;
   }
 
   // Why this hero can't shoot right now — or null. The hint line and the F
@@ -380,23 +477,28 @@ export class Battle {
   shootBlock(c) {
     const ch = c.ref;
     if (!ch.weapon?.range) return null;
-    if (ch.weapon.steady && this.movesLeft < HERO_MOVE) return `the ${ch.weapon.name.toLowerCase()} needs a planted stance — no shot on a turn you have moved`;
-    if (this.game.ammoCount() <= 0) return `no arrows left in the pouch`;
+    if (ch.weapon.steady && this.movesLeft < HERO_MOVE && !hasRefinement(this.game.data, ch, 'hawk_on_the_move')) return `the ${ch.weapon.name.toLowerCase()} needs a planted stance — no shot on a turn you have moved`;
+    if (this.game.quiverCount(ch) <= 0) return this.game.ammoCount() > 0 ? `the quiver is empty — restock from the pouch (I) or swap weapons` : `the quiver is empty and the pouch holds no arrows`;
     return null;
   }
 
   // opts.vital: 'unaware' | 'flanked' when Vital Strike applies this swing.
   damageParts(ch, opts = {}) {
     const parts = this.baseParts(ch);
+    const fav = this.favoredPart(ch, opts.foe);
+    if (fav) parts.push(fav);
     if (ch.buffs.dmg) parts.push([ch.buffs.dmg, ch.buffs.sources?.join(' & ') || 'blessing']);
     for (const b of ch.timedBuffs ?? []) if (b.dmg) parts.push([b.dmg, b.name]);
     if (ch.gearDmg) parts.push([ch.gearDmg, 'gear']);
     const p = passiveOf(this.game.data, ch);
     if (p?.id === 'weapon_focus' && ch.focusType && ch.weapon.type === `weapon_${ch.focusType}`) {
-      parts.push([p.dmg ?? 1, 'Weapon Focus']);
+      parts.push([p.dmg ?? 1, passiveName(p, 'Weapon Focus')]);
     }
     if (p?.id === 'vital_strike' && opts.vital) parts.push([p.dmg ?? 2, `Vital Strike, ${opts.vital}`]);
     if (p?.id === 'sacred_weapon') parts.push([p.dmg ?? 1, 'Sacred Weapon']);
+    // The Ranger's styles: Ambidexterity favors one-handed melee, Snap Shot the bow.
+    if (p?.id === 'ambidexterity' && !ch.weapon.range && ch.weapon.hands !== 2) parts.push([p.dmg ?? 1, passiveName(p, 'Ambidexterity')]);
+    if (p?.id === 'snap_shot' && ch.weapon.range) parts.push([p.dmg ?? 1, passiveName(p, 'Snap Shot')]);
     for (const part of this.game.condParts(ch, 'dmg')) parts.push(part);
     return parts;
   }
@@ -404,7 +506,7 @@ export class Battle {
   sumParts(parts) { return parts.reduce((s, [v]) => s + v, 0); }
   fmtParts(parts) { return parts.map(([v, l]) => ` ${v > 0 ? '+' : '−'}${Math.abs(v)} ${l}`).join(''); }
 
-  attackBonus(ch) { return this.sumParts(this.attackParts(ch)); }
+  attackBonus(ch, foe = null) { return this.sumParts(this.attackParts(ch, foe)); }
   damageBonus(ch) { return this.sumParts(this.damageParts(ch)); }
   heroAttacks(ch) { return ch.attacks + timedSum(ch, 'attacks'); } // Rage grants extras
 
@@ -476,17 +578,21 @@ export class Battle {
     ch.hidden = false;   // the strike itself steps out of the shadows
     foeC.aware = true;   // one way or another, they know NOW
     const die = d20();
-    const crit = die === 20 || assassinate || !!this.forceCrit;
-    const atkParts = this.attackParts(ch);
+    // True Shot (the Deadeye's Rite): the armed shot cannot miss and crits.
+    const trueShot = ch.trueShotArmed && ch.weapon.range && !this.offhandPenalty;
+    if (trueShot) { ch.trueShotArmed = false; this.addFx(c.x, c.y, `${(ch.rite?.abilityName ?? 'TRUE SHOT').toUpperCase()}!`, '#ffd24a'); }
+    const crit = die === 20 || assassinate || !!this.forceCrit || trueShot;
+    const atkParts = this.attackParts(ch, monster);
     const atkTotal = die + this.sumParts(atkParts);
     const acCond = this.game.condStat(monster, 'ac');
     const ac = 10 + monster.ac + acCond;
     const acText = `AC ${ac}${acCond ? ` (${acCond > 0 ? '+' : '−'}${Math.abs(acCond)} ${this.game.condParts(monster, 'ac').map(([, n]) => n).join(' & ')})` : ''}`;
-    if (crit || atkTotal >= ac) {
+    const sure = (ch.timedBuffs ?? []).find(b => b.auto_hit) ?? null; // Eclipse Blade: the blade cannot miss
+    if (crit || sure || atkTotal >= ac) {
       // The full-crit rule: the weapon's maximum plus a fresh damage roll.
       const critExtra = crit ? Math.max(0, roll(ch.weapon.damage)) : 0;
       const base = crit ? maxRoll(ch.weapon.damage) + critExtra : roll(ch.weapon.damage);
-      const dmgParts = this.damageParts(ch, { vital });
+      const dmgParts = this.damageParts(ch, { vital, foe: monster });
       // Zealous Strike: the stance pays its SP the instant a melee blow lands.
       const zVerb = ch.zealousOn && !ch.weapon.range && hasVerb(this.game.data, ch, 'zealous_strike')
         ? laneOf(this.game.data, ch).verb : null;
@@ -537,7 +643,7 @@ export class Battle {
       }
       this.addFx(foeC.x, foeC.y, label, crit ? '#ffd24a' : '#ff6a4a');
       // The math, spelled out: every bonus by name, so a +1 FEELS like a +1.
-      const toHit = assassinate ? 'auto-hit' : crit ? 'natural 20!' : `d20 ${die}${this.fmtParts(atkParts)} = ${atkTotal} vs ${acText}`;
+      const toHit = assassinate ? 'auto-hit' : crit ? 'natural 20!' : sure && atkTotal < ac ? `cannot miss — ${sure.name}` : `d20 ${die}${this.fmtParts(atkParts)} = ${atkTotal} vs ${acText}`;
       const mults = `${lethal ? `, ×${lethal} Lethality` : ''}${bane ? `, ${bane}` : ''}`;
       const dmgMath = `${crit ? `max ${maxRoll(ch.weapon.damage)} + ${ch.weapon.damage} → ${critExtra}` : `${ch.weapon.damage} → ${base}`}${this.fmtParts(dmgParts)}${mults ? ` = ${preMult}${mults}` : ''} = ${dmg}`;
       this.game.log(assassinate
@@ -554,11 +660,61 @@ export class Battle {
         if (immune) ch.zealousImmune = true;
         this.game.log(`${zVerb.name ?? 'Zealous Strike'}! ${ch.name} burns ${this.game.arena ? 0 : zVerb.cost ?? 3} SP${heal > 0 ? ` — ${heal} HP returns` : ''}${immune ? ' — and no affliction can touch them until their next turn' : ''}.`, 'good');
       }
-      return { hit: true, crit, assassinate, kill: monster.hp <= 0, dmg };
+      // Deathless Fury: a share of the wound flows back as the singer's blood.
+      const steal = (ch.timedBuffs ?? []).filter(b => b.lifesteal).reduce((m, b) => Math.max(m, b.lifesteal), 0);
+      if (steal > 0) {
+        const heal = Math.min(Math.floor(dmg * steal), ch.maxHp - ch.hp);
+        if (heal > 0) {
+          ch.hp += heal;
+          this.fxOn(ch, `+${heal}`, '#c03050');
+          this.game.log(`${(ch.timedBuffs ?? []).find(b => b.lifesteal === steal)?.name ?? 'The fury'} drinks — ${heal} HP back to ${ch.name}.`, 'good');
+        }
+      }
+      // Whirling Verse: every landed hit earns one more strike (which does
+      // not itself chain — the verse has a meter).
+      const verse = (ch.timedBuffs ?? []).find(b => b.verse);
+      let kill = monster.hp <= 0;
+      // Storm of Blades: a main-hand hit earns a free off-hand strike, no penalty.
+      const storm = (ch.timedBuffs ?? []).find(b => b.storm);
+      if (storm && ch.offhand && !this.offhanding && !this.offhandPenalty && monster.hp > 0 && !ch.weapon.range) {
+        this.addFx(c.x, c.y, `${storm.name}!`, '#e0c060');
+        const again = this.offhandStrike(c, foeC, 0);
+        dmg += again.dmg ?? 0;
+        kill = kill || again.kill;
+      }
+      if (verse && !this.inVerse && monster.hp > 0 && !ch.weapon.range) {
+        this.inVerse = true;
+        this.addFx(c.x, c.y, `${verse.name}!`, '#e0c060');
+        this.game.log(`${verse.name} — ${ch.name} strikes again!`, 'combat');
+        const again = this.strike(c, foeC, 'strikes');
+        this.inVerse = false;
+        dmg += again.dmg ?? 0;
+        kill = kill || again.kill;
+      }
+      return { hit: true, crit, assassinate, kill, dmg };
     }
     this.addFx(foeC.x, foeC.y, 'miss', '#9a94a8');
     this.game.log(`${ch.name} ${verb} at the ${monster.name} and misses (d20 ${die}${this.fmtParts(atkParts)} = ${atkTotal} vs ${acText}).`);
     return { hit: false, crit: false, assassinate: false, kill: false, dmg: 0 };
+  }
+
+  // The Hawk's Volley: after a bow kill, another arrow flies free at the
+  // nearest other foe in range and sight; a kill keeps the chain going.
+  volleyChain(c) {
+    const ch = c.ref;
+    const verb = laneOf(this.game.data, ch).verb;
+    for (let links = 0; links < 12; links++) {
+      if (this.game.quiverCount(ch) <= 0) { this.game.log(`${verb.name ?? 'Volley'} ends — the quiver is empty.`, 'info'); return; }
+      const next = this.monsters()
+        .filter(m => this.dist(c.x, c.y, m.x, m.y) <= (ch.weapon.range ?? 0) && this.losClear(c.x, c.y, m.x, m.y))
+        .sort((a, b) => this.dist(c.x, c.y, a.x, a.y) - this.dist(c.x, c.y, b.x, b.y))[0];
+      if (!next) return;
+      this.addFx(c.x, c.y, `${(verb.name ?? 'VOLLEY').toUpperCase()}!`, '#d4a94e');
+      this.game.log(`${verb.name ?? 'Volley'}! ${ch.name} looses again at the ${next.ref.name}.`, 'combat');
+      const res = this.shoot(c, next, 0);
+      if (res.kill) { ch.counters.volleyKills++; this.slay(next.ref); continue; }
+      return;
+    }
   }
 
   // Way of the Blade, level 10: felling a foe grants a free attack on
@@ -583,29 +739,93 @@ export class Battle {
     }
   }
 
+  // One swing with the OFF-HAND weapon (the Ranger's second blade), at the
+  // given to-hit penalty. The main weapon is swapped out for the roll so
+  // every part of the math names the right blade.
+  offhandStrike(c, foeC, penalty) {
+    const ch = c.ref;
+    const main = ch.weapon;
+    ch.weapon = ch.offhand;
+    this.offhandPenalty = penalty;
+    this.offhanding = true;
+    this.game.log(`${ch.name}'s off-hand ${ch.weapon.name.toLowerCase()} follows${penalty ? ` (−${penalty} off-hand)` : ''}.`, 'combat');
+    const res = this.strike(c, foeC, 'cuts');
+    this.offhanding = false;
+    this.offhandPenalty = 0;
+    ch.weapon = main;
+    return res;
+  }
+
+  // One shot's bookkeeping: an arrow spent, the flight drawn, the strike.
+  shoot(c, foeC, delay = 0) {
+    const ch = c.ref;
+    this.game.spendAmmo(ch);
+    audio.play('arrow');
+    this.fxDelay = this.emitArrow(c, foeC, delay);
+    const res = this.strike(c, foeC, 'shoots');
+    this.fxDelay = 0;
+    if (!res.hit && !res.immune) (this.arrowsMissed ??= new Map()).set(ch, (this.arrowsMissed.get(ch) ?? 0) + 1);
+    return res;
+  }
+
   heroAttack(c, foeC, verb = 'swings') {
     const ch = c.ref, monster = foeC.ref;
     const shooting = verb === 'shoots';
     if (!shooting) audio.play('melee_hit');
     let killed = false, crit = false;
+    // Hunter's Surge (Wolf stance): the attack action spends SP so the
+    // off-hand matches the main hand blow for blow this turn.
+    const surgeVerb = ch.surgeOn && ch.offhand && !shooting && hasVerb(this.game.data, ch, 'hunters_surge') ? laneOf(this.game.data, ch).verb : null;
+    const surgeCost = ch.packArmed ? 0 : (surgeVerb?.cost ?? 2);
+    const surging = surgeVerb && (this.game.arena || ch.sp >= surgeCost);
+    if (surgeVerb && !surging) this.addFx(c.x, c.y, 'surge falters — no SP', '#9a94a8');
+    if (surging) {
+      if (!this.game.arena) ch.sp -= surgeCost;
+      this.addFx(c.x, c.y, `${(surgeVerb.name ?? 'SURGE').toUpperCase()}!`, '#e0c060');
+      this.game.log(`${surgeVerb.name ?? "Hunter's Surge"}! ${ch.name} spends ${surgeCost} SP — both blades, blow for blow.`, 'good');
+    }
+    const rain = shooting ? (ch.timedBuffs ?? []).find(b => b.rain) : null;
+    const huntKills = () => surging || (ch.timedBuffs ?? []).some(b => b.storm);
     for (let a = 0; a < this.heroAttacks(ch) && monster.hp > 0; a++) {
+      let res;
       if (shooting) {
         // The arrow crosses the field; its number lands on impact. A second
         // shot follows a beat behind the first.
-        if (this.game.ammoCount() <= 0) { this.game.log(`${ch.name}'s quiver is empty.`, 'info'); break; }
-        this.game.spendAmmo();
-        audio.play('arrow');
-        const dur = this.emitArrow(c, foeC, a * 160);
-        this.fxDelay = dur;
+        if (this.game.quiverCount(ch) <= 0) { this.game.log(`${ch.name}'s quiver is empty.`, 'info'); break; }
+        res = this.shoot(c, foeC, a * 160);
+        // Rain of Arrows: every foe beside the target takes a shaft too.
+        if (rain) {
+          for (const other of this.monsters().filter(m => m !== foeC && this.dist(m.x, m.y, foeC.x, foeC.y) <= (rain.spread ?? 1))) {
+            if (this.game.quiverCount(ch) <= 0) { this.game.log(`The quiver runs dry mid-rain.`, 'info'); break; }
+            if (!this.losClear(c.x, c.y, other.x, other.y)) continue;
+            this.addFx(other.x, other.y, rain.name, '#d4a94e');
+            const r2 = this.shoot(c, other, a * 160 + 120);
+            if (r2.kill) this.slay(other.ref);
+          }
+        }
+      } else {
+        res = this.strike(c, foeC, verb);
       }
-      const res = this.strike(c, foeC, verb);
-      this.fxDelay = 0;
-      if (shooting && !res.hit && !res.immune) this.arrowsMissed = (this.arrowsMissed ?? 0) + 1;
       killed = killed || res.kill;
       crit = crit || res.crit;
       if (res.assassinate && res.kill) ch.counters.assassinateKills++;
+      if (res.kill && huntKills()) ch.counters.surgeKills++;
+    }
+    // Two blades: the off-hand swings once (or, surging, once per main-hand
+    // attack) at the style's penalty — never alongside a bow.
+    if (!shooting && ch.offhand && monster.hp > 0 && !(ch.timedBuffs ?? []).some(b => b.storm)) {
+      const swings = surging ? this.heroAttacks(ch) : 1;
+      const penalty = this.offhandPenaltyFor(ch);
+      for (let a = 0; a < swings && monster.hp > 0; a++) {
+        const res = this.offhandStrike(c, foeC, penalty);
+        killed = killed || res.kill;
+        if (res.kill && huntKills()) ch.counters.surgeKills++;
+      }
     }
     if (monster.hp <= 0) this.slay(monster);
+    // Volley (Hawk verb): a bow kill grants a free shot at another foe in
+    // range — the chain runs while kills and arrows last.
+    if (shooting && killed && hasVerb(this.game.data, ch, 'volley')) this.volleyChain(c);
     // Rampage: a kill (or, refined, a crit) with a melee weapon lets the
     // fury spill onto the next foe in reach.
     if (!ch.weapon.range && (killed || (crit && hasRefinement(this.game.data, ch, 'rampage_crits')))) {
@@ -658,8 +878,10 @@ export class Battle {
         overcast = true;
       }
       const v = overcast ? laneOf(data, ch).verb : null;
+      const spent = !!s.once_per_rest && !!ch.spentRest?.[s.id];
       return { ...s, cost, overcast, dc_bonus: v ? (v.dc_bonus ?? 1) : 0,
-        affordable: this.game.arena || ch.sp >= cost };
+        affordable: !spent && (this.game.arena || ch.sp >= cost),
+        description: spent ? `${s.description} (once per rest — spent; a night's rest returns it)` : s.once_per_rest ? `${s.description} (once per rest)` : s.description };
     });
     if (hasCapstone(data, ch, 'archmage') && !ch.spentRest?.archmage) {
       const capName = laneOf(data, ch).capstone.name ?? 'Archmage';
@@ -720,8 +942,52 @@ export class Battle {
       out.push({ kind: 'active', id: 'zealous_toggle', hint: v.name ?? 'Zealous Strike', name: `${v.name ?? 'Zealous Strike'}: ${ref.zealousOn ? 'ON — sheathe the fire' : 'OFF — let it burn'}`, cost: 0, affordable: true,
         description: `Free to flip. While burning: each landed melee hit spends ${v.cost ?? 3} SP for +${v.dice ?? '2d6'} divine damage and ${v.heal ?? '1d6'} self-healing.` });
     }
+    // Hunter's Surge (Wolf verb): a stance — each attack action spends SP so
+    // the off-hand keeps pace with the main hand.
+    if (hasVerb(this.game.data, ref, 'hunters_surge')) {
+      const v = lane.verb;
+      out.push({ kind: 'active', id: 'surge_toggle', hint: v.name ?? "Hunter's Surge", name: `${v.name ?? "Hunter's Surge"}: ${ref.surgeOn ? 'ON — let the blades rest' : 'OFF — both blades, blow for blow'}`, cost: 0, affordable: true,
+        description: `Free to flip. While burning: each attack action spends ${ref.packArmed ? 0 : v.cost ?? 2} SP and the off-hand attacks as many times as the main hand${ref.offhand ? '' : ' (needs a second blade in hand)'}.` });
+    }
+    // Shared Fortitude (Hearthstone verb): spell points become an ally's second wind.
+    if (hasVerb(this.game.data, ref, 'shared_fortitude')) {
+      const v = lane.verb;
+      const two = hasRefinement(this.game.data, ref, 'fortitude_two');
+      out.push({ kind: 'active', id: 'fortify', name: v.name ?? 'Shared Fortitude', cost: v.cost ?? 3, affordable: this.game.arena || ref.sp >= (v.cost ?? 3),
+        targeted: { kind: 'fortify', range: 6 },
+        description: `${v.cost ?? 3} SP: an ally gains ${v.dice ?? '2d8'} + your CON of absorbed damage for the battle${two ? ' — and the most wounded other ally beside them shares it' : ''}.` });
+    }
     const cap = lane?.capstone;
     if (cap && ref.level >= cap.level) {
+      if (cap.id === 'storm_of_blades') {
+        const minSp = cap.min_sp ?? 1;
+        out.push({ kind: 'active', id: 'storm_of_blades', name: cap.name ?? 'Storm of Blades', cost: Math.max(minSp, ref.sp), affordable: this.game.arena || ref.sp >= minSp,
+          description: `ALL remaining SP (${ref.sp}; needs ${minSp}+): for ${cap.rounds ?? 3} rounds every main-hand hit earns a free off-hand strike at no penalty, and every attack lands +${cap.dmg ?? 2} harder.` });
+      }
+      if (cap.id === 'rain_of_arrows') {
+        out.push({ kind: 'active', id: 'rain_of_arrows', name: cap.name ?? 'Rain of Arrows', cost: 0, affordable: !!ref.weapon?.range,
+          description: `${cap.rounds ?? 3} rounds: every shot also strikes each foe within ${cap.spread ?? 1} of its target (one arrow each) — and you cannot move.${ref.weapon?.range ? '' : ' Needs a bow in hand.'}` });
+      }
+      if (cap.id === 'whirling_verse') {
+        out.push({ kind: 'active', id: 'whirling_verse', name: cap.name ?? 'Whirling Verse', cost: 0, affordable: true,
+          description: `${cap.rounds ?? 3} rounds: every landed hit grants a free extra strike — every other song you keep up drains ${cap.drain_per_buff ?? 2} SP a round or falls silent.` });
+      }
+      if (cap.id === 'mirror_ward') {
+        out.push({ kind: 'active', id: 'mirror_ward', name: cap.name ?? 'Mirror Ward', cost: 0, affordable: true,
+          description: `${cap.rounds ?? 3} rounds: ${Math.round((cap.reflect ?? 0.5) * 100)}% of every melee wound is thrown back at its source — and you cannot move.` });
+      }
+      if (cap.id === 'mountains_heart') {
+        out.push({ kind: 'active', id: 'mountains_heart', name: cap.name ?? "Mountain's Heart", cost: 0, affordable: true,
+          description: `${cap.rounds ?? 3} rounds: every wound halved, no crit can land — your hit/damage bonus is nothing and you cannot move.` });
+      }
+      if (cap.id === 'deep_roots' && !ref.spentRest?.deep_roots) {
+        const minSp = cap.min_sp ?? 3;
+        const wards = this.shareableWards(ref);
+        out.push({ kind: 'active', id: 'deep_roots', name: cap.name ?? 'Aegis of the Deep Roots', cost: Math.max(minSp, ref.sp), affordable: wards.length > 0 && (this.game.arena || ref.sp >= minSp),
+          description: wards.length
+            ? `Once per rest — ALL remaining SP (${ref.sp}; needs ${minSp}+): ${wards.map(b => b.name).join(', ')} spread to the whole party for ${cap.rounds ?? 3} rounds.`
+            : `Once per rest — ALL remaining SP: every AC/save/resist ward on you spreads to the party. Nothing to share yet — raise a ward first.` });
+      }
       if (cap.id === 'rage') {
         out.push({ kind: 'active', id: 'rage', name: cap.name ?? 'Rage', cost: 0, affordable: true,
           description: `+${cap.hit ?? 2} hit, +${cap.dmg ?? 2} damage, ${cap.extra_attacks ?? 1} extra attack, ${cap.ac ?? -2} AC for ${cap.rounds ?? 3} rounds.` });
@@ -783,6 +1049,30 @@ export class Battle {
         out.push({ kind: 'active', id: 'sanctuary', name: ref.rite.abilityName, cost: 0, affordable: true,
           description: 'Once per battle, freely: until your next turn, no ally can be brought below 1 HP.' });
       }
+      if (rite.ability.id === 'pack_instinct' && !this.spentOnce(ref, 'pack_instinct')) {
+        out.push({ kind: 'active', id: 'pack_instinct', name: ref.rite.abilityName, cost: 0, affordable: true,
+          description: "Once per battle, freely: until your next turn, Hunter's Surge costs nothing and the off-hand swings without penalty." });
+      }
+      if (rite.ability.id === 'true_shot' && !this.spentOnce(ref, 'true_shot') && !ref.trueShotArmed) {
+        out.push({ kind: 'active', id: 'true_shot', name: ref.rite.abilityName, cost: 0, affordable: true,
+          description: 'Once per battle, free to arm: your next shot cannot miss and is a critical hit.' });
+      }
+      if (rite.ability.id === 'crescendo' && !this.spentOnce(ref, 'crescendo')) {
+        out.push({ kind: 'active', id: 'crescendo', name: ref.rite.abilityName, cost: 0, affordable: true,
+          description: 'Once per battle, freely: until your next turn, every Runic Riposte is an automatic critical hit.' });
+      }
+      if (rite.ability.id === 'unbroken_chord' && !this.spentOnce(ref, 'unbroken_chord')) {
+        out.push({ kind: 'active', id: 'unbroken_chord', name: ref.rite.abilityName, cost: 0, affordable: true,
+          description: 'Once per battle, freely: until your next turn, every Ward Surge costs nothing.' });
+      }
+      if (rite.ability.id === 'bedrock' && !this.spentOnce(ref, 'bedrock')) {
+        out.push({ kind: 'active', id: 'bedrock', name: ref.rite.abilityName, cost: 0, affordable: true,
+          description: 'Once per battle, freely: until your next turn, no blow can do you more than 1 damage.' });
+      }
+      if (rite.ability.id === 'hearthfire' && !this.spentOnce(ref, 'hearthfire')) {
+        out.push({ kind: 'active', id: 'hearthfire', name: ref.rite.abilityName, cost: 0, affordable: true,
+          description: `Once per battle, freely: every living ally gains ${ref.level} absorbed damage and +1 on every save for 3 rounds.` });
+      }
       if (rite.ability.id === 'judgment' && !this.spentOnce(ref, 'judgment')) {
         out.push({ kind: 'active', id: 'judgment', name: ref.rite.abilityName, cost: 0, affordable: true,
           targeted: { kind: 'judgment', range: 1 },
@@ -828,8 +1118,9 @@ export class Battle {
       return;
     }
     if (!s.affordable) {
-      this.addFx(c.x, c.y, 'not enough SP', '#9a94a8');
-      this.game.log(`${c.ref.name} lacks the spell points for ${s.name}.`, 'info');
+      const spent = s.once_per_rest && c.ref.spentRest?.[s.id];
+      this.addFx(c.x, c.y, spent ? 'spent — rest first' : 'not enough SP', '#9a94a8');
+      this.game.log(spent ? `${s.name} is spent until the party rests.` : `${c.ref.name} lacks the spell points for ${s.name}.`, 'info');
       return;
     }
     this.startCast(c, s);
@@ -858,6 +1149,27 @@ export class Battle {
       this.game.log(`${ref.name} ${ref.overcastOn ? `opens the channel wide — ${lane.verb.name ?? 'Overcast'} burns until doused` : `steadies the flow — ${lane.verb.name ?? 'Overcast'} rests`}.`, 'info');
       return;
     }
+    if (entry.id === 'surge_toggle') {
+      ref.surgeOn = !ref.surgeOn;
+      this.game.log(`${ref.name} ${ref.surgeOn ? `lets the hunt take over — ${lane.verb.name ?? "Hunter's Surge"} burns with every attack` : 'lets the blades rest'}.`, 'info');
+      return;
+    }
+    if (entry.id === 'pack_instinct') {
+      this.markSpent(ref, 'pack_instinct');
+      ref.packArmed = true;
+      audio.play('spell_buff');
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#e0c060');
+      this.game.log(`${ref.name} feels the pack at their back — until their next turn the surge is free and the off-hand true.`, 'good');
+      return;
+    }
+    if (entry.id === 'true_shot') {
+      this.markSpent(ref, 'true_shot');
+      ref.trueShotArmed = true;
+      audio.play('spell_buff');
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()} armed`, '#ffd24a');
+      this.game.log(`${ref.name} nocks ${entry.name} — the next arrow was always going to land.`, 'good');
+      return;
+    }
     if (entry.id === 'zealous_toggle') {
       ref.zealousOn = !ref.zealousOn;
       this.game.log(`${ref.name} ${ref.zealousOn ? `lets the faith burn — every landed blow will carry ${lane.verb.name ?? 'Zealous Strike'}` : 'banks the holy fire'}.`, 'info');
@@ -882,6 +1194,33 @@ export class Battle {
       audio.play('spell_arcane');
       this.addFx(c.x, c.y, `${entry.name.toUpperCase()} armed`, '#8fb8e8');
       this.game.log(`${ref.name} lets go of aim itself — the next blast will find EVERYONE.`, 'good');
+      return;
+    }
+    if (entry.id === 'crescendo' || entry.id === 'unbroken_chord' || entry.id === 'bedrock') {
+      this.markSpent(ref, entry.id);
+      ref[{ crescendo: 'crescendoArmed', unbroken_chord: 'chordArmed', bedrock: 'bedrock' }[entry.id]] = true;
+      audio.play(entry.id === 'bedrock' ? 'spell_buff' : 'spell_arcane');
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, entry.id === 'bedrock' ? '#b8a890' : '#e0c060');
+      this.game.log(entry.id === 'crescendo' ? `${ref.name} raises ${entry.name} — until their next turn, every riposte lands perfectly.`
+        : entry.id === 'unbroken_chord' ? `${ref.name} sings ${entry.name} — until their next turn, the ward costs nothing.`
+          : `${ref.name} becomes ${entry.name} — until their next turn, no blow can do more than 1.`, 'good');
+      return;
+    }
+    if (entry.id === 'hearthfire') {
+      this.markSpent(ref, 'hearthfire');
+      audio.play('spell_buff');
+      let n = 0;
+      for (const hc of this.heroes()) {
+        if (!hc.ref.alive || hc.ref === ref) continue;
+        hc.ref.timedBuffs = (hc.ref.timedBuffs ?? []).filter(b => b.name !== entry.name);
+        hc.ref.timedBuffs.push({ name: entry.name, hit: 0, dmg: 0, ac: 0, saves: 1, attacks: 0, rounds: 3, absorb: ref.level });
+        this.addFx(hc.x, hc.y, `+${ref.level} ward`, '#e0a060');
+        this.particleFx(hc.x, hc.y, 'sparkle', '#e0a060');
+        n++;
+      }
+      ref.counters.alliesFortified += n;
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#e0a060');
+      this.game.log(`${ref.name} kindles ${entry.name} — ${n} all${n === 1 ? 'y' : 'ies'} warmed: ${ref.level} absorbed damage and +1 saves for 3 rounds.`, 'good');
       return;
     }
     if (entry.id === 'sanctuary') {
@@ -946,6 +1285,84 @@ export class Battle {
       this.endHeroTurn();
       return;
     }
+    if (entry.id === 'storm_of_blades') {
+      const spent = this.game.arena ? Math.max(cap.min_sp ?? 1, ref.sp) : ref.sp;
+      if (!this.game.arena) ref.sp = 0;
+      audio.play('spell_buff');
+      ref.timedBuffs = ref.timedBuffs.filter(b => !b.storm);
+      ref.timedBuffs.push({ name: cap.name ?? 'Storm of Blades', hit: 0, dmg: cap.dmg ?? 2, ac: 0, saves: 0, attacks: 0, rounds: cap.rounds ?? 3, storm: true });
+      this.addFx(c.x, c.y, `${(cap.name ?? 'STORM OF BLADES').toUpperCase()}!`, '#e0c060');
+      this.game.log(`${ref.name} spends everything (${spent} SP) on ${cap.name ?? 'the Storm of Blades'} — two knives, ${cap.rounds ?? 3} rounds, no mercy.`, 'good');
+      this.endHeroTurn();
+      return;
+    }
+    if (entry.id === 'rain_of_arrows') {
+      if (!ref.weapon?.range) { this.game.log(`${cap.name ?? 'Rain of Arrows'} needs a bow in hand.`, 'info'); return; }
+      audio.play('arrow');
+      ref.timedBuffs = ref.timedBuffs.filter(b => !b.rain);
+      ref.timedBuffs.push({ name: cap.name ?? 'Rain of Arrows', hit: 0, dmg: 0, ac: 0, saves: 0, attacks: 0, rounds: cap.rounds ?? 3, rain: true, spread: cap.spread ?? 1, rooted: true });
+      this.addFx(c.x, c.y, `${(cap.name ?? 'RAIN OF ARROWS').toUpperCase()}!`, '#d4a94e');
+      this.game.log(`${ref.name} plants their feet and lets the ${cap.name ?? 'Rain of Arrows'} fall — every shot finds every foe beside its mark, for ${cap.rounds ?? 3} rounds.`, 'good');
+      this.endHeroTurn();
+      return;
+    }
+    if (entry.id === 'whirling_verse') {
+      audio.play('spell_buff');
+      ref.timedBuffs = ref.timedBuffs.filter(b => !b.verse);
+      ref.timedBuffs.push({ name: cap.name ?? 'Whirling Verse', hit: 0, dmg: 0, ac: 0, saves: 0, attacks: 0, rounds: cap.rounds ?? 3, verse: true, drain_per_buff: cap.drain_per_buff ?? 2 });
+      this.addFx(c.x, c.y, `${(cap.name ?? 'WHIRLING VERSE').toUpperCase()}!`, '#e0c060');
+      this.game.log(`${ref.name} begins ${cap.name ?? 'the Whirling Verse'} — every hit will earn another, and every other song will bleed spell points to keep pace.`, 'good');
+      this.endHeroTurn();
+      return;
+    }
+    if (entry.id === 'mirror_ward') {
+      audio.play('spell_arcane');
+      ref.timedBuffs = ref.timedBuffs.filter(b => b.name !== (cap.name ?? 'Mirror Ward'));
+      ref.timedBuffs.push({ name: cap.name ?? 'Mirror Ward', hit: 0, dmg: 0, ac: 0, saves: 0, attacks: 0, rounds: cap.rounds ?? 3, reflect: cap.reflect ?? 0.5, rooted: true });
+      this.addFx(c.x, c.y, `${(cap.name ?? 'MIRROR WARD').toUpperCase()}!`, '#cfe6ff');
+      this.game.log(`${ref.name} raises ${cap.name ?? 'the Mirror Ward'} — what strikes them strikes back, and they will not move.`, 'good');
+      this.endHeroTurn();
+      return;
+    }
+    if (entry.id === 'mountains_heart') {
+      audio.play('spell_buff');
+      ref.timedBuffs = ref.timedBuffs.filter(b => b.name !== (cap.name ?? "Mountain's Heart"));
+      ref.timedBuffs.push({ name: cap.name ?? "Mountain's Heart", hit: 0, dmg: 0, ac: 0, saves: 0, attacks: 0, rounds: cap.rounds ?? 3, halve: true, crit_immune: true, no_hit_bonus: true, rooted: true });
+      this.addFx(c.x, c.y, `${(cap.name ?? "MOUNTAIN'S HEART").toUpperCase()}!`, '#b8a890');
+      this.game.log(`${ref.name} becomes ${cap.name ?? "the Mountain's Heart"} — a wall, not a warrior, for ${cap.rounds ?? 3} rounds.`, 'good');
+      this.endHeroTurn();
+      return;
+    }
+    if (entry.id === 'deep_roots') {
+      const wards = this.shareableWards(ref);
+      if (!wards.length) {
+        this.addFx(c.x, c.y, 'nothing to share', '#9a94a8');
+        this.game.log(`${ref.name} has no ward raised to share — sing one first.`, 'info');
+        return; // the moment isn't wasted
+      }
+      ref.spentRest.deep_roots = true;
+      const spent = ref.sp;
+      if (!this.game.arena) ref.sp = 0;
+      audio.play('spell_buff');
+      let n = 0;
+      for (const hc of this.heroes()) {
+        if (!hc.ref.alive || hc.ref === ref) continue;
+        for (const b of wards) {
+          const name = `${b.name} (${cap.name ?? 'Deep Roots'})`;
+          hc.ref.timedBuffs = (hc.ref.timedBuffs ?? []).filter(x => x.name !== name);
+          hc.ref.timedBuffs.push({ name, hit: 0, dmg: 0, ac: b.ac ?? 0, saves: b.saves ?? 0, attacks: 0, rounds: cap.rounds ?? 3,
+            resist: b.resist ?? null, reduce: b.reduce ?? 0, halve: !!b.halve, immune_conditions: b.immune_conditions ?? false });
+        }
+        this.particleFx(hc.x, hc.y, 'sparkle', '#e0a060');
+        this.addFx(hc.x, hc.y, 'the roots hold', '#e0a060');
+        n++;
+      }
+      ref.counters.alliesFortified += n;
+      this.addFx(c.x, c.y, `${(cap.name ?? 'DEEP ROOTS').toUpperCase()}!`, '#e0a060');
+      this.game.log(`${ref.name} pours everything (${spent} SP) into ${cap.name ?? 'the Deep Roots'} — ${wards.map(b => b.name).join(', ')} spread${wards.length === 1 ? 's' : ''} to the whole party for ${cap.rounds ?? 3} rounds.`, 'good');
+      this.endHeroTurn();
+      return;
+    }
     if (entry.id === 'rage') {
       audio.play('spell_buff');
       ref.timedBuffs = ref.timedBuffs.filter(b => b.name !== (cap.name ?? 'Rage'));
@@ -995,6 +1412,13 @@ export class Battle {
     this.endHeroTurn();
   }
 
+  // Deep Roots: the defensive buffs on the dwarf worth sharing — anything
+  // with AC, saves, resistance, or damage reduction (not the capstone's own
+  // wall, which is theirs alone).
+  shareableWards(ref) {
+    return (ref.timedBuffs ?? []).filter(b => !b.no_hit_bonus && ((b.ac ?? 0) > 0 || (b.saves ?? 0) > 0 || b.resist || (b.reduce ?? 0) > 0 || b.halve));
+  }
+
   // The Rite's Aegis: while raised, a blow aimed at any OTHER ally lands on
   // the knight at half force instead.
   aegisGuard(target) {
@@ -1011,7 +1435,18 @@ export class Battle {
     // Scrolls (magic v3): an arcane caster reads the words off the page —
     // one cast, no SP, the scroll burns. Others see why they can't.
     const scrolls = this.game.readableScrolls(c.ref).map(sc => ({ ...sc, kind: 'scroll', usable: !sc.reason }));
-    return [...potions, ...scrolls];
+    // Restocking the quiver mid-fight: a full turn's work (the arena's is bottomless).
+    const out = [...potions, ...scrolls];
+    const ch = c.ref;
+    const ammo = this.game.ammoId();
+    if (ammo && ch.weapon?.range && !this.game.arena) {
+      const cap = this.game.quiverCap(ch), have = this.game.quiverCount(ch), spare = this.game.ammoCount();
+      const room = cap - have;
+      const usable = room > 0 && spare > 0;
+      out.push({ id: '__restock', kind: 'restock', usable, count: spare,
+        def: { name: 'Restock the quiver', description: !room ? `The quiver is full (${have}/${cap}).` : !spare ? `The pouch holds no spare arrows.` : `Move ${Math.min(room, spare)} arrows from the pouch into the quiver (${have}/${cap}) — takes the turn.` } });
+    }
+    return out;
   }
 
   openItems() {
@@ -1028,6 +1463,15 @@ export class Battle {
     const c = this.active();
     const it = this.usableItems(c)[n - 1];
     if (!it) return;
+    if (it.kind === 'restock') {
+      if (!it.usable) { this.game.log(it.def.description, 'info'); return; }
+      const moved = this.game.restockQuiver(c.ref);
+      this.mode = 'move';
+      this.addFx(c.x, c.y, `+${moved} arrows`, '#d4a94e');
+      this.game.log(`${c.ref.name} refills the quiver from the pouch (+${moved} → ${c.ref.quiver}/${this.game.quiverCap(c.ref)}) — it takes the turn.`, 'info');
+      this.endHeroTurn();
+      return;
+    }
     if (it.kind === 'scroll') {
       if (!it.usable) { this.game.log(it.reason, 'info'); return; }
       this.mode = 'move';
@@ -1085,6 +1529,13 @@ export class Battle {
     }
     this.mode = 'move';
     this.addFx(c.x, c.y, `${it.def.name} ready`, '#d4a94e');
+    // Quickdraw (a Ranger knack): so many swaps per battle cost nothing.
+    const free = giftOf(ch)?.free_swaps ?? 0;
+    if (free > (ch.freeSwapsUsed ?? 0)) {
+      ch.freeSwapsUsed = (ch.freeSwapsUsed ?? 0) + 1;
+      this.game.log(`${ch.name} readies the ${it.def.name.toLowerCase()} in a blink — ${giftOf(ch).name}: no turn spent.`, 'good');
+      return;
+    }
     this.game.log(`${ch.name} readies the ${it.def.name.toLowerCase()} — the swap takes the turn.`, 'info');
     this.endHeroTurn();
   }
@@ -1173,6 +1624,38 @@ export class Battle {
         this.addFx(c.x, c.y, 'jammed!', '#9a94a8');
         this.game.log(`${c.ref.name}'s trap mechanism jams — the moment is wasted.`, 'info');
       }
+      this.endHeroTurn();
+      return;
+    }
+
+    // Shared Fortitude (Hearthstone verb): an ally's second wind, bought with SP.
+    if (p.kind === 'fortify') {
+      const hc = this.heroAt(x, y);
+      if (!hc) return;
+      if (hc === c) { this.game.log(`${c.ref.name}'s fortitude is for others — aim at an ally.`, 'info'); return; }
+      this.cancelTargeting();
+      const v = laneOf(this.game.data, c.ref).verb;
+      const cost = v.cost ?? 3;
+      if (!this.game.arena) c.ref.sp = Math.max(0, c.ref.sp - cost);
+      audio.play('spell_buff');
+      const targets = [hc];
+      if (hasRefinement(this.game.data, c.ref, 'fortitude_two')) {
+        const other = this.heroes().filter(h => h !== hc && h !== c && h.ref.alive)
+          .sort((a, b) => a.ref.hp / a.ref.maxHp - b.ref.hp / b.ref.maxHp)[0];
+        if (other) targets.push(other);
+      }
+      const con = abilityMod(c.ref.abilities.con);
+      for (const t of targets) {
+        const base = Math.max(1, roll(v.dice ?? '2d8'));
+        const pool = Math.max(1, base + con);
+        t.ref.timedBuffs = (t.ref.timedBuffs ?? []).filter(b => b.name !== (v.name ?? 'Shared Fortitude'));
+        t.ref.timedBuffs.push({ name: v.name ?? 'Shared Fortitude', hit: 0, dmg: 0, ac: 0, saves: 0, attacks: 0, rounds: null, absorb: pool });
+        c.ref.counters.alliesFortified++;
+        this.addFx(t.x, t.y, `+${pool} ward`, '#e0a060');
+        this.particleFx(t.x, t.y, 'sparkle', '#e0a060');
+        this.game.log(`${v.name ?? 'Shared Fortitude'}: ${t.ref.name} gains ${pool} absorbed damage (${v.dice ?? '2d8'} → ${base}${con ? ` ${con > 0 ? '+' : '−'}${Math.abs(con)} CON` : ''}) for the battle${targets.length > 1 && t === targets[1] ? ' — sheltered too' : ''}.`, 'good');
+      }
+      this.game.log(`${c.ref.name} spends ${this.game.arena ? 0 : cost} SP on ${v.name ?? 'Shared Fortitude'}.`, 'info');
       this.endHeroTurn();
       return;
     }
@@ -1363,6 +1846,7 @@ export class Battle {
     if (s.scroll) { this.game.consumeScroll(s.scroll); return; } // the page, not the well
     if (s.free) { ref.finalWordArmed = false; this.markSpent(ref, 'final_word'); }
     if (s.overcast) ref.counters.overcasts++; // the Sorcerer's tracked deed
+    if (s.once_per_rest) (ref.spentRest ??= {})[s.id] = true; // Circle of Endurance and kin
     if ((s.archmage || s.free) && !(ref.prepared ?? []).includes(s.id)) {
       ref.counters.bookCasts++; // a page read outside today's preparation
     }
@@ -1647,7 +2131,13 @@ export class Battle {
     if (s.attacks) bits.push(`+${s.attacks} attack${s.attacks > 1 ? 's' : ''}`);
     if (s.bonus_damage) bits.push(`+${s.bonus_damage.dice} ${s.bonus_damage.element} on every hit`);
     if (s.resist) bits.push(s.resist === 'all' ? 'every element halved' : `${s.resist.join('/')} halved`);
-    if (s.immune_conditions) bits.push('no affliction can land');
+    if (s.immune_conditions === true) bits.push('no affliction can land');
+    else if (Array.isArray(s.immune_conditions)) bits.push(`immune to ${s.immune_conditions.map(id => this.game.conditionDef(id)?.name?.toLowerCase() ?? id).join('/')}`);
+    if (s.reduce) bits.push(`every blow loses ${s.reduce}`);
+    if (s.halve) bits.push('every wound halved');
+    if (s.reflect) bits.push(`${Math.round(s.reflect * 100)}% of melee wounds thrown back`);
+    if (s.lifesteal) bits.push(`${Math.round(s.lifesteal * 100)}% of weapon damage heals you`);
+    if (s.auto_hit) bits.push('attacks cannot miss');
     if (s.hidden) bits.push('unseen');
     const rounds = s.rounds ? s.rounds + m.extraRounds : null;
     let absorbText = '';
@@ -1658,8 +2148,11 @@ export class Battle {
       ch.timedBuffs.push({
         name: s.name, hit: s.hit ?? 0, dmg: s.dmg ?? 0, ac, saves: s.saves ?? 0, attacks: s.attacks ?? 0,
         rounds, absorb, bonus_damage: s.bonus_damage ?? null, resist: s.resist ?? null,
-        immune_conditions: !!s.immune_conditions,
+        immune_conditions: s.immune_conditions ?? false,
+        reduce: s.reduce ?? 0, halve: !!s.halve, reflect: s.reflect ?? 0, lifesteal: s.lifesteal ?? 0, auto_hit: !!s.auto_hit,
       });
+      // A Hearthstone dwarf's tracked deed: every ally sheltered by a verse.
+      if (ch !== c.ref && laneOf(this.game.data, c.ref)?.rite?.tracked === 'alliesFortified') c.ref.counters.alliesFortified++;
       if (s.hidden) { ch.hidden = true; audio.play('vanish'); }
       this.fxOn(ch, s.name, s.fx?.color ?? '#d4a94e');
       const tc = this.combatants.find(cc => cc.ref === ch);
@@ -1754,7 +2247,7 @@ export class Battle {
 
   // A hero's AC in the moment: sheet AC, timed buffs (Rage's recklessness),
   // and Bulwark — a knight standing beside you turns blades aside.
-  heroAcOf(hc) {
+  heroAcOf(hc, m = null) {
     let ac = hc.ref.ac + timedSum(hc.ref, 'ac') + this.game.condStat(hc.ref, 'ac');
     for (const other of this.heroes()) {
       if (other === hc || !other.ref.alive) continue;
@@ -1764,7 +2257,36 @@ export class Battle {
         ac += lane.capstone.aura_ac ?? 1;
       }
     }
+    for (const [v] of this.acExtras(hc.ref, m)) ac += v;
     return ac;
+  }
+
+  // Named AC parts that depend on WHO is swinging: Ironward (the Stoneshaper's
+  // creation gift, vs one element) and a Ward Surge sung over this blow.
+  acExtras(ref, m) {
+    const parts = [];
+    const gift = ref.cls.creation_pick?.options.find(o => o.id === ref.gift?.id);
+    if (gift?.ac_vs_element && m?.element && m.element === ref.gift.element) parts.push([gift.ac_vs_element, `${gift.name} vs ${m.element}`]);
+    if (this.wardBonus && this.wardBonus.target === ref) parts.push([this.wardBonus.ac, this.wardBonus.name]);
+    return parts;
+  }
+
+  // Ward Surge (Wardsong verb): who could sing a ward over this blow, and
+  // what it costs them. The target first; at 18, a singer standing beside.
+  wardSurgeOffer(target) {
+    const tc = this.combatants.find(cc => cc.ref === target);
+    if (!tc) return null;
+    const candidates = [tc, ...this.heroes().filter(h => h !== tc && Math.abs(h.x - tc.x) + Math.abs(h.y - tc.y) === 1)];
+    for (const hc of candidates) {
+      const s = hc.ref;
+      if (!s.alive || !hasVerb(this.game.data, s, 'ward_surge')) continue;
+      if (hc !== tc && !hasRefinement(this.game.data, s, 'ward_surge_allies')) continue;
+      const v = laneOf(this.game.data, s).verb;
+      const cost = s.chordArmed ? 0 : (v.cost ?? 2);
+      if (!this.game.arena && s.sp < cost) continue;
+      return { singer: s, cost, ac: v.ac ?? 4, name: v.name ?? 'Ward Surge' };
+    }
+    return null;
   }
 
   // A living shield-brother who could take this blow instead (level-10 verb).
@@ -1775,12 +2297,33 @@ export class Battle {
 
   monsterAttack(m, target) {
     const tc = this.combatants.find(cc => cc.ref === target);
-    const ac = tc?.kind === 'hero' ? this.heroAcOf(tc) : target.ac;
+    // Ward Surge: BEFORE the die is cast, a Wardsong singer may buy a ward
+    // over this one blow — the world waits on a Y/N (like the Stand).
+    if (tc?.kind === 'hero' && !this.fleeing && !this.surgeDone) {
+      const offer = this.wardSurgeOffer(target);
+      if (offer) {
+        const baseAc = this.heroAcOf(tc, m);
+        this.pendingReaction = { kind: 'ward', m, target, ...offer, baseAc, toHit: m.to_hit + this.game.condStat(m, 'hit') };
+        this.mode = 'reaction';
+        return;
+      }
+    }
+    this.surgeDone = false;
+    const extras = tc?.kind === 'hero' ? this.acExtras(target, m) : [];
+    const ac = tc?.kind === 'hero' ? this.heroAcOf(tc, m) : target.ac;
+    const surge = this.wardBonus?.target === target ? this.wardBonus : null;
+    this.wardBonus = null; // spent on this blow, hit or miss
+    if (surge) this.surgeSave = { target, ac: surge.ac }; // the ward guards the save too
     const die = d20();
     const hitCond = this.game.condStat(m, 'hit'), dmgCond = this.game.condStat(m, 'dmg');
     const condName = hitCond || dmgCond ? this.game.condParts(m, hitCond ? 'hit' : 'dmg').map(([, n]) => n).join(' & ') : '';
     const toHit = m.to_hit + hitCond;
-    const hitText = `d20 ${die} +${m.to_hit}${hitCond ? ` ${hitCond > 0 ? '+' : '−'}${Math.abs(hitCond)} ${condName}` : ''} = ${die + toHit} vs AC ${ac}`;
+    const hitText = `d20 ${die} +${m.to_hit}${hitCond ? ` ${hitCond > 0 ? '+' : '−'}${Math.abs(hitCond)} ${condName}` : ''} = ${die + toHit} vs AC ${ac}${extras.length ? ` (${this.fmtParts(extras).trim()})` : ''}`;
+    if (surge && die + toHit < ac && die + toHit >= ac - surge.ac) {
+      // The ward alone turned it — the singer's tracked deed.
+      surge.singer.counters.wardDeflects++;
+      this.fxOn(target, `${surge.name} turns it!`, '#9fc8ff');
+    }
     if (die + toHit >= ac) {
       const dmg = Math.max(1, roll(m.damage) + dmgCond);
       this.lastMonsterRoll = `${hitText}${dmgCond ? ` · ${dmgCond > 0 ? '+' : '−'}${Math.abs(dmgCond)} damage ${condName}` : ''}`;
@@ -1836,24 +2379,83 @@ export class Battle {
     const p = passiveOf(this.game.data, target);
     const braced = p?.id === 'braced_stance' && this.game.hasShield(target) ? (p.reduce ?? 1) : 0;
     if (braced) dmg = Math.max(0, dmg - braced);
-    const bits = [this.lastMonsterRoll, ...drank, braced ? `shield turns ${braced} aside` : ''].filter(Boolean);
+    // Granite Skin (Bulwark): every un-elemental blow loses a point.
+    const granite = p?.id === 'granite_skin' && !m.element ? (p.reduce ?? 1) : 0;
+    if (granite) dmg = Math.max(0, dmg - granite);
+    // Heart of Granite and kin: flat reduction; Avatar of Stone / Mountain's
+    // Heart / Warden's Aria: halved; Bedrock (the Rite): never more than 1.
+    const hard = [];
+    for (const b of target.timedBuffs ?? []) {
+      if (b.reduce > 0 && dmg > 0) { const cut = Math.min(b.reduce, dmg); dmg -= cut; hard.push(`${b.name} turns ${cut} aside`); }
+    }
+    const halver = (target.timedBuffs ?? []).find(b => b.halve);
+    if (halver && dmg > 1) { const was = dmg; dmg = Math.ceil(dmg / 2); hard.push(`${halver.name} halves ${was} → ${dmg}`); }
+    if (target.bedrock && dmg > 1) { hard.push(`${target.rite?.abilityName ?? 'Bedrock'}: ${dmg} → 1`); dmg = 1; }
+    const bits = [this.lastMonsterRoll, ...drank, braced ? `shield turns ${braced} aside` : '', granite ? `${passiveName(p, 'Granite Skin')} turns ${granite} aside` : '', ...hard].filter(Boolean);
     const rollText = bits.join(' · ');
     this.lastMonsterRoll = null; // redirected blows (Aegis, the Stand) skip the roll text next time
     audio.play('melee_hit');
     if (dmg <= 0) {
       this.fxOn(target, 'blocked', '#9a94a8');
-      this.game.log(`The ${m.name} strikes ${target.name} — ${drank.length ? 'the ward' : 'the shield'} takes it all${rollText ? ` (${rollText})` : ''}.`);
+      this.game.log(`The ${m.name} strikes ${target.name} — ${drank.length ? 'the ward' : granite || hard.length ? 'the stone' : 'the shield'} takes it all${rollText ? ` (${rollText})` : ''}.`);
+      this.riposte(m, target);
       return;
     }
     target.hp -= dmg;
     this.wake(target);
     this.fxOn(target, `-${dmg}`, '#ff6a4a');
     this.game.log(`The ${m.name} strikes ${target.name} for ${dmg} damage${rollText ? ` (${rollText})` : ''}!`);
+    // Mirror Ward / Bastion Veil: a share of the wound flies back at its source.
+    const mirror = (target.timedBuffs ?? []).filter(b => b.reflect > 0).sort((a, b) => b.reflect - a.reflect)[0];
+    if (mirror && m.hp > 0) {
+      const back = Math.max(1, Math.floor(dmg * mirror.reflect));
+      m.hp -= back;
+      this.wake(m);
+      this.fxOn(m, `-${back} reflected`, '#9fc8ff');
+      this.game.log(`${mirror.name} throws ${back} of it back at the ${m.name}!`, 'good');
+      if (laneOf(this.game.data, target)?.rite?.tracked === 'wardDeflects') target.counters.wardDeflects++;
+      if (m.hp <= 0) this.slay(m);
+    }
     if (target.hp <= 0) {
-      this.downHero(target);
+      this.downHero(target, { attack: true });
     } else if (m.inflicts) {
       const tc = this.combatants.find(cc => cc.ref === target);
       if (tc) this.tryInflict(tc, m.inflicts.condition, m.inflicts.rounds, m.inflicts.dc);
+    }
+    this.riposte(m, target);
+  }
+
+  // Runic Riposte (Bladesong verb): a monster's blow that lands on the
+  // singer is answered at once with a free strike. At 18, blows on an ally
+  // standing beside them are answered too. Never while fleeing; never from
+  // inside another riposte; a bow can't riposte.
+  riposte(m, victim) {
+    if (this.fleeing || this.riposting || m.hp <= 0 || !victim.alive) return;
+    const mc = this.combatants.find(cc => cc.ref === m);
+    const vc = this.combatants.find(cc => cc.ref === victim);
+    if (!mc || !vc) return;
+    const adjacent = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
+    let rc = null;
+    if (hasVerb(this.game.data, victim, 'runic_riposte') && !victim.weapon?.range && adjacent(vc, mc)) rc = vc;
+    else {
+      rc = this.heroes().find(h => h !== vc && h.ref.alive && !h.ref.weapon?.range
+        && hasVerb(this.game.data, h.ref, 'runic_riposte') && hasRefinement(this.game.data, h.ref, 'riposte_allies')
+        && adjacent(h, vc) && adjacent(h, mc)) ?? null;
+    }
+    if (!rc) return;
+    const ch = rc.ref;
+    const verb = laneOf(this.game.data, ch).verb;
+    this.riposting = true;
+    this.addFx(rc.x, rc.y, `${(verb.name ?? 'RIPOSTE').toUpperCase()}!`, '#e0c060');
+    this.game.log(`${verb.name ?? 'Runic Riposte'}! ${ch.name} answers the ${m.name}${rc !== vc ? ` for ${victim.name}` : ''}.`, 'combat');
+    audio.play('melee_hit');
+    if (ch.crescendoArmed) this.forceCrit = true;
+    const res = this.strike(rc, mc, 'ripostes');
+    this.forceCrit = false;
+    this.riposting = false;
+    if (res.kill) {
+      ch.counters.riposteKills++;
+      this.slay(m);
     }
   }
 
@@ -1863,6 +2465,23 @@ export class Battle {
     if (!r) return;
     this.pendingReaction = null;
     this.mode = 'move';
+    if (r.kind === 'ward') {
+      if (accept) {
+        if (!this.game.arena) r.singer.sp = Math.max(0, r.singer.sp - r.cost);
+        this.wardBonus = { target: r.target, ac: r.ac, name: r.name, singer: r.singer };
+        audio.play('spell_buff');
+        this.fxOn(r.target, `${r.name}! +${r.ac} AC`, '#9fc8ff');
+        this.game.log(`${r.singer.name} sings ${r.name} over ${r.target === r.singer ? 'themself' : r.target.name} (${r.cost} SP): +${r.ac} AC and saves against this blow.`, 'good');
+      } else {
+        this.game.log(`${r.singer.name} lets the blow come as it will.`, 'info');
+      }
+      this.surgeDone = true;   // no second offer for the same swing
+      this.monsterAttack(r.m, r.target);
+      if (this.pendingReaction) return; // the Stand asks next — wait again
+      if (this.checkEnd()) return;
+      this.nextTurn();
+      return;
+    }
     if (accept) {
       this.lastMonsterRoll = null; // the blow never lands as rolled
       const g = r.guardian;
@@ -1875,7 +2494,7 @@ export class Battle {
       this.fxOn(g, cost > 0 ? `-${cost}` : 'blocked', '#d4a94e');
       this.game.log(`${g.name} throws themself before the blow meant for ${r.target.name}${cost > 0 ? ` — ${cost} damage taken` : ' — and shrugs it off'}!`, 'good');
       g.hp -= cost;
-      if (g.hp <= 0) this.downHero(g);
+      if (g.hp <= 0) this.downHero(g, { attack: true });
     } else {
       this.applyMonsterHit(r.m, r.target, r.dmg);
     }
@@ -1887,7 +2506,7 @@ export class Battle {
   // Sanctuary holds the line first; then a Cleric's Mercy catches the fall
   // (a free reaction, every time — limited only by allies actually falling).
   // Returns true if the hero truly goes down.
-  downHero(ref) {
+  downHero(ref, opts = {}) {
     const data = this.game.data;
     const sc = this.sanctuary;
     if (sc && sc.c.ref.alive) {
@@ -1895,6 +2514,26 @@ export class Battle {
       this.fxOn(ref, 'SANCTUARY!', '#7fd4c8');
       this.game.log(`${ref.name} is struck to the very edge — and ${sc.c.ref.rite?.abilityName ?? 'Sanctuary'} refuses the fall. 1 HP.`, 'good');
       return false;
+    }
+    // Unyielding (Bulwark verb): a BLOW that would drop the dwarf to 0 leaves
+    // them at 1 — uncapped, per the doc. At 18 an ally beside them is caught
+    // too. Poison and spellfire are not blows.
+    if (opts.attack) {
+      const rc = this.combatants.find(cc => cc.ref === ref);
+      let stone = null;
+      if (hasVerb(data, ref, 'unyielding')) stone = ref;
+      else if (rc) {
+        stone = this.heroes().find(h => h.ref !== ref && h.ref.alive && hasVerb(data, h.ref, 'unyielding')
+          && hasRefinement(data, h.ref, 'unyielding_allies') && Math.abs(h.x - rc.x) + Math.abs(h.y - rc.y) === 1)?.ref ?? null;
+      }
+      if (stone) {
+        const verb = laneOf(data, stone).verb;
+        ref.hp = 1;
+        stone.counters.unyieldingSaves++;
+        this.fxOn(ref, `${(verb.name ?? 'UNYIELDING').toUpperCase()}!`, '#b8a890');
+        this.game.log(`${ref.name} should have fallen — ${stone === ref ? `but ${verb.name ?? 'Unyielding'} holds them at 1 HP` : `but ${stone.name}'s ${verb.name ?? 'Unyielding'} holds them at 1 HP`}.`, 'good');
+        return false;
+      }
     }
     ref.hp = 0;
     const cleric = this.heroes().map(h => h.ref).find(r =>
@@ -2000,12 +2639,18 @@ export class Battle {
   // that missed (items.json ranged.recover_misses) come back to the quiver.
   recoverArrows() {
     const id = this.game.ammoId();
-    const missed = this.arrowsMissed ?? 0;
-    if (!id || !missed) return;
-    const back = Math.floor(missed * (this.game.rangedRules().recover_misses ?? 0.5));
-    if (back <= 0) return;
-    const got = this.game.addItem(id, back);
-    if (got > 0) this.game.log(`The party gathers ${got} arrow${got > 1 ? 's' : ''} from the field.`, 'good');
+    if (!id || !this.arrowsMissed) return;
+    for (const [ch, missed] of this.arrowsMissed) {
+      const all = !!giftOf(ch)?.recover_all; // Fletcher: every shaft comes home
+      const back = all ? missed : Math.floor(missed * (this.game.rangedRules().recover_misses ?? 0.5));
+      if (back <= 0) continue;
+      // The shooter's own quiver first; what won't fit goes to the pouch.
+      const cap = this.game.quiverCap(ch);
+      const toQuiver = ch.weapon?.range ? Math.max(0, Math.min(back, cap - (ch.quiver ?? 0))) : 0;
+      ch.quiver = (ch.quiver ?? 0) + toQuiver;
+      const pouch = back - toQuiver > 0 ? this.game.addItem(id, back - toQuiver) : 0;
+      this.game.log(`${ch.name} gathers ${toQuiver + pouch} arrow${toQuiver + pouch === 1 ? '' : 's'} from the field${toQuiver ? ` (quiver ${ch.quiver}/${cap})` : ''}.`, 'good');
+    }
   }
 
   stripBattleConditions() {
@@ -2021,7 +2666,16 @@ export class Battle {
       ch.twinArmed = false;
       ch.maelstromArmed = false;
       ch.finalWordArmed = false;
+      ch.crescendoArmed = false;
+      ch.chordArmed = false;
+      ch.bedrock = false;
+      ch.surgeOn = false;
+      ch.packArmed = false;
+      ch.trueShotArmed = false;
+      ch.freeSwapsUsed = 0;
     }
+    this.wardBonus = null;
+    this.surgeSave = null;
   }
 
   flee() {

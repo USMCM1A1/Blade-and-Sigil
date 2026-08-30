@@ -1,5 +1,5 @@
 {
-  "_comment": "Playable races, from the Blade & Sigil design doc. 'ability_bonus' adds to the rolled score. 'save_bonus' adds to all saving throws (the dwarven trait). 'detect_bonus' adds flat % to secret-door/trap detection (the wood-elf trait; the doc doesn't give a number — 10 is a proposal, tune freely).",
+  "_comment": "Playable races, from the Blade & Sigil design doc. 'ability_bonus' adds to the rolled score. 'save_bonus' adds to all saving throws (the dwarven trait). 'detect_bonus' adds flat % to secret-door/trap detection (the wood-elf trait; the doc doesn't give a number — 10 is a proposal, tune freely). | HALF-ELF (Ranger doc v1, 2026-08-29): 'floating_bonus': 1 = +1 to ONE ability the player picks at creation (party.json: \"bonus_ability\": \"dex\"); detect_bonus 5 is the doc's 'lesser knack' proposal.",
   "races": {
     "human": {
       "name": "Human",
@@ -49,6 +49,16 @@
         "Bonus to all saves"
       ],
       "save_bonus": 2
+    },
+    "half_elf": {
+      "name": "Half-Elf",
+      "ability_bonus": {},
+      "floating_bonus": 1,
+      "traits": [
+        "+1 to any one ability (your choice)",
+        "A lesser knack for secret doors"
+      ],
+      "detect_bonus": 5
     }
   }
 }

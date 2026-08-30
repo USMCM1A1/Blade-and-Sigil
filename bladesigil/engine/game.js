@@ -4,8 +4,8 @@ import { roll, d20, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
 import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
-import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier } from './progression.js';
-import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool } from './magic.js';
+import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement } from './progression.js';
+import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
 
 // Itemization v2: friendly boot-time validation for the new item fields.
@@ -78,6 +78,7 @@ export class Game {
     this.refreshChoices();  // pre-leveled heroes (party.json test path) owe theirs at once
     this.enterTown(true);   // Novamagus is home: every run starts here
     this.log(`The party pools its purses: ${this.gold} gold.`, 'gold');
+    this.refillQuivers(true);
   }
 
   // ---- Progression choices (v2 lanes) ----
@@ -145,6 +146,10 @@ export class Game {
       if (model === 'spellbook') {
         refreshSpellbook(this.data, ch);
         this.log(`${ch.name} keeps the book — ${ch.spellbook.length} spells inked, ${preparedSlots(this.data, ch)} prepared at a time (re-pick at any rest), and every scroll found is a page to be.`, 'good');
+      } else if (model === 'lane') {
+        // The half-casters' fixed list: the lane's verses open as their levels do.
+        const names = laneSpells(this.data, ch).filter(sp => sp.level <= maxSpellLevel(ch.level)).map(sp => sp.name);
+        this.log(`${ch.name}'s ${lane.name} opens its verses: ${names.join(', ')} — the rest arrive as each spell level does.`, 'good');
       } else if (model === 'known') {
         // The Raw Gift: the book is set aside. Its pages may still be
         // chosen as bloodline (spellPicksOwed offers the former book).
@@ -155,6 +160,12 @@ export class Game {
         ch.prepFresh = false;
         this.log(`${ch.name} closes the spellbook for the last time — the magic runs in the blood now: fewer spells, deeper wells. Choose them (the old pages may be chosen too).`, 'good');
       }
+    } else if (choice.type === 'favored') {
+      // Favored Enemy: a new family at +1, or a known one deepened (capped).
+      ch.favored ??= {};
+      ch.favored[value] = Math.min(ch.cls.favored_enemy?.cap ?? 3, (ch.favored[value] ?? 0) + 1);
+      ch.favoredPicks = (ch.favoredPicks ?? 0) + 1;
+      this.log(`${ch.name} knows the ${value} now — favored enemy, +${ch.favored[value]} to hit and damage against them.`, 'good');
     } else if (choice.type === 'focus') {
       ch.focusType = value;
       this.log(`${ch.name}'s hands know the ${value.replace('_', ' ')} now — Weapon Focus (+1 damage with it).`, 'good');
@@ -306,6 +317,7 @@ export class Game {
     const price = this.data.town.inn.price;
     if (this.gold < price) { this.log(`A night at the inn costs ${price} gold — the party cannot pay.`, 'info'); return false; }
     this.gold -= price;
+    this.refillQuivers();
     for (const ch of this.party) {
       if (!ch.alive) continue;
       ch.hp = ch.maxHp;
@@ -367,6 +379,34 @@ export class Game {
   // A hero's appearance: creation saves the full {sprite, portrait} object,
   // while party.json may say just "look": "m1" (m1/m2/f1/f2) — the friendly
   // form, expanded to the generated-art paths here.
+  // The level-1 gift a class offers at creation (classes.json
+  // creation_pick). party.json may name it as "gift": "stonespeak" or
+  // {"id": "ironward", "element": "fire"}; a class with a pick and no gift
+  // named simply takes the first option (premade parties, test parties).
+  resolveGift(def, cls) {
+    const pick = cls.creation_pick;
+    if (!pick) return null;
+    const raw = def.gift == null ? { id: pick.options[0].id } : typeof def.gift === 'string' ? { id: def.gift } : def.gift;
+    const opt = pick.options.find(o => o.id === raw.id);
+    if (!opt) throw new DataError('data/party.json', `${def.name}: unknown gift "${raw.id}" for a ${cls.name}. Valid: ${pick.options.map(o => o.id).join(', ')}`);
+    const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
+    if (opt.ac_vs_element !== undefined) {
+      const el = raw.element ?? ELEMENTS[0];
+      if (!ELEMENTS.includes(el)) throw new DataError('data/party.json', `${def.name}: gift "${opt.id}" needs an "element" from: ${ELEMENTS.join(', ')}`);
+      return { id: opt.id, element: el };
+    }
+    return { id: opt.id };
+  }
+
+  // The Ranger's first favored enemy comes from creation ("favored": "undead");
+  // a hero built without one takes nothing yet — the pick pops on the map.
+  resolveFavored(def, cls) {
+    if (!cls.favored_enemy) return {};
+    if (!def.favored) return {};
+    if (!FAMILIES.includes(def.favored)) throw new DataError('data/party.json', `${def.name}: favored enemy "${def.favored}" — valid families: ${FAMILIES.join(', ')}`);
+    return { [def.favored]: 1 };
+  }
+
   resolveLook(def) {
     if (!def.look) return null;
     if (typeof def.look !== 'string') return def.look;
@@ -391,6 +431,12 @@ export class Game {
     // Apply racial ability bonus to rolled scores.
     const abilities = { ...def.abilities };
     for (const [ab, bonus] of Object.entries(race.ability_bonus)) abilities[ab] += bonus;
+    // The Half-Elf's floating +1: party.json "bonus_ability" (default DEX).
+    if (race.floating_bonus) {
+      const ab = def.bonus_ability ?? 'dex';
+      if (!(ab in abilities)) throw new DataError('data/party.json', `${def.name}: bonus_ability "${ab}" — use one of str, int, wis, dex, con, cha.`);
+      abilities[ab] += race.floating_bonus;
+    }
 
     const lvlIdx = def.level - 1;
     // The HP rule (designer, 2026-08-22): a hero starts with the MAX of their
@@ -424,9 +470,15 @@ export class Game {
       look: this.resolveLook(def),
       lane: def.lane ?? null,
       focusType: def.focus ?? null,
+      // The creation gift (half-casters, companion doc v1): {id, element?}
+      // from classes.json creation_pick — resolved below.
+      gift: this.resolveGift(def, cls),
+      bonusAbility: def.bonus_ability ?? (race.floating_bonus ? 'dex' : null),
+      // Favored enemies (the Ranger): {family: bonus}; picks made so far.
+      favored: this.resolveFavored(def, cls),
+      favoredPicks: 0,
       timedBuffs: [],
-      counters: { rampageKills: 0, standSaves: 0, assassinateKills: 0, shadowFeats: 0,
-        bookCasts: 0, overcasts: 0, mercySaves: 0, zealousStrikes: 0 },
+      counters: Object.fromEntries(TRACKED_STATS.map(k => [k, 0])),
       rite: null, // filled by the Level 20 Rite: {abilityName, sigil, title, tier}
       // Magic v2: the Wizard lane's book & daily preparation, the Sorcerer
       // lane's fixed repertoire, and the once-per-rest powers already spent.
@@ -446,6 +498,7 @@ export class Game {
         ring1: null, ring2: null,
       },
       buffs: { hit: 0, dmg: 0 },
+      quiver: 0, // arrows this hero carries (filled from the pouch; see restockQuiver)
       conditions: [], // {id, rounds, mapCounter} — see data/conditions.json
       alive: true,
     };
@@ -462,6 +515,7 @@ export class Game {
       }
       ch.spellbook = [...def.spells];
     }
+    if (Object.keys(ch.favored).length) ch.favoredPicks = 1;
     refreshSpellbook(this.data, ch);
     if (magicModel(this.data, ch) === 'spellbook' && def.level > 1) {
       const kit = (cls.spellbook?.starting_spells ?? []).length;
@@ -490,6 +544,9 @@ export class Game {
       for (const [ab, bonus] of Object.entries(d.abilities ?? {})) ch.abilities[ab] += bonus;
     }
     ch.weapon = pieces.find(d => d.type.startsWith('weapon_')); // battle.js reads name/damage/range
+    // Two blades (the Ranger): the second one-handed melee weapon in hand.
+    const weapons = ['hand1', 'hand2'].map(h => ch.equipment[h] && this.itemDef(ch.equipment[h])).filter(d => d && d.type.startsWith('weapon_'));
+    ch.offhand = weapons.length > 1 && !weapons[1].range && weapons[1].hands !== 2 ? weapons[1] : null;
     ch.gearDmg = pieces.reduce((sum, d) => sum + (d.dmg || 0), 0); // worn 'dmg' stacks onto every hit
     // Worn 'hit' (enchanted weapons and finer things) — battle.js names each
     // piece in the attack math, per the named-bonus rule.
@@ -547,9 +604,9 @@ export class Game {
     if (!this.canLevel(ch)) return null;
     const before = { maxHp: ch.maxHp, hitBase: ch.hitBase, attacks: ch.attacks, ac: ch.ac, maxSp: ch.maxSp };
     ch.xp -= this.xpToLevel(ch);
-    const tierBefore = maxSpellLevel(ch.level);
+    const tierBefore = heroMaxSpellLevel(ch);
     ch.level++;
-    const newTier = maxSpellLevel(ch.level) > tierBefore ? maxSpellLevel(ch.level) : 0;
+    const newTier = heroMaxSpellLevel(ch) > tierBefore ? heroMaxSpellLevel(ch) : 0;
     const conMod = abilityMod(ch.abilities.con);
     const { rolled, rerolled, gain: hpGain } = this.rollHp(ch.cls, conMod);
     ch.maxHp += hpGain;
@@ -582,6 +639,7 @@ export class Game {
     const slotsAfter = magicModel(this.data, ch) === 'spellbook' ? preparedSlots(this.data, ch) : 0;
     if (slotsAfter > slotsBefore) milestones.push({ kind: 'slot', slots: slotsAfter, text: `Prepared spells: ${slotsBefore} → ${slotsAfter} at a time.` });
     for (const r of revealed) milestones.push({ kind: 'revelation', spell: r.id, text: `A revelation: ${r.name}.` });
+    for (const sp of laneSpellsAt(this.data, ch, ch.level)) milestones.push({ kind: 'revelation', spell: sp.id, lane: true, text: `A new verse: ${sp.name}.` });
     if (prog && ch.level === prog.fork_level && !ch.lane) {
       milestones.push({ kind: 'fork', text: `The ${ch.cls.name}'s road forks here.` });
     }
@@ -792,10 +850,11 @@ export class Game {
     // magic works even for a class with no training of its own.
     const gear = Object.values(ch.equipment).filter(Boolean)
       .reduce((sum, id) => sum + (this.itemDef(id).detect || 0), 0);
-    if (base + racial + gear <= 0) return 0; // no eye for it at all
+    const gift = giftOf(ch)?.detect ?? 0; // Stonespeak: the stone tells you
+    if (base + racial + gear + gift <= 0) return 0; // no eye for it at all
     const lane = laneOf(this.data, ch);
     const p = passiveOf(this.data, ch);
-    return base + racial + gear
+    return base + racial + gear + gift
       + (lane?.offsets?.detect ?? 0)
       + (p?.id === 'keen_senses' ? (p.bonus ?? 10) : 0)
       + 5 * abilityMod(ch.abilities.dex);
@@ -821,10 +880,13 @@ export class Game {
   // Worn 'save_bonus' pieces (talismans, rings of protection) stack with the
   // racial save bonus on every saving throw.
   heroSaveBonus(ch) {
+    const p = passiveOf(this.data, ch);
     return (ch.race.save_bonus ?? 0) + Object.values(ch.equipment).filter(Boolean)
       .reduce((sum, id) => sum + (this.itemDef(id).save_bonus || 0), 0)
       + (ch.timedBuffs ?? []).reduce((sum, b) => sum + (b.saves || 0), 0)
-      + this.condStat(ch, 'saves');
+      + this.condStat(ch, 'saves')
+      + (p?.id === 'sundered_calm' ? (p.saves ?? 1) : 0) // the Wardsong's calm
+      + (this.battle?.auraSaves(ch) ?? 0); // a Hearthstone dwarf standing beside you
   }
 
   // Stat conditions (magic v3): the sum of one modifier across everything
@@ -1132,6 +1194,7 @@ export class Game {
     audio.play('camp');
     const healed = this.party.some((ch, i) => ch.hp !== before[i]);
     this.log(`The party makes camp and rests (−${mouths} rations). ${healed ? 'Wounds mend and spirits return.' : 'Spirits return.'}`, 'good');
+    this.refillQuivers();
     this.afterFullRest();
     // A watch of camp time passes AFTER the healing — lingering poison
     // ticks through the night, so cure it before you sleep.
@@ -1362,9 +1425,20 @@ export class Game {
   addItem(id, n = 1) {
     const cap = this.itemDef(id)?.max_carry;
     const have = this.inventory[id] || 0;
-    const taken = cap ? Math.min(n, Math.max(0, cap - have)) : n;
+    // Arrows found or bought go to empty quivers first, the pouch after.
+    let toQuivers = 0;
+    if (id === this.ammoId() && !this.battle) {
+      for (const ch of this.party) {
+        if (!ch.alive || !ch.weapon?.range) continue;
+        const room = this.quiverCap(ch) - Math.min(ch.quiver ?? 0, this.quiverCap(ch));
+        const give = Math.max(0, Math.min(room, n - toQuivers));
+        if (give > 0) { ch.quiver = (ch.quiver ?? 0) + give; toQuivers += give; }
+      }
+    }
+    const rest = n - toQuivers;
+    const taken = cap ? Math.min(rest, Math.max(0, cap - have)) : rest;
     if (taken > 0) this.inventory[id] = have + taken;
-    return taken;
+    return taken + toQuivers;
   }
 
   // Held consumables, for menus: [{id, def, count}]
@@ -1392,11 +1466,40 @@ export class Game {
   rangedRules() { return this.data.items.ranged ?? {}; }
   ammoId() { return this.rangedRules().ammo ?? null; }
   ammoCount() { const id = this.ammoId(); return id ? (this.inventory[id] || 0) : Infinity; }
-  // A shot spends one arrow (the arena's quiver is bottomless).
-  spendAmmo() {
+
+  // ---- Quivers (designer's call, 2026-08-29): arrows ride on the HERO ----
+  // Capacity: the bow's own 'quiver', else items.json ranged.quiver_capacity.
+  quiverCap(ch) {
+    if (!this.ammoId() || !ch.weapon?.range) return 0;
+    return (ch.weapon.quiver ?? this.rangedRules().quiver_capacity ?? 20) + (giftOf(ch)?.quiver_bonus ?? 0);
+  }
+  quiverCount(ch) { return this.ammoId() ? Math.min(ch.quiver ?? 0, this.quiverCap(ch) || Infinity) : Infinity; }
+  // A shot spends one arrow from the shooter's quiver (the arena's is bottomless).
+  spendAmmo(ch) {
+    if (!this.ammoId() || this.arena) return;
+    if (ch && ch.quiver > 0) ch.quiver--;
+  }
+  // Move spare arrows from the pouch into a hero's quiver, up to its cap.
+  // Returns how many moved. Free out of battle; in battle it costs the turn.
+  restockQuiver(ch) {
     const id = this.ammoId();
-    if (!id || this.arena) return;
-    if (this.inventory[id] > 0) this.inventory[id]--;
+    if (!id) return 0;
+    const cap = this.quiverCap(ch);
+    ch.quiver = Math.min(ch.quiver ?? 0, cap);
+    const want = cap - ch.quiver;
+    const moved = Math.max(0, Math.min(want, this.inventory[id] || 0));
+    if (moved > 0) { ch.quiver += moved; this.inventory[id] -= moved; }
+    return moved;
+  }
+  // Out of battle every bow-wielder tops up quietly (battle's end, camp,
+  // the inn, arrows found or bought, a bow strung). Logs only when it moved.
+  refillQuivers(quiet = false) {
+    if (this.battle && !this.arena) return;
+    for (const ch of this.party) {
+      if (!ch.alive || !ch.weapon?.range) continue;
+      const moved = this.restockQuiver(ch);
+      if (moved > 0 && !quiet) this.log(`${ch.name} fills the quiver: +${moved} (${ch.quiver}/${this.quiverCap(ch)}).`, 'info');
+    }
   }
 
   // Weapons and shields in the pouch this hero could swap to in battle:
@@ -1478,6 +1581,10 @@ export class Game {
     if (family === 'ring') return !ch.equipment.ring1 ? 'ring1' : !ch.equipment.ring2 ? 'ring2' : 'ring1';
     if (family !== 'hand') return family;
     if (def.type.startsWith('weapon_')) {
+      // A dual-wielder (classes.json dual_wield) with a one-hander in one
+      // hand and a free (or shield) hand puts a second one-hander there.
+      if (ch.cls.dual_wield && def.hands !== 2 && !def.range && !this.twoHanded(ch)
+        && this.isWeapon(ch.equipment.hand1) && !this.itemDef(ch.equipment.hand1).range && !this.isWeapon(ch.equipment.hand2)) return 'hand2';
       // A weapon replaces the hand already holding a weapon (or takes a free one).
       if (this.isWeapon(ch.equipment.hand1)) return 'hand1';
       if (this.isWeapon(ch.equipment.hand2)) return 'hand2';
@@ -1511,6 +1618,7 @@ export class Game {
       }
     }
     this.refreshDerived(ch);
+    if (!this.battle) this.refillQuivers(true);
     audio.play(this.equipSound(id, def));
     this.log(`${ch.name} equips the ${def.name}.`, 'good');
     return true;
@@ -1632,7 +1740,7 @@ export class Game {
       }
     }
     // A warding spell (Sanctified Ground) refuses every affliction while it holds.
-    const ward = (ref.timedBuffs ?? []).find(b => b.immune_conditions);
+    const ward = (ref.timedBuffs ?? []).find(b => b.immune_conditions === true || (Array.isArray(b.immune_conditions) && b.immune_conditions.includes(id)));
     if (ward) {
       this.log(`${ward.name} refuses the ${def.name.toLowerCase()} — nothing foul takes hold of ${ref.name}.`, 'good');
       return;

@@ -3,8 +3,8 @@
 // toggled with I, E, or C).
 
 import { abilityMod } from './rules.js';
-import { classProg, laneOf, passiveOf, riteTier } from './progression.js';
-import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable } from './magic.js';
+import { classProg, laneOf, passiveOf, riteTier, favoredPicksOwed } from './progression.js';
+import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
 
 // Every UI button clicks (designer's pick 2026-08-26: GAM_09) — except where
@@ -102,7 +102,7 @@ function fmtOffsets(off = {}) {
 }
 
 function passiveBlurb(p) {
-  if (p.id === 'weapon_focus') return `Weapon Focus: +${p.dmg ?? 1} damage with a weapon type you choose`;
+  if (p.id === 'weapon_focus') return `${p.name ?? 'Weapon Focus'}: +${p.dmg ?? 1} damage with a weapon type you choose`;
   if (p.id === 'braced_stance') return `Braced Stance: −${p.reduce ?? 1} damage from every hit while a shield is worn`;
   if (p.id === 'vital_strike') return `Vital Strike: +${p.dmg ?? 2} damage against unaware or flanked foes`;
   if (p.id === 'keen_senses') return `Keen Senses: +${p.bonus ?? 10}% to detect traps, secret doors, and trap work`;
@@ -110,6 +110,11 @@ function passiveBlurb(p) {
   if (p.id === 'overchannel') return `Overchannel: every cast costs ${p.discount ?? 1} less spell point (never below 1) — the book is set aside: you know only ${p.known_per_level ?? 2} spells per spell level (chosen forever, from the catalog or your old pages)${p.bonus_pick_levels?.length ? `, plus one wild pick at levels ${p.bonus_pick_levels.join('/')}` : ''}`;
   if (p.id === 'blessed_hands') return `Blessed Hands: +${p.heal ?? 2} HP on every healing spell you cast`;
   if (p.id === 'sacred_weapon') return `Sacred Weapon: +${p.dmg ?? 1} divine damage on every weapon hit`;
+  if (p.id === 'sundered_calm') return `${p.name ?? 'Sundered Calm'}: +${p.saves ?? 1} on every saving throw`;
+  if (p.id === 'granite_skin') return `${p.name ?? 'Granite Skin'}: every un-elemental blow loses ${p.reduce ?? 1} damage`;
+  if (p.id === 'warding_presence') return `${p.name ?? 'Warding Presence'}: allies standing beside you gain +${p.saves ?? 1} on every save`;
+  if (p.id === 'ambidexterity') return `${p.name ?? 'Ambidexterity'}: the off-hand blade swings at only −${p.penalty ?? 2}, and one-handed melee weapons hit +${p.dmg ?? 1} harder`;
+  if (p.id === 'snap_shot') return `${p.name ?? 'Snap Shot'}: no point-blank penalty${p.point_blank ? ` (only −${p.point_blank})` : ''}, and bows hit +${p.dmg ?? 1} harder`;
   return p.id;
 }
 
@@ -209,6 +214,28 @@ function renderChoice(game, choice, after) {
       </div>`;
     for (const b of root.querySelectorAll('[data-study]')) {
       b.onclick = () => { game.applyChoice(choice, b.dataset.study); close(); after?.(); };
+    }
+  } else if (choice.type === 'favored') {
+    // Favored Enemy (the Ranger): a new family, or a known one deepened.
+    const cap = ch.cls.favored_enemy?.cap ?? 3;
+    const have = ch.favored ?? {};
+    const opts = FAMILIES.filter(f => (have[f] ?? 0) < cap);
+    root.innerHTML = `
+      <div class="cr-panel ch-panel">
+        <div class="cr-step">Favored enemy</div>
+        <div class="ch-head"><img src="${portrait}" alt="">
+          <div><b>${ch.name}</b> has learned a prey's habits. Take up a new family (+1 to hit and damage against it) or deepen a known one (up to +${cap}).</div></div>
+        <div class="cr-choices">
+          ${opts.map((f, i) => `
+            <button class="cr-choice" data-favored="${f}">
+              <b>${i + 1}. ${f}</b>
+              <span>${have[f] ? `known: +${have[f]} → +${have[f] + 1}` : 'new: +1'}</span>
+            </button>`).join('')}
+        </div>
+        <p class="ch-warn">The hunter never forgets a quarry.</p>
+      </div>`;
+    for (const b of root.querySelectorAll('[data-favored]')) {
+      b.onclick = () => { game.applyChoice(choice, b.dataset.favored); close(); after?.(); };
     }
   } else if (choice.type === 'focus') {
     const current = ch.weapon?.type?.replace('weapon_', '');
@@ -431,7 +458,7 @@ export function togglePlaytest(game, show) {
 // collapsible groups — one click drops a copy into the party pouch (the
 // real addItem, so max_carry caps still apply). Equip from the sheet.
 const CHEST_GROUPS = [
-  ['Weapons — blades', d => d.type === 'weapon_light_blade' || d.type === 'weapon_med_blade' || d.type === 'weapon_heavy_blade'],
+  ['Weapons — blades', d => d.type === 'weapon_light_blade' || d.type === 'weapon_med_blade' || d.type === 'weapon_heavy_blade' || d.type === 'weapon_axe'],
   ['Weapons — blunt', d => d.type === 'weapon_light_blunt' || d.type === 'weapon_med_blunt' || d.type === 'weapon_heavy_blunt'],
   ['Weapons — bows', d => d.type === 'weapon_bow'],
   ['Armor & robes', d => d.type.startsWith('armor_')],
@@ -944,6 +971,18 @@ const POWER_HOW = {
   twin_surge: 'Joins the C menu, once per rest: arm it, then cast — the spell resolves twice, and the backlash costs you your next turn.',
   miracle: 'Joins the C menu, once per rest: every remaining spell point at once — the living are healed to full, the fallen rise at half.',
   divine_inspiration: 'Joins the C menu: every remaining spell point at once (5 minimum) buys +3 hit, +3 damage, +3 AC for 3 rounds.',
+  runic_riposte: "It happens on its own: whenever a monster's melee blow lands on you (even one your wards soak), you strike straight back — free, every time. Stand beside your foes.",
+  ward_surge: "It's a reaction: as a foe swings at you, the battle pauses and asks. Y spends the SP for +4 AC and saves against that one blow; N lets the die roll as it will.",
+  unyielding: 'It happens on its own: any blow that would drop you to 0 HP leaves you at 1 instead. Poison and spellfire are not blows — mind them.',
+  shared_fortitude: 'Joins the C menu: aim at an ally and spend the SP — they gain a pool of absorbed damage that drinks blows first, all battle long.',
+  whirling_verse: "Open the C menu and choose it — for 3 rounds every landed hit strikes again. Every OTHER song you keep up drains SP each round; sing it unbuffed and it's free.",
+  mirror_ward: 'Open the C menu and choose it — for 3 rounds half of every wound flies back at the attacker, but you cannot move. Plant yourself where they must come.',
+  mountains_heart: 'Open the C menu and choose it — for 3 rounds wounds are halved, but your hit/damage bonus is nothing and you cannot move. Hold a doorway; let others swing.',
+  deep_roots: 'Joins the C menu, once per rest: raise your wards FIRST, then spend every spell point to spread them across the whole party for 3 rounds.',
+  hunters_surge: "A stance in the C menu, free to flip: while it burns, each attack action spends SP and your off-hand blade swings as many times as your main hand. Needs two one-handed weapons in hand (E).",
+  volley: 'It happens on its own: drop a foe with a bow shot and another arrow flies free at the nearest foe in range — kills chain while the quiver holds.',
+  storm_of_blades: 'Open the C menu and choose it — every spell point at once buys 3 rounds where every main-hand hit earns a free off-hand strike with no penalty, +2 damage on everything.',
+  rain_of_arrows: 'Open the C menu with a bow in hand — for 3 rounds every shot also strikes each foe beside its target (one arrow each), but you cannot move. Find a line and hold it.',
 };
 
 function renderMilestoneCard(game, ch, m) {
@@ -964,7 +1003,7 @@ function renderMilestoneCard(game, ch, m) {
     step = `Level ${ch.level} — deeper magic`;
     headline = `The veil thins. <b>${ch.name}</b> can now reach <b>level-${m.tier} spells</b>.`;
     const model = magicModel(game.data, ch);
-    power = { name: `Level-${m.tier} spells`, blurb: `Cost ${m.tier * 2 + 1} SP each (level × 2 + 1). ${model === 'spellbook' ? 'Your studies can reach them now — and any scroll of that level can be copied in.' : model === 'known' ? 'New picks are owed — choose which spells join the blood.' : 'Every new prayer of your training is already in hand — see the character sheet.'}` };
+    power = { name: `Level-${m.tier} spells`, blurb: `Cost ${m.tier * 2 + 1} SP each (level × 2 + 1). ${model === 'spellbook' ? 'Your studies can reach them now — and any scroll of that level can be copied in.' : model === 'known' ? 'New picks are owed — choose which spells join the blood.' : model === 'lane' ? 'The verse of that level is already in hand — see the character sheet.' : 'Every new prayer of your training is already in hand — see the character sheet.'}` };
     how = '';
   } else if (m.kind === 'slot') {
     step = `Level ${ch.level} — a fuller mind`;
@@ -973,8 +1012,10 @@ function renderMilestoneCard(game, ch, m) {
     how = '';
   } else if (m.kind === 'revelation') {
     const sp = game.data.spells.spells[m.spell];
-    step = `Level ${ch.level} — a revelation`;
-    headline = `In the quiet after prayer, a word arrives unbidden. <b>${ch.name}</b> now knows <b>${sp?.name ?? m.spell}</b> — a prayer no book teaches.`;
+    step = m.lane ? `Level ${ch.level} — a new verse` : `Level ${ch.level} — a revelation`;
+    headline = m.lane
+      ? `The road teaches its own songs. <b>${ch.name}</b> now knows <b>${sp?.name ?? m.spell}</b>.`
+      : `In the quiet after prayer, a word arrives unbidden. <b>${ch.name}</b> now knows <b>${sp?.name ?? m.spell}</b> — a prayer no book teaches.`;
     power = { name: sp?.name ?? m.spell, blurb: `${sp?.description ?? ''} (${spellMetaLine(game, ch, { id: m.spell, ...sp })})` };
     how = `It joins the C menu in battle like any prayer, castable from ${[0, 1, 4, 8, 12, 16][sp?.level ?? 1] <= ch.level ? 'now' : `character level ${[0, 1, 4, 8, 12, 16][sp?.level ?? 1]}`}.`;
   } else if (m.kind === 'refinement') {
@@ -1009,8 +1050,16 @@ function renderPath(game, ch) {
       <b>${name}</b>${note ? `<i>${note}</i>` : ''}<span>${blurb ?? ''}</span>
     </div>`;
   let rows = '';
+  const gift = giftOf(ch);
+  if (gift) rows += row(true, gift.name, `${gift.blurb ?? ''}${ch.gift?.element ? ` Sworn against ${ch.gift.element}.` : ''}`, 'creation gift');
+  if (ch.cls.favored_enemy) {
+    const fav = Object.entries(ch.favored ?? {});
+    const next = (ch.cls.favored_enemy.levels ?? []).find(l => l > ch.level);
+    rows += row(fav.length > 0, 'Favored enemies', fav.length ? fav.map(([f, n]) => `+${n} vs ${f}`).join(', ') : 'none yet',
+      favoredPicksOwed(ch) ? 'a pick awaits!' : next ? `next at level ${next}` : '');
+  }
   if (!lane) {
-    rows = row(false, 'A crossroads', `At level ${prog.fork_level}, the ${ch.cls.name}'s road forks — two paths, one choice, forever.`,
+    rows = rows + row(false, 'A crossroads', `At level ${prog.fork_level}, the ${ch.cls.name}'s road forks — two paths, one choice, forever.`,
       ch.level >= prog.fork_level ? 'awaits!' : `at level ${prog.fork_level}`);
   } else {
     rows += row(true, lane.name, lane.blurb);
@@ -1049,6 +1098,12 @@ function renderPath(game, ch) {
           overcasts: 'Overcasts landed',
           mercySaves: 'Allies caught by Mercy',
           zealousStrikes: 'Zealous Strikes landed',
+          riposteKills: 'Foes felled by Runic Riposte',
+          wardDeflects: 'Blows turned or reflected',
+          unyieldingSaves: 'Falls refused by Unyielding',
+          alliesFortified: 'Allies fortified & sheltered',
+          surgeKills: "Kills under Hunter's Surge / the Storm",
+          volleyKills: 'Foes felled by Volley',
         }[lane.rite.tracked] ?? lane.rite.tracked;
         rows += `<div class="eq-power tally"><b>${label}</b><span>${ch.counters?.[lane.rite.tracked] ?? 0}${ch.rite ? '' : ' — deeds weigh the Title at level 20'}</span></div>`;
       }
@@ -1077,6 +1132,8 @@ function renderMagic(game, ch) {
     line = `${known.length} page${known.length === 1 ? '' : 's'} · ${ch.prepared.length}/${slots} prepared${ch.prepFresh ? ' · <i>rested: re-pick freely</i>' : ''}${study.remaining ? ` · <i>a study is owed</i>` : ''}`;
   } else if (model === 'known') {
     line = `${known.length} spell${known.length === 1 ? '' : 's'} in the blood · Overchannel counted in each cost`;
+  } else if (model === 'lane') {
+    line = `${known.length} verse${known.length === 1 ? '' : 's'} of ${laneOf(game.data, ch)?.name ?? 'the road before the fork'} · every verse is a self- or ally-ward`;
   } else if (known.length) {
     line = `${known.length} prayer${known.length === 1 ? '' : 's'} of ${ch.name}'s training`;
   }
@@ -1136,7 +1193,7 @@ function renderSpellbook(game) {
   }
 
   document.getElementById('sb-name').textContent = model === 'spellbook' ? `${ch.name}'s Spellbook`
-    : model === 'known' ? `${ch.name} — the Raw Gift` : `${ch.name}'s Prayers`;
+    : model === 'known' ? `${ch.name} — the Raw Gift` : model === 'lane' ? `${ch.name}'s Verses` : `${ch.name}'s Prayers`;
   const slots = model === 'spellbook' ? preparedSlots(game.data, ch) : 0;
   document.getElementById('sb-stats').innerHTML =
     `Level ${ch.level} ${game.displayClass(ch)} · SP ${ch.sp}/${ch.maxSp} · spells up to level ${tier}` +
@@ -1152,8 +1209,8 @@ function renderSpellbook(game) {
     const unlockAt = [0, 1, 4, 8, 12, 16][lvl];
     const deep = lvl > tier;
     if (!list.length && deep) continue; // nothing to say about a level not yet reached
-    pages += `<div class="sb-level"><div class="eq-sec">Level ${lvl} spells<span>${lvl * 2 + 1} SP each${deep ? ` · castable at character level ${unlockAt}` : ''}${model === 'spellbook' && !deep && !list.length ? ' · no pages yet' : ''}</span></div>`;
-    if (!list.length) pages += `<div class="sb-page"><small>${model === 'spellbook' ? 'Study or a scroll will fill this level.' : model === 'known' ? 'No spell of this level in the blood.' : 'Nothing of this level.'}</small></div>`;
+    pages += `<div class="sb-level"><div class="eq-sec">Level ${lvl} spells<span>${spellCost(game.data, ch, { level: lvl })} SP each${deep ? ` · castable at character level ${unlockAt}` : ''}${model === 'spellbook' && !deep && !list.length ? ' · no pages yet' : ''}</span></div>`;
+    if (!list.length) pages += `<div class="sb-page"><small>${model === 'spellbook' ? 'Study or a scroll will fill this level.' : model === 'known' ? 'No spell of this level in the blood.' : model === 'lane' ? (ch.lane ? 'No verse of this level.' : 'The road forks at level 5 — the lane decides the verses.') : 'Nothing of this level.'}</small></div>`;
     for (const s of list) {
       const prepped = model === 'spellbook' && ch.prepared.includes(s.id);
       let btn = '';
@@ -1191,6 +1248,13 @@ function renderSpellbook(game) {
     const nextBonus = (p?.bonus_pick_levels ?? []).find(l => l > ch.level);
     side += `<div class="eq-sec">The blood</div><p class="pt-note">${picks.length || bonus.remaining ? '<b>A pick is owed</b> — it arrives on the map.' : 'No pick owed.'} Two spells per spell level as each unlocks${nextBonus ? `, and a wild pick of any level at ${nextBonus}` : ''}. Chosen is chosen. No scrolls copy in — but ${ch.name} may still read one in battle.</p>`;
     if (ch.formerBook?.length) side += `<p class="pt-note">The old book (set aside at the fork): ${ch.formerBook.map(id => game.data.spells.spells[id]?.name ?? id).join(', ')} — its pages may still be chosen.</p>`;
+  } else if (model === 'lane') {
+    const lane = laneOf(game.data, ch);
+    const prog = classProg(game.data, ch);
+    side += `<div class="eq-sec">The verses</div><p class="pt-note">${lane
+      ? `${lane.name}'s verses open on their own as each spell level does — no book, no study, no picks.`
+      : `Before the fork ${ch.name} knows ${giftOf(ch)?.spell ? 'only the creation gift' : 'the first verse of each road'}; at level ${prog?.fork_level ?? 5} the lane decides the rest.`}
+      ${ch.cls.spell_cost ? ` Half-caster costs: spell level + ${ch.cls.spell_cost.base} SP.` : ''}</p>`;
   } else {
     const rl = ch.cls.revelation_levels ?? {};
     const next = Object.entries(rl).map(([l, at]) => [Number(l), at]).filter(([, at]) => at > ch.level).sort((a, b) => a[1] - b[1])[0];
@@ -1229,7 +1293,8 @@ function renderSpellbook(game) {
   document.getElementById('sb-foot').innerHTML = (model === 'spellbook'
     ? 'Prepare pages after a full rest &middot; scrolls copy in here and are read in battle (I) &middot; '
     : model === 'known' ? 'Chosen is chosen &middot; scrolls are read in battle (I) &middot; '
-      : 'Every prayer is ready the moment its level opens &middot; ')
+      : model === 'lane' ? 'The lane decides the verses &middot; each opens with its spell level &middot; '
+        : 'Every prayer is ready the moment its level opens &middot; ')
     + 'B or Esc closes &middot; C — character sheet';
 
   const root = document.getElementById('spellbook');
@@ -1289,7 +1354,8 @@ export function updateUI(game) {
     u.img.src = ch.alive ? game.heroPortrait(ch) : (ch.cls.sprite_dead || ch.cls.sprite);
     u.cross.style.display = game.canLevel(ch) ? 'flex' : 'none';
     // AC and weapon change when gear does.
-    const sub = `Level ${ch.level} ${ch.race.name} ${game.displayClass(ch)} · AC ${ch.ac} · ${ch.weapon.name}${ch.level >= 20 ? ' · MAX' : ch.xp ? ` · XP ${ch.xp}/${game.xpToLevel(ch)}` : ''}`;
+    const q = game.quiverCap(ch) ? ` · 🏹 ${game.quiverCount(ch)}/${game.quiverCap(ch)}` : '';
+    const sub = `Level ${ch.level} ${ch.race.name} ${game.displayClass(ch)} · AC ${ch.ac} · ${ch.weapon.name}${q}${ch.level >= 20 ? ' · MAX' : ch.xp ? ` · XP ${ch.xp}/${game.xpToLevel(ch)}` : ''}`;
     if (u.sub.textContent !== sub) u.sub.textContent = sub;
     u.hpFill.style.transform = `scaleX(${Math.max(0, ch.hp / ch.maxHp)})`;
     u.hpLabel.textContent = ch.alive ? `HP ${ch.hp}/${ch.maxHp}` : 'DEAD';

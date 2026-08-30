@@ -540,7 +540,7 @@ export class Renderer {
         else if (b.assassinateGuarded(a, foe)) tags.push('💤 unaware but GUARDED — no Assassinate');
         else if (b.isUnaware(foe, a.ref)) tags.push('💤 unaware');
         if (b.isFlanked(foe)) tags.push('flanked');
-        const pct = Math.round(Math.max(5, Math.min(95, (21 + b.attackBonus(a.ref) - (10 + foe.ref.ac)) / 20 * 100)));
+        const pct = Math.round(Math.max(5, Math.min(95, (21 + b.attackBonus(a.ref, foe.ref) - (10 + foe.ref.ac)) / 20 * 100)));
         if (foe.ref.magic_to_hit && !a.ref.weapon.enchanted) {
           panelLine(`bump the ${foe.ref.name}: NO EFFECT — it needs magic to hit!`, '13px Georgia', '#e08080', 16);
         } else {
@@ -565,7 +565,7 @@ export class Renderer {
         if (p.kind === 'shoot') {
           odds = tgt.ref.magic_to_hit && !a.ref.weapon.enchanted
             ? ' · NO EFFECT — it needs magic to hit!'
-            : ` · ${pct((21 + b.attackBonus(a.ref) - (10 + tgt.ref.ac)) / 20)} to hit`;
+            : ` · ${pct((21 + b.attackBonus(a.ref, tgt.ref) - (10 + tgt.ref.ac)) / 20)} to hit`;
         } else if (p.kind === 'deathblow') {
           odds = ' · an automatic critical — it cannot miss';
         } else if (p.spell) {
@@ -597,7 +597,7 @@ export class Renderer {
     }
     const hints = b.mode === 'target'
       ? 'arrows — aim · Enter — unleash! · Esc — cancel'
-      : `arrows — move & bump to attack · ${cHint}${a?.kind === 'hero' && b.canShoot(a) ? (b.shootBlock(a) ? `F — shoot (${b.shootBlock(a).startsWith('no arrows') ? 'no arrows!' : 'stand still'}) · ` : `F — shoot${b.pointBlank(a.ref) ? ` (−${b.pointBlank(a.ref)} point-blank)` : ''}${Number.isFinite(this.game.ammoCount()) ? ` · ${this.game.ammoCount()} arrows` : ''} · `) : ''}${a?.kind === 'hero' && b.usableItems(a).length ? 'I — item · ' : ''}${a?.kind === 'hero' && b.swapOptions(a).length ? 'W — swap weapon · ' : ''}Space — end turn · Esc — flee`;
+      : `arrows — move & bump to attack · ${cHint}${a?.kind === 'hero' && b.canShoot(a) ? (b.shootBlock(a) ? `F — shoot (${b.shootBlock(a).startsWith('the quiver') ? 'quiver empty!' : 'stand still'}) · ` : `F — shoot${b.pointBlank(a.ref) ? ` (−${b.pointBlank(a.ref)} point-blank)` : ''}${Number.isFinite(this.game.quiverCount(a.ref)) ? ` · quiver ${this.game.quiverCount(a.ref)}/${this.game.quiverCap(a.ref)}` : ''} · `) : ''}${a?.kind === 'hero' && b.usableItems(a).length ? 'I — item · ' : ''}${a?.kind === 'hero' && b.swapOptions(a).length ? 'W — swap weapon · ' : ''}Space — end turn · Esc — flee`;
     panelY += 8;
     for (const hint of hints.split(' · ')) panelLine(hint, '12.5px Georgia', 'rgba(207,196,166,0.65)', 17);
 
@@ -667,7 +667,7 @@ export class Renderer {
         ctx.font = 'bold 14px Georgia';
         const sp = it.spell;
         const tag = it.kind === 'scroll' && sp ? `  —  read: L${sp.level} · free${sp.range ? ` · range ${sp.range}` : ''}${sp.area ? ` · burst ${sp.area}` : ''}` : '';
-        ctx.fillText(`${i + 1}.  ${it.def.name}  ×${it.count}${tag}`, mx + 20, ly);
+        ctx.fillText(`${i + 1}.  ${it.def.name}  ${it.kind === 'restock' ? `(${it.count} spare in the pouch)` : `×${it.count}`}${tag}`, mx + 20, ly);
         ctx.font = 'italic 11.5px Georgia';
         ctx.fillStyle = it.usable ? '#8a8a99' : '#55504c';
         const line = it.kind === 'scroll' && it.reason ? it.reason : it.def.description;
@@ -722,11 +722,24 @@ export class Renderer {
       const mx = (W - mw) / 2, my = (H - mh) / 2;
       ctx.fillStyle = 'rgba(10,10,16,0.94)';
       ctx.fillRect(mx, my, mw, mh);
-      ctx.strokeStyle = '#7fd4c8';
+      ctx.strokeStyle = r.kind === 'ward' ? '#9fc8ff' : '#7fd4c8';
       ctx.lineWidth = 2;
       ctx.strokeRect(mx, my, mw, mh);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
+      if (r.kind === 'ward') {
+        // Ward Surge: the die is not yet cast — show what the ward would buy.
+        const need = Math.max(1, r.baseAc - r.toHit), needWard = Math.max(1, r.baseAc + r.ac - r.toHit);
+        ctx.fillStyle = '#9fc8ff';
+        ctx.font = 'bold 18px Georgia';
+        ctx.fillText(`${r.name}!`, mx + mw / 2, my + 14);
+        ctx.fillStyle = '#cfc4a6';
+        ctx.font = '14px Georgia';
+        ctx.fillText(`The ${r.m.name} swings at ${r.target.name} — it hits on ${need}+ · with the ward, ${needWard}+`, mx + mw / 2, my + 44);
+        ctx.fillStyle = COLORS.stairs;
+        ctx.font = 'bold 14px Georgia';
+        ctx.fillText(`Y — ${r.singer.name} spends ${r.cost} SP for +${r.ac} AC · N — let it roll`, mx + mw / 2, my + 74);
+      } else {
       ctx.fillStyle = '#7fd4c8';
       ctx.font = 'bold 18px Georgia';
       ctx.fillText(`Guardian's Stand!`, mx + mw / 2, my + 14);
@@ -736,6 +749,7 @@ export class Renderer {
       ctx.fillStyle = COLORS.stairs;
       ctx.font = 'bold 14px Georgia';
       ctx.fillText(`Y — ${r.guardian.name} takes the blow · N — let it land`, mx + mw / 2, my + 74);
+      }
     }
 
     // Ending beat: let the killing blow's numbers land first, then banner.

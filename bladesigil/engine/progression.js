@@ -8,20 +8,29 @@
 import { DataError } from './loader.js';
 import { spellPicksOwed, studiesOwed, bonusPicksOwed } from './magic.js';
 
+// The half-caster classes (Spellblade, Stoneshaper — companion doc v1,
+// 2026-08-29) added sundered_calm/granite_skin/warding_presence, the
+// riposte/ward-surge/unyielding/shared-fortitude verbs, and their kin.
 const PASSIVES = ['weapon_focus', 'braced_stance', 'vital_strike', 'keen_senses',
-  'prepared_mind', 'overchannel', 'blessed_hands', 'sacred_weapon'];
+  'prepared_mind', 'overchannel', 'blessed_hands', 'sacred_weapon',
+  'sundered_calm', 'granite_skin', 'warding_presence', 'ambidexterity', 'snap_shot'];
 const VERBS = ['rampage', 'guardians_stand', 'assassinate', 'vanish',
-  'arcane_insight', 'overcast', 'mercy', 'zealous_strike'];
+  'arcane_insight', 'overcast', 'mercy', 'zealous_strike',
+  'runic_riposte', 'ward_surge', 'unyielding', 'shared_fortitude', 'hunters_surge', 'volley'];
 const CAPSTONES = ['rage', 'bulwark', 'lethality', 'set_trap',
-  'archmage', 'twin_surge', 'miracle', 'divine_inspiration'];
+  'archmage', 'twin_surge', 'miracle', 'divine_inspiration',
+  'whirling_verse', 'mirror_ward', 'mountains_heart', 'deep_roots', 'storm_of_blades', 'rain_of_arrows'];
 const REFINEMENTS = ['rampage_crits', 'stand_half_cost', 'assassinate_low_hp', 'vanish_free',
-  'insight_double', 'overcast_cheap', 'mercy_cures', 'zealous_immunity'];
+  'insight_double', 'overcast_cheap', 'mercy_cures', 'zealous_immunity',
+  'riposte_allies', 'ward_surge_allies', 'unyielding_allies', 'fortitude_two', 'offhand_free', 'hawk_on_the_move'];
 const RITE_ABILITIES = ['whirlwind', 'aegis', 'deathblow', 'shadowstep',
-  'final_word', 'maelstrom', 'sanctuary', 'judgment'];
-const TRACKED_STATS = ['rampageKills', 'standSaves', 'assassinateKills', 'shadowFeats',
-  'bookCasts', 'overcasts', 'mercySaves', 'zealousStrikes'];
+  'final_word', 'maelstrom', 'sanctuary', 'judgment',
+  'crescendo', 'unbroken_chord', 'bedrock', 'hearthfire', 'pack_instinct', 'true_shot'];
+export const TRACKED_STATS = ['rampageKills', 'standSaves', 'assassinateKills', 'shadowFeats',
+  'bookCasts', 'overcasts', 'mercySaves', 'zealousStrikes',
+  'riposteKills', 'wardDeflects', 'unyieldingSaves', 'alliesFortified', 'surgeKills', 'volleyKills'];
 
-export const WEAPON_CATEGORIES = ['light_blade', 'med_blade', 'heavy_blade', 'light_blunt', 'med_blunt', 'heavy_blunt', 'bow'];
+export const WEAPON_CATEGORIES = ['light_blade', 'med_blade', 'heavy_blade', 'axe', 'light_blunt', 'med_blunt', 'heavy_blunt', 'bow'];
 
 // Friendly boot-time validation, in designer terms.
 export function validateProgression(data) {
@@ -115,6 +124,10 @@ export function passiveOf(data, ch) {
   return laneOf(data, ch)?.passive ?? null;
 }
 
+// The name a passive wears in every log line: its own 'name' if the
+// designer gave one (Edge Eternal), else the engine's default.
+export function passiveName(p, fallback) { return p?.name ?? fallback; }
+
 export function hasVerb(data, ch, id) {
   const lane = laneOf(data, ch);
   return !!lane?.verb && lane.verb.id === id && ch.level >= lane.verb.level;
@@ -166,11 +179,21 @@ export function focusOptions(data, ch) {
   return types.includes('any') ? WEAPON_CATEGORIES : types;
 }
 
+// Favored Enemy (the Ranger): picks granted by the class's favored_enemy
+// levels minus picks already made. The first pick is made in creation.
+export function favoredPicksOwed(ch) {
+  const fe = ch.cls.favored_enemy;
+  if (!fe) return 0;
+  const granted = (fe.levels ?? []).filter(l => l <= ch.level).length;
+  return Math.max(0, granted - (ch.favoredPicks ?? 0));
+}
+
 // Choices this hero is owed. Presented on the map, one modal at a time —
 // also fires for freshly-built high-level heroes (the party.json test path).
 export function pendingChoices(data, ch) {
   const out = [];
   if (!ch.alive) return out;
+  for (let i = 0; i < favoredPicksOwed(ch); i++) out.push({ type: 'favored', ch });
   const prog = classProg(data, ch);
   if (!prog) return out;
   if (ch.level >= prog.fork_level && !ch.lane) out.push({ type: 'lane', ch, prog });

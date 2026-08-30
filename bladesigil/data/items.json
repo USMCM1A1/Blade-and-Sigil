@@ -1,5 +1,5 @@
 {
-  "_comment": "Itemization v2 (2026-08-27, designer's five-tier model). Every item has a 'tier' 1-5: T1 regular gear + Mastersmith weapons (+1 damage, mundane); T2 Enchanted +1 (weapons get 'hit': 1 and 'enchanted': true — ONLY enchanted weapons can strike monsters marked 'magic_to_hit' in monsters.json; armor +1 AC) plus minor trinkets; T3 enchanted with a minor ability/benefit/protection; T4 major; T5 unique named pieces. Vault chests draw gear from the floor's tier band (depth 1-4 -> T1 ... 17-20 -> T5). Supported magic fields on any worn piece: ac, sp, hit, dmg, detect, save_bonus, immune (condition ids), abilities ({str:+1}), enchanted. Weapons: 'finesse' aims with best of STR/DEX, 'hands': 2 claims both hands, 'range' makes it a bow. Potions: effect heal/cure/mana (dice) or invisibility (battle-only: the drinker fades until they strike). ALL stats here are Claude PROPOSALS under the designer's model — retune freely. | TIER ABILITIES (2026-08-27 session 2): 'resist': [elements] = HALF damage from that element (designer ruling — damage only); 'immune' also takes elements (zero damage AND blocks the linked condition: fire->burning, poison->poison); weapon 'bonus_damage': {dice, element} adds a named elemental die per hit; weapon 'double_vs': family + 'flavor' word doubles the FINAL damage total vs that monster family (Ancient=undead/holy, Bane=outsider). Elements: fire/frost/lightning/poison (electricity = lightning). | PRINCIPLE (designer, 2026-08-28): WEAPONS carry offensive minor abilities, ARMOR/clothing defensive ones — the T3 elemental blades add flat +1 elemental damage (bonus_damage dice may be a flat number); resist/immune belong on worn pieces. | MAGIC v3 (2026-08-28): scrolls. A spell with 'scroll': true in spells.json becomes the item 'scroll_<spell>' automatically; explicit scroll entries here (type 'scroll' + 'spell') override that. 'scroll_values' = the price ladder by spell level, x 'rare_multiplier' for rare lore; tier defaults to the spell level. Any arcane caster reads a scroll once in battle; only a spellbook copies it. | RANGED (2026-08-29): the 'ranged' block below — 'point_blank_penalty' = to-hit penalty for shooting with a foe adjacent, 'ammo' = the item every shot spends (none in the pouch = no shot), 'recover_misses' = the share of MISSED shots' arrows picked up after a won battle. Bows: 'range' in squares; 'steady': true = the bow needs a planted stance — no shot on a turn the hero has moved (longbow, crossbow); the short bow shoots on the move. 'bundle': N = shops sell and chests drop N at a time (arrows).",
+  "_comment": "Itemization v2 (2026-08-27, designer's five-tier model). Every item has a 'tier' 1-5: T1 regular gear + Mastersmith weapons (+1 damage, mundane); T2 Enchanted +1 (weapons get 'hit': 1 and 'enchanted': true — ONLY enchanted weapons can strike monsters marked 'magic_to_hit' in monsters.json; armor +1 AC) plus minor trinkets; T3 enchanted with a minor ability/benefit/protection; T4 major; T5 unique named pieces. Vault chests draw gear from the floor's tier band (depth 1-4 -> T1 ... 17-20 -> T5). Supported magic fields on any worn piece: ac, sp, hit, dmg, detect, save_bonus, immune (condition ids), abilities ({str:+1}), enchanted. Weapons: 'finesse' aims with best of STR/DEX, 'hands': 2 claims both hands, 'range' makes it a bow. Potions: effect heal/cure/mana (dice) or invisibility (battle-only: the drinker fades until they strike). ALL stats here are Claude PROPOSALS under the designer's model — retune freely. | TIER ABILITIES (2026-08-27 session 2): 'resist': [elements] = HALF damage from that element (designer ruling — damage only); 'immune' also takes elements (zero damage AND blocks the linked condition: fire->burning, poison->poison); weapon 'bonus_damage': {dice, element} adds a named elemental die per hit; weapon 'double_vs': family + 'flavor' word doubles the FINAL damage total vs that monster family (Ancient=undead/holy, Bane=outsider). Elements: fire/frost/lightning/poison (electricity = lightning). | PRINCIPLE (designer, 2026-08-28): WEAPONS carry offensive minor abilities, ARMOR/clothing defensive ones — the T3 elemental blades add flat +1 elemental damage (bonus_damage dice may be a flat number); resist/immune belong on worn pieces. | MAGIC v3 (2026-08-28): scrolls. A spell with 'scroll': true in spells.json becomes the item 'scroll_<spell>' automatically; explicit scroll entries here (type 'scroll' + 'spell') override that. 'scroll_values' = the price ladder by spell level, x 'rare_multiplier' for rare lore; tier defaults to the spell level. Any arcane caster reads a scroll once in battle; only a spellbook copies it. | RANGED (2026-08-29): the 'ranged' block below — 'point_blank_penalty' = to-hit penalty for shooting with a foe adjacent, 'ammo' = the item every shot spends (none in the pouch = no shot), 'recover_misses' = the share of MISSED shots' arrows picked up after a won battle. Bows: 'range' in squares; 'steady': true = the bow needs a planted stance — no shot on a turn the hero has moved (longbow, crossbow); the short bow shoots on the move. 'bundle': N = shops sell and chests drop N at a time (arrows). | AXES (2026-08-29, companion doc v1): 'weapon_axe' is its own category now (battle/great/hand axes, Frostbite, Fiendcleaver, Worldsplitter) — the Stoneshaper's kit alongside blunt weapons; warriors and archers ('any') still swing them.",
   "scroll_values": [
     100,
     250,
@@ -11,7 +11,9 @@
   "ranged": {
     "point_blank_penalty": 4,
     "ammo": "arrows",
-    "recover_misses": 0.5
+    "recover_misses": 0.5,
+    "quiver_capacity": 20,
+    "_quiver_comment": "QUIVERS (2026-08-29, designer's call): arrows are carried PER HERO. Every bow-wielder has a quiver of 'quiver_capacity' arrows (a bow may override with its own 'quiver', e.g. the crossbow's 12 bolts). Shots spend from the quiver; the pouch's 'arrows' bundles are SPARE stock. Out of battle the quivers top up from the pouch for free (after a fight, at camp/inn, when arrows are found or bought, when a bow is strung). IN battle, restocking is an item-menu act that costs the turn. Recovered misses go back to the shooter's quiver first, overflow to the pouch."
   },
   "items": {
     "dagger": {
@@ -68,7 +70,7 @@
     },
     "battle_axe": {
       "name": "Battle Axe",
-      "type": "weapon_heavy_blade",
+      "type": "weapon_axe",
       "tier": 1,
       "damage": "1d8",
       "value": 90,
@@ -76,7 +78,7 @@
     },
     "great_axe": {
       "name": "Great Axe",
-      "type": "weapon_heavy_blade",
+      "type": "weapon_axe",
       "tier": 1,
       "damage": "1d12",
       "hands": 2,
@@ -137,7 +139,8 @@
       "hands": 2,
       "value": 120,
       "description": "A cranked arbalest that punches through mail.",
-      "steady": true
+      "steady": true,
+      "quiver": 12
     },
     "mastersmith_dagger": {
       "name": "Mastersmith Dagger",
@@ -193,7 +196,7 @@
     },
     "mastersmith_battle_axe": {
       "name": "Mastersmith Battle Axe",
-      "type": "weapon_heavy_blade",
+      "type": "weapon_axe",
       "tier": 1,
       "damage": "1d8+1",
       "value": 270,
@@ -201,7 +204,7 @@
     },
     "mastersmith_great_axe": {
       "name": "Mastersmith Great Axe",
-      "type": "weapon_heavy_blade",
+      "type": "weapon_axe",
       "tier": 1,
       "damage": "1d12+1",
       "hands": 2,
@@ -262,7 +265,8 @@
       "hands": 2,
       "value": 360,
       "description": "A flawless crossbow from a master's forge — it simply cuts better.",
-      "steady": true
+      "steady": true,
+      "quiver": 12
     },
     "leather_armor": {
       "name": "Leather Armor",
@@ -460,7 +464,7 @@
       "bundle": 12,
       "max_carry": 36,
       "tier": 1,
-      "description": "A dozen fletched shafts. Every shot spends one; half the misses are recovered after a won fight."
+      "description": "A dozen fletched shafts for the pouch — spare stock. Each archer carries their own quiver (20; crossbows 12) and refills it from here: free between fights, a full turn during one."
     },
     "rusty_longsword": {
       "name": "Rusty Longsword",
@@ -580,7 +584,7 @@
     },
     "enchanted_battle_axe": {
       "name": "Battle Axe +1",
-      "type": "weapon_heavy_blade",
+      "type": "weapon_axe",
       "tier": 2,
       "damage": "1d8+1",
       "hit": 1,
@@ -590,7 +594,7 @@
     },
     "enchanted_great_axe": {
       "name": "Great Axe +1",
-      "type": "weapon_heavy_blade",
+      "type": "weapon_axe",
       "tier": 2,
       "damage": "1d12+1",
       "hit": 1,
@@ -665,7 +669,8 @@
       "enchanted": true,
       "value": 960,
       "description": "A crossbow with runes cold to the touch — it bites what mundane steel cannot.",
-      "steady": true
+      "steady": true,
+      "quiver": 12
     },
     "enchanted_leather_armor": {
       "name": "Leather Armor +1",
@@ -903,7 +908,7 @@
     },
     "enchanted2_great_axe": {
       "name": "Great Axe +2",
-      "type": "weapon_heavy_blade",
+      "type": "weapon_axe",
       "tier": 4,
       "damage": "1d12+2",
       "hit": 2,
@@ -1075,7 +1080,8 @@
       "hands": 2,
       "steady": true,
       "value": 3000,
-      "description": "A crossbow whose runes burn steady — the heaviest bolt on the shelf."
+      "description": "A crossbow whose runes burn steady — the heaviest bolt on the shelf.",
+      "quiver": 12
     },
     "enchanted2_chain_mail": {
       "name": "Chain Mail +2",
@@ -1167,7 +1173,7 @@
     },
     "worldsplitter": {
       "name": "Worldsplitter",
-      "type": "weapon_heavy_blade",
+      "type": "weapon_axe",
       "tier": 5,
       "damage": "1d12+3",
       "hit": 2,
@@ -1440,7 +1446,7 @@
     },
     "frostbite": {
       "name": "Frostbite",
-      "type": "weapon_heavy_blade",
+      "type": "weapon_axe",
       "tier": 4,
       "damage": "1d8+1",
       "hit": 1,
@@ -1520,7 +1526,7 @@
     },
     "fiendcleaver": {
       "name": "Fiendcleaver",
-      "type": "weapon_heavy_blade",
+      "type": "weapon_axe",
       "tier": 4,
       "damage": "1d12+1",
       "hit": 1,
@@ -1596,6 +1602,105 @@
       },
       "value": 1000,
       "description": "A longsword +1 with a heart of poison: +1 poison damage on every blow."
+    },
+    "hand_axe": {
+      "name": "Hand Axe",
+      "type": "weapon_axe",
+      "tier": 1,
+      "damage": "1d6",
+      "value": 40,
+      "description": "A short-hafted dwarven axe, as happy splitting kindling as skulls."
+    },
+    "mastersmith_hand_axe": {
+      "name": "Mastersmith Hand Axe",
+      "type": "weapon_axe",
+      "tier": 1,
+      "damage": "1d6+1",
+      "value": 120,
+      "description": "A flawless hand axe from a master's forge — the edge simply does not turn."
+    },
+    "enchanted_hand_axe": {
+      "name": "Hand Axe +1",
+      "type": "weapon_axe",
+      "tier": 2,
+      "damage": "1d6+1",
+      "hit": 1,
+      "enchanted": true,
+      "value": 400,
+      "description": "A hand axe with runes cold to the touch — it bites what steel alone cannot."
+    },
+    "notched_hand_axe": {
+      "name": "Notched Hand Axe",
+      "type": "weapon_axe",
+      "tier": 1,
+      "damage": "1d6-1",
+      "value": 10,
+      "description": "A clan hand-me-down, its edge a row of old notches. It remembers better days."
+    },
+    "duelists_band": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Bladesong — rename/retune freely",
+      "name": "Duelist's Band",
+      "type": "jewelry_ring",
+      "hit": 1,
+      "value": 150,
+      "tier": 3,
+      "description": "A slim ring worn on the sword hand — every riposte it has answered is etched inside. +1 to hit."
+    },
+    "singers_circlet": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Wardsong — rename/retune freely",
+      "name": "Singer's Circlet",
+      "type": "helm",
+      "sp": 2,
+      "save_bonus": 1,
+      "value": 150,
+      "tier": 3,
+      "description": "A silver circlet that hums the ward-verse on its own. +2 SP, +1 on every save."
+    },
+    "granite_torc": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Bulwark — rename/retune freely",
+      "name": "Granite Torc",
+      "type": "jewelry_neck",
+      "ac": 1,
+      "value": 150,
+      "tier": 3,
+      "description": "A collar of mountain-stone that has felt a great many near-lethal blows. +1 AC."
+    },
+    "hearthstone_amulet": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Hearthstone — rename/retune freely",
+      "name": "Hearthstone Amulet",
+      "type": "jewelry_neck",
+      "sp": 2,
+      "save_bonus": 1,
+      "value": 150,
+      "tier": 3,
+      "description": "A warm stone on a leather cord — the hold's fire, carried. +2 SP, +1 on every save."
+    },
+    "hunting_knife": {
+      "name": "Hunting Knife",
+      "type": "weapon_light_blade",
+      "tier": 1,
+      "damage": "1d4",
+      "value": 15,
+      "finesse": true,
+      "description": "A ranger's working blade — one for each hand, if you know how."
+    },
+    "striders_band": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Way of the Wolf — rename/retune freely",
+      "name": "Strider's Band",
+      "type": "jewelry_ring",
+      "dmg": 1,
+      "value": 150,
+      "tier": 3,
+      "description": "A plain ring of wolf-bone, warm from the long hunt. +1 damage on every hit."
+    },
+    "deadeye_charm": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Way of the Hawk — rename/retune freely",
+      "name": "Deadeye Charm",
+      "type": "jewelry_neck",
+      "hit": 1,
+      "value": 150,
+      "tier": 3,
+      "description": "A hawk's eye set in silver. +1 to hit — the shot was always going to land."
     }
   }
 }

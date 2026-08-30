@@ -1,5 +1,5 @@
 {
-  "_comment": "MAGIC v3 (design doc v3; designer session 2026-08-28). Every spell has a 'level' 1-5; its COST IS COMPUTED (level x 2 + 1 = 3/5/7/9/11 SP) — never add a 'cost'. WHO CASTS: 'classes' (ids from classes.json), gated by character level (spell level 1 at char 1-3, 2 at 4-7, 3 at 8-11, 4 at 12-15, 5 at 16-20). Wizards keep a SPELLBOOK from level 1 (classes.json 'spellbook'): they start with a kit, STUDY one common spell at set levels, and copy scrolls in. Priests know every common prayer; 'rare' prayers arrive as revelations (classes.json 'revelation_levels'). 'rare': true on an arcane spell = scroll-only lore (never studied — found on a scroll and copied in, or picked at the fork if it was already in the book). 'scroll': true = the engine makes a 'scroll_<id>' item (items.json 'scroll_values' ladder by level, 'rare_multiplier'); or {\"value\": N, \"tier\": T} to set them. Any ARCANE caster may read a scroll once in battle (I menu, 0 SP, up to max spell level + 1); only a spellbook may copy one. FIELDS: stat = ability whose modifier boosts the spell (int = arcane, wis = divine); type = damage | heal | buff | afflict | cure | raise; range/area in battle squares (area 1 = a 3x3 burst, 2 = 5x5, \"all\" = every foe on the field, range 0 = centered on the caster). Damage spells never miss: each target rolls a save (d20 + bonus vs DC 10 + spell level + caster's stat mod) — 'save' names the resisting ability; success = half damage; auto = true means no save at all. Damage bursts do NOT spare your friends (afflictions touch only foes). 'condition': {id, rounds} lands on targets that FAIL their save. AFFLICT = no damage, just the condition (save or suffer) — it honors 'area', and 'only_family': [\"undead\", ...] skips everyone else. 'double_vs': a monster family that takes double total damage (like Ancient weapons). 'drain': 0.5 = that fraction of damage dealt heals the caster. BUFFS: targets = self | ally (aim at one hero) | allies (the whole living party); fields hit, dmg, ac, saves, attacks (extra attacks per round), absorb (dice — a shield that drinks that much damage first), bonus_damage {dice, element} on every weapon hit, hidden (= the thief's Vanish), resist (elements, or \"all\" — half damage), immune_conditions; 'rounds' makes it timed (absent = the whole battle). Every buff wears its NAME in the combat math. HEAL: 'dice' to one ally at the crosshair, or targets 'allies' for the whole party; 'cures' also strips conditions. CURE: 'cures': [ids] or \"all\", optional dice. RAISE: a FALLEN ally rises with 'hp' (fraction of max). SCALE (caster-level growth, named 'caster level' in the log): {\"per_levels\": N, \"max\": M, and ONE of dice | flat | rounds | extra_targets | ac | area} — one step every N caster levels past the level the spell unlocked at (1/4/8/12/16), at most M steps. Magic Missile's extra_targets fires more darts at the nearest other foes. DAMAGE GUIDELINE (doc): ~2d6 per spell level. ALL numbers are CONTENT-FLAG proposals — rename, retune, add, and cut freely! VISUALS: optional \"fx\" — {\"kind\": bolt | beam | lightning | burst | sparkle | wisp, \"color\": hex, \"burst\": fire | frost | holy}. SOUND: fx \"sound\": fire | frost | lightning | light | arcane | sonic | cloud | web (heals and buffs are automatic); fire/frost/lightning/poison also decide which worn resistances guard a hero caught in the blast.",
+  "_comment": "MAGIC v3 (design doc v3; designer session 2026-08-28). Every spell has a 'level' 1-5; its COST IS COMPUTED (level x 2 + 1 = 3/5/7/9/11 SP) — never add a 'cost'. WHO CASTS: 'classes' (ids from classes.json), gated by character level (spell level 1 at char 1-3, 2 at 4-7, 3 at 8-11, 4 at 12-15, 5 at 16-20). Wizards keep a SPELLBOOK from level 1 (classes.json 'spellbook'): they start with a kit, STUDY one common spell at set levels, and copy scrolls in. Priests know every common prayer; 'rare' prayers arrive as revelations (classes.json 'revelation_levels'). 'rare': true on an arcane spell = scroll-only lore (never studied — found on a scroll and copied in, or picked at the fork if it was already in the book). 'scroll': true = the engine makes a 'scroll_<id>' item (items.json 'scroll_values' ladder by level, 'rare_multiplier'); or {\"value\": N, \"tier\": T} to set them. Any ARCANE caster may read a scroll once in battle (I menu, 0 SP, up to max spell level + 1); only a spellbook may copy one. FIELDS: stat = ability whose modifier boosts the spell (int = arcane, wis = divine); type = damage | heal | buff | afflict | cure | raise; range/area in battle squares (area 1 = a 3x3 burst, 2 = 5x5, \"all\" = every foe on the field, range 0 = centered on the caster). Damage spells never miss: each target rolls a save (d20 + bonus vs DC 10 + spell level + caster's stat mod) — 'save' names the resisting ability; success = half damage; auto = true means no save at all. Damage bursts do NOT spare your friends (afflictions touch only foes). 'condition': {id, rounds} lands on targets that FAIL their save. AFFLICT = no damage, just the condition (save or suffer) — it honors 'area', and 'only_family': [\"undead\", ...] skips everyone else. 'double_vs': a monster family that takes double total damage (like Ancient weapons). 'drain': 0.5 = that fraction of damage dealt heals the caster. BUFFS: targets = self | ally (aim at one hero) | allies (the whole living party); fields hit, dmg, ac, saves, attacks (extra attacks per round), absorb (dice — a shield that drinks that much damage first), bonus_damage {dice, element} on every weapon hit, hidden (= the thief's Vanish), resist (elements, or \"all\" — half damage), immune_conditions; 'rounds' makes it timed (absent = the whole battle). Every buff wears its NAME in the combat math. HEAL: 'dice' to one ally at the crosshair, or targets 'allies' for the whole party; 'cures' also strips conditions. CURE: 'cures': [ids] or \"all\", optional dice. RAISE: a FALLEN ally rises with 'hp' (fraction of max). SCALE (caster-level growth, named 'caster level' in the log): {\"per_levels\": N, \"max\": M, and ONE of dice | flat | rounds | extra_targets | ac | area} — one step every N caster levels past the level the spell unlocked at (1/4/8/12/16), at most M steps. Magic Missile's extra_targets fires more darts at the nearest other foes. DAMAGE GUIDELINE (doc): ~2d6 per spell level. ALL numbers are CONTENT-FLAG proposals — rename, retune, add, and cut freely! VISUALS: optional \"fx\" — {\"kind\": bolt | beam | lightning | burst | sparkle | wisp, \"color\": hex, \"burst\": fire | frost | holy}. SOUND: fx \"sound\": fire | frost | lightning | light | arcane | sonic | cloud | web (heals and buffs are automatic); fire/frost/lightning/poison also decide which worn resistances guard a hero caught in the blast. | LANE SPELLS (2026-08-29, companion doc v1 — Spellblade & Stoneshaper): a spell with 'lane' belongs to that level-5 lane of its class (the fixed-list 'magic': 'lane' model in classes.json) — known automatically as its level opens; level-1 lane spells are known to a hero of that class BEFORE the fork (unless a creation gift names one). NEW BUFF RIDERS: 'reduce' N (every blow loses N damage), 'halve' (every wound halved), 'reflect' 0.5 (that fraction of melee damage taken is thrown back at the attacker), 'lifesteal' 0.25 (that fraction of weapon damage dealt heals you), 'auto_hit' (weapon attacks cannot miss), 'immune_conditions' may be true (all) or a list of condition ids, 'once_per_rest' (castable once until a full rest). All numbers here are Claude's PROPOSALS under the doc's descriptions — retune freely. CONTENT FLAGS: Blooded Steel's element is fixed (fire) where the doc says 'chosen'; Ward of Kinship resists all four elements where the doc says 'a chosen one'; Warden's Aria/Avatar of Stone block all afflictions where the doc says 'one chosen type'.",
   "spells": {
     "magic_missile": {
       "name": "Magic Missile",
@@ -1410,23 +1410,540 @@
         "sound": "light"
       }
     },
-    "wicked_weapon": {
-      "name": "Wicked Weapon",
+    "edge_of_dawn": {
+      "name": "Edge of Dawn",
       "level": 1,
       "classes": [
         "spellblade"
       ],
+      "lane": "bladesong",
       "stat": "int",
       "type": "buff",
       "range": 0,
       "area": 0,
       "targets": "self",
       "hit": 1,
-      "dmg": 2,
-      "description": "Your blade hungers: +1 to hit, +2 damage this battle",
+      "dmg": 1,
+      "rounds": 5,
+      "description": "The blade-verse: +1 to hit and +1 damage for 5 rounds",
       "fx": {
         "kind": "sparkle",
-        "color": "#b08fe8"
+        "color": "#e0c060",
+        "sound": "buff"
+      }
+    },
+    "blooded_steel": {
+      "name": "Blooded Steel",
+      "level": 2,
+      "classes": [
+        "spellblade"
+      ],
+      "lane": "bladesong",
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "bonus_damage": {
+        "dice": "1d6",
+        "element": "fire"
+      },
+      "description": "Your weapon runs with fire: +1d6 fire on every hit this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#ff9040",
+        "sound": "fire"
+      }
+    },
+    "storm_of_blows": {
+      "name": "Storm of Blows",
+      "level": 3,
+      "classes": [
+        "spellblade"
+      ],
+      "lane": "bladesong",
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "attacks": 1,
+      "rounds": 3,
+      "description": "One more strike every turn for 3 rounds",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#e0c060",
+        "sound": "buff"
+      }
+    },
+    "deathless_fury": {
+      "name": "Deathless Fury",
+      "level": 4,
+      "classes": [
+        "spellblade"
+      ],
+      "lane": "bladesong",
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "hit": 3,
+      "dmg": 3,
+      "lifesteal": 0.25,
+      "rounds": 3,
+      "description": "+3 to hit, +3 damage, and a quarter of every wound you deal returns as your own blood, for 3 rounds",
+      "fx": {
+        "kind": "wisp",
+        "color": "#c03050",
+        "sound": "arcane"
+      }
+    },
+    "eclipse_blade": {
+      "name": "Eclipse Blade",
+      "level": 5,
+      "classes": [
+        "spellblade"
+      ],
+      "lane": "bladesong",
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "auto_hit": true,
+      "dmg": 5,
+      "rounds": 2,
+      "description": "For 2 rounds your blade cannot miss and lands +5 harder",
+      "fx": {
+        "kind": "wisp",
+        "color": "#6040a0",
+        "sound": "arcane"
+      }
+    },
+    "aegis_of_dawn": {
+      "name": "Aegis of Dawn",
+      "level": 1,
+      "classes": [
+        "spellblade"
+      ],
+      "lane": "wardsong",
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "ac": 1,
+      "saves": 1,
+      "rounds": 5,
+      "description": "The ward-verse: +1 AC and +1 on every save for 5 rounds",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#9fc8ff",
+        "sound": "buff"
+      }
+    },
+    "glimmering_veil": {
+      "name": "Glimmering Veil",
+      "level": 2,
+      "classes": [
+        "spellblade"
+      ],
+      "lane": "wardsong",
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "absorb": "2d8",
+      "description": "A veil of light that drinks the first blows (2d8) this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#9fc8ff",
+        "sound": "buff"
+      }
+    },
+    "iron_resolve": {
+      "name": "Iron Resolve",
+      "level": 3,
+      "classes": [
+        "spellblade"
+      ],
+      "lane": "wardsong",
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "saves": 3,
+      "immune_conditions": [
+        "frightened"
+      ],
+      "rounds": 4,
+      "description": "+3 on every save and no fear can touch you, for 4 rounds",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#9fc8ff",
+        "sound": "buff"
+      }
+    },
+    "bastion_veil": {
+      "name": "Bastion Veil",
+      "level": 4,
+      "classes": [
+        "spellblade"
+      ],
+      "lane": "wardsong",
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "ac": 3,
+      "reflect": 0.5,
+      "rounds": 3,
+      "description": "+3 AC, and half of every melee wound you take is thrown back at the attacker, for 3 rounds",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#cfe6ff",
+        "sound": "arcane"
+      }
+    },
+    "wardens_aria": {
+      "name": "Warden's Aria",
+      "level": 5,
+      "classes": [
+        "spellblade"
+      ],
+      "lane": "wardsong",
+      "stat": "int",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "halve": true,
+      "immune_conditions": true,
+      "rounds": 2,
+      "description": "For 2 rounds every wound is halved and no affliction can take hold",
+      "fx": {
+        "kind": "wisp",
+        "color": "#cfe6ff",
+        "sound": "arcane"
+      }
+    },
+    "skin_of_stone": {
+      "name": "Skin of Stone",
+      "level": 1,
+      "classes": [
+        "stoneshaper"
+      ],
+      "lane": "bulwark",
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "ac": 1,
+      "rounds": 5,
+      "description": "Your skin grays to granite: +1 AC for 5 rounds",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#b8a890",
+        "sound": "buff"
+      }
+    },
+    "iron_constitution": {
+      "name": "Iron Constitution",
+      "level": 2,
+      "classes": [
+        "stoneshaper"
+      ],
+      "lane": "bulwark",
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "saves": 1,
+      "rounds": 5,
+      "description": "+1 on every save for 5 rounds",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#b8a890",
+        "sound": "buff"
+      }
+    },
+    "mind_of_the_mountain": {
+      "name": "Mind of the Mountain",
+      "level": 3,
+      "classes": [
+        "stoneshaper"
+      ],
+      "lane": "bulwark",
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "saves": 3,
+      "immune_conditions": [
+        "weakened"
+      ],
+      "rounds": 4,
+      "description": "+3 on every save and nothing can weaken you, for 4 rounds",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#b8a890",
+        "sound": "buff"
+      }
+    },
+    "heart_of_granite": {
+      "name": "Heart of Granite",
+      "level": 4,
+      "classes": [
+        "stoneshaper"
+      ],
+      "lane": "bulwark",
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "ac": 3,
+      "reduce": 2,
+      "rounds": 3,
+      "description": "+3 AC and every blow loses 2 damage, for 3 rounds",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#b8a890",
+        "sound": "buff"
+      }
+    },
+    "avatar_of_stone": {
+      "name": "Avatar of Stone",
+      "level": 5,
+      "classes": [
+        "stoneshaper"
+      ],
+      "lane": "bulwark",
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "halve": true,
+      "immune_conditions": true,
+      "rounds": 2,
+      "description": "For 2 rounds you are the mountain: every wound halved, no affliction can take hold",
+      "fx": {
+        "kind": "wisp",
+        "color": "#b8a890",
+        "sound": "arcane"
+      }
+    },
+    "stonekins_blessing": {
+      "name": "Stonekin's Blessing",
+      "level": 1,
+      "classes": [
+        "stoneshaper"
+      ],
+      "lane": "hearthstone",
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "ally",
+      "ac": 1,
+      "rounds": 5,
+      "description": "One ally stands a little stonier: +1 AC for 5 rounds",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#e0a060",
+        "sound": "buff"
+      }
+    },
+    "circle_of_endurance": {
+      "name": "Circle of Endurance",
+      "level": 2,
+      "classes": [
+        "stoneshaper"
+      ],
+      "lane": "hearthstone",
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "absorb": "1d8",
+      "once_per_rest": true,
+      "description": "The whole party gains a stony second wind (1d8 absorbed) this battle — once per rest",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#e0a060",
+        "sound": "buff"
+      }
+    },
+    "ward_of_kinship": {
+      "name": "Ward of Kinship",
+      "level": 3,
+      "classes": [
+        "stoneshaper"
+      ],
+      "lane": "hearthstone",
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "ally",
+      "resist": "all",
+      "description": "One ally takes half damage from fire, frost, lightning, and poison this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#e0a060",
+        "sound": "buff"
+      }
+    },
+    "bulwark_of_the_clan": {
+      "name": "Bulwark of the Clan",
+      "level": 4,
+      "classes": [
+        "stoneshaper"
+      ],
+      "lane": "hearthstone",
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "ac": 1,
+      "saves": 1,
+      "rounds": 3,
+      "description": "The whole party: +1 AC and +1 on every save for 3 rounds",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#e0a060",
+        "sound": "buff"
+      }
+    },
+    "song_of_the_deep_roots": {
+      "name": "Song of the Deep Roots",
+      "level": 5,
+      "classes": [
+        "stoneshaper"
+      ],
+      "lane": "hearthstone",
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "resist": "all",
+      "immune_conditions": true,
+      "rounds": 2,
+      "description": "For 2 rounds the whole party halves every element and no affliction takes hold",
+      "fx": {
+        "kind": "wisp",
+        "color": "#e0a060",
+        "sound": "arcane"
+      }
+    },
+    "waybread": {
+      "name": "Waybread",
+      "level": 1,
+      "classes": [
+        "ranger"
+      ],
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "absorb": "1d6",
+      "saves": 1,
+      "description": "Elven travel-bread: the party gains 1d6 absorbed damage and +1 on every save this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#8fc07a",
+        "sound": "buff"
+      }
+    },
+    "hunters_eye": {
+      "name": "Hunter's Eye",
+      "level": 1,
+      "classes": [
+        "ranger"
+      ],
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "hit": 1,
+      "description": "Nothing hides from the hunter: the party strikes truer (+1 to hit) this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#e0c060",
+        "sound": "buff"
+      },
+      "_comment": "CONTENT FLAG: the doc says 'reveal hidden and invisible foes' — no monster hides yet, so for now it is a party +1 to hit; rework when hidden foes exist."
+    },
+    "healing_herbs": {
+      "name": "Healing Herbs",
+      "level": 1,
+      "classes": [
+        "ranger"
+      ],
+      "stat": "wis",
+      "type": "heal",
+      "range": 1,
+      "area": 0,
+      "dice": "1d8",
+      "description": "A poultice of wild herbs: one ally heals 1d8",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#6ad46a",
+        "sound": "heal"
+      }
+    },
+    "snare": {
+      "name": "Snare",
+      "level": 2,
+      "classes": [
+        "ranger"
+      ],
+      "stat": "wis",
+      "type": "afflict",
+      "range": 4,
+      "area": 0,
+      "save": "dex",
+      "condition": {
+        "id": "slowed",
+        "rounds": 3
+      },
+      "description": "A snare of root and cord: one foe is Slowed for 3 rounds",
+      "fx": {
+        "kind": "bolt",
+        "color": "#8fc07a",
+        "sound": "web"
+      }
+    },
+    "cloak_of_the_wild": {
+      "name": "Cloak of the Wild",
+      "level": 2,
+      "classes": [
+        "ranger"
+      ],
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "self",
+      "hidden": true,
+      "description": "You are the brush and the shadow — unseen until you strike",
+      "fx": {
+        "kind": "wisp",
+        "color": "#8fc07a",
+        "sound": "arcane"
       }
     }
   }

@@ -143,9 +143,23 @@ export function validateMagic(data) {
     if (s.type === 'raise' && s.hp !== undefined && (typeof s.hp !== 'number' || s.hp <= 0 || s.hp > 1)) {
       throw new DataError(where, `A raise spell's "hp" is the fraction of max HP the fallen rise with (0.5 = half).`);
     }
+    if (s.lane) {
+      const lanes = (data.progression?.classes ?? {});
+      const ok = s.classes.some(c => lanes[c]?.lanes?.some(l => l.id === s.lane));
+      if (!ok) throw new DataError(where, `"lane": "${s.lane}" is not a lane of ${s.classes.join('/')} in progression.json. Valid: ${s.classes.flatMap(c => (lanes[c]?.lanes ?? []).map(l => l.id)).join(', ') || '(that class has no lanes)'}`);
+    }
     if (s.type === 'buff') {
-      for (const k of ['hit', 'dmg', 'ac', 'saves', 'attacks']) {
+      for (const k of ['hit', 'dmg', 'ac', 'saves', 'attacks', 'reduce']) {
         if (s[k] !== undefined && typeof s[k] !== 'number') throw new DataError(where, `Buff field "${k}" must be a number.`);
+      }
+      for (const k of ['reflect', 'lifesteal']) {
+        if (s[k] !== undefined && (typeof s[k] !== 'number' || s[k] <= 0 || s[k] > 1)) throw new DataError(where, `"${k}" is a fraction (0.5 = half)${k === 'reflect' ? ' of melee damage taken thrown back at the attacker' : ' of weapon damage dealt that heals you'}.`);
+      }
+      if (s.immune_conditions !== undefined && s.immune_conditions !== true && !Array.isArray(s.immune_conditions)) {
+        throw new DataError(where, `"immune_conditions" is true (no affliction lands) or a list of condition ids.`);
+      }
+      for (const c of Array.isArray(s.immune_conditions) ? s.immune_conditions : []) {
+        if (!condIds.includes(c)) throw new DataError(where, `immune_conditions "${c}" isn't in conditions.json. Valid: ${condIds.join(', ')}`);
       }
       if (s.absorb !== undefined && !DICE_RE.test(s.absorb)) throw new DataError(where, `"absorb" must be dice (e.g. "1d8") — a shield that drinks that much damage.`);
       if (s.bonus_damage && (!DICE_RE.test(s.bonus_damage.dice ?? '') || !ELEMENTS.includes(s.bonus_damage.element))) {
@@ -193,6 +207,32 @@ export function validateMagic(data) {
   for (const [cid, cls] of Object.entries(data.classes.classes)) {
     const where = `data/classes.json ("${cid}")`;
     if (cls.caster && !['arcane', 'divine'].includes(cls.caster)) throw new DataError(where, `"caster" must be arcane or divine.`);
+    if (cls.magic !== undefined && cls.magic !== 'lane') throw new DataError(where, `"magic" must be "lane" (the fixed list decided by the level-5 lane) — or leave it out.`);
+    if (cls.magic === 'lane' && !data.progression?.classes?.[cid]) throw new DataError(where, `"magic": "lane" needs a progression.json entry for ${cid} — the lanes decide the spell list.`);
+    for (const [lvl, at] of Object.entries(cls.spell_unlocks ?? {})) {
+      if (!['1', '2', '3', '4', '5'].includes(lvl) || typeof at !== 'number' || at < 1 || at > 20) throw new DataError(where, `spell_unlocks maps a spell level ("1"-"5") to the character level (1-20) it opens at — levels not listed never open.`);
+    }
+    if (cls.dual_wield && typeof cls.dual_wield.penalty !== 'number') throw new DataError(where, `dual_wield needs {"penalty": N} — the off-hand's to-hit penalty.`);
+    if (cls.favored_enemy) {
+      const fe = cls.favored_enemy;
+      if (!Array.isArray(fe.levels) || fe.levels.some(l => typeof l !== 'number' || l < 1 || l > 20)) throw new DataError(where, `favored_enemy "levels" lists the character levels (1-20) that grant a pick.`);
+      if (fe.cap !== undefined && (typeof fe.cap !== 'number' || fe.cap < 1)) throw new DataError(where, `favored_enemy "cap" is the highest bonus one family can reach.`);
+    }
+    if (cls.spell_cost && (typeof cls.spell_cost.per_level !== 'number' || typeof cls.spell_cost.base !== 'number')) {
+      throw new DataError(where, `"spell_cost" needs {"per_level": N, "base": N} — cost = spell level × per_level + base.`);
+    }
+    if (cls.creation_pick) {
+      const cp = cls.creation_pick;
+      if (!Array.isArray(cp.options) || cp.options.length < 2) throw new DataError(where, `creation_pick needs an "options" list of at least two gifts.`);
+      for (const o of cp.options) {
+        if (!o.id || !o.name) throw new DataError(where, `Every creation_pick option needs an "id" and a "name".`);
+        if (o.spell && !spells[o.spell]) throw new DataError(where, `creation_pick "${o.name}" names spell "${o.spell}", which isn't in spells.json.`);
+        if (o.spell && !spells[o.spell].classes.includes(cid)) throw new DataError(where, `creation_pick "${o.name}" names "${o.spell}", which a ${cls.name} cannot cast.`);
+        if (o.detect !== undefined && typeof o.detect !== 'number') throw new DataError(where, `creation_pick "${o.name}": "detect" is a number of percent.`);
+        if (o.ac_vs_element !== undefined && typeof o.ac_vs_element !== 'number') throw new DataError(where, `creation_pick "${o.name}": "ac_vs_element" is the AC bonus against one element (chosen at creation).`);
+        for (const k of ['free_swaps', 'quiver_bonus']) if (o[k] !== undefined && typeof o[k] !== 'number') throw new DataError(where, `creation_pick "${o.name}": "${k}" is a number.`);
+      }
+    }
     const sb = cls.spellbook;
     if (sb) {
       for (const id of sb.starting_spells ?? []) {
@@ -243,6 +283,21 @@ export function maxSpellLevel(charLevel) {
 
 export function unlockLevel(spellLevel) { return UNLOCK[spellLevel] ?? 1; }
 
+// A HERO's highest castable spell level: the universal table — or the
+// class's own 'spell_unlocks' ({"1": 9, "2": 15}, the Ranger's quarter-
+// caster ladder), which also caps the top level (no entry = never).
+export function heroMaxSpellLevel(ch, level = ch.level) {
+  const u = ch.cls.spell_unlocks;
+  if (!u) return maxSpellLevel(level);
+  let best = 0;
+  for (const [lvl, at] of Object.entries(u)) if (level >= at) best = Math.max(best, Number(lvl));
+  return best;
+}
+// The character level a spell level opens at, for this hero's class.
+export function heroUnlockLevel(ch, spellLevel) {
+  return ch.cls.spell_unlocks?.[String(spellLevel)] ?? unlockLevel(spellLevel);
+}
+
 // The doc's SP formula — or a legacy per-level array, or nothing (0 SP).
 export function spellPointsFor(cls, level) {
   const sp = cls.spell_points;
@@ -253,9 +308,12 @@ export function spellPointsFor(cls, level) {
   return 0;
 }
 
-// Spell cost = level × 2 + 1; the Sorcerer's Overchannel shaves 1 (floor 1).
+// Spell cost = level × 2 + 1 — or the class's own 'spell_cost' ladder
+// ({per_level, base}: the half-casters pay level + 1); the Sorcerer's
+// Overchannel shaves 1 (floor 1).
 export function spellCost(data, ch, spell) {
-  let cost = spell.level * 2 + 1;
+  const f = ch.cls.spell_cost ?? {};
+  let cost = spell.level * (f.per_level ?? 2) + (f.base ?? 1);
   const p = passiveOf(data, ch);
   if (p?.id === 'overchannel') cost = Math.max(1, cost - (p.discount ?? 1));
   return cost;
@@ -279,12 +337,45 @@ export function classIdOf(data, ch) {
 }
 
 // Which knowledge model this hero runs: 'known' (the Raw Gift lane),
-// 'spellbook' (a class with a spellbook block), or null (the open model).
+// 'spellbook' (a class with a spellbook block), 'lane' (the half-casters'
+// fixed list, decided by the level-5 lane), or null (the open model).
 export function magicModel(data, ch) {
   const p = passiveOf(data, ch)?.id;
   if (p === 'overchannel') return 'known';
   if (p === 'prepared_mind' || ch.cls.spellbook) return 'spellbook';
+  if (ch.cls.magic === 'lane') return 'lane';
   return null;
+}
+
+// The 'lane' model (Spellblade, Stoneshaper): before the fork the hero
+// knows the class's level-1 spells of every lane — or ONLY the creation
+// gift's spell, if the gift named one; from the fork on, every spell
+// tagged with the walked lane (untagged class spells belong to both),
+// plus the gift spell forever. Returns [{id, ...def}], all levels.
+export function laneSpells(data, ch) {
+  const clsId = classIdOf(data, ch);
+  const all = classSpellList(data, clsId);
+  const gift = giftOf(ch)?.spell ?? null;
+  if (!ch.lane) {
+    if (gift) return all.filter(s => s.id === gift);
+    return all.filter(s => s.level === 1 && heroMaxSpellLevel(ch) >= 1);
+  }
+  return all.filter(s => !s.lane || s.lane === ch.lane || s.id === gift);
+}
+
+// The creation gift a hero carries (classes.json creation_pick option).
+export function giftOf(ch) {
+  const pick = ch.cls.creation_pick;
+  if (!pick || !ch.gift) return null;
+  return pick.options.find(o => o.id === ch.gift.id) ?? null;
+}
+
+// The lane spells that OPEN at exactly this character level (level-up card).
+export function laneSpellsAt(data, ch, level) {
+  if (magicModel(data, ch) !== 'lane') return [];
+  const tierNow = heroMaxSpellLevel(ch, level), tierBefore = heroMaxSpellLevel(ch, level - 1);
+  if (tierNow === tierBefore) return [];
+  return laneSpells(data, ch).filter(s => s.level === tierNow);
 }
 
 // Prepared slots: class slots_base + max spell level + extra slots reached
@@ -317,7 +408,7 @@ export function revealedSpells(data, ch) {
 // facing list for the character sheet.
 export function knownSpells(data, ch) {
   const clsId = classIdOf(data, ch);
-  const tier = maxSpellLevel(ch.level);
+  const tier = heroMaxSpellLevel(ch);
   const model = magicModel(data, ch);
   const all = classSpellList(data, clsId);
   if (model === 'spellbook') {
@@ -326,6 +417,7 @@ export function knownSpells(data, ch) {
   if (model === 'known') {
     return all.filter(s => (ch.knownSpells ?? []).includes(s.id));
   }
+  if (model === 'lane') return laneSpells(data, ch).filter(s => s.level <= tier);
   const revealed = new Set(revealedSpells(data, ch).map(s => s.id));
   return all.filter(s => (!s.rare && s.level <= tier) || revealed.has(s.id));
 }
@@ -333,7 +425,7 @@ export function knownSpells(data, ch) {
 // The spells this hero can CAST right now (the battle menu's list).
 export function castableSpells(data, ch) {
   const model = magicModel(data, ch);
-  const tier = maxSpellLevel(ch.level);
+  const tier = heroMaxSpellLevel(ch);
   const known = knownSpells(data, ch).filter(s => s.level <= tier);
   if (model === 'spellbook') return known.filter(s => (ch.prepared ?? []).includes(s.id));
   return known;

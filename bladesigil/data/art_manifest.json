@@ -1608,6 +1608,210 @@
       "reference": "assets/misc/stairs_up.png",
       "out": "assets/misc/stairs_down.png",
       "size": 224
+    },
+    {
+      "id": "hero_high_elf_spellblade_m1_face",
+      "style": "hero_portrait",
+      "prompt": "a tall graceful high elf man with pale skin and long pointed ears, dark-haired, young and determined, in fitted elven leather and a slim silvered mail shirt, a leaf-shaped elven longsword in hand wreathed in faint blue runic light — a warrior-mage, not a robed wizard.",
+      "out": "assets/heroes/gen/high_elf_spellblade_m1_face.png",
+      "size": 512,
+      "post": "trim"
+    },
+    {
+      "id": "hero_high_elf_spellblade_m1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a tall graceful high elf man with pale skin and long pointed ears, dark-haired, young and determined, in fitted elven leather and a slim silvered mail shirt, a leaf-shaped elven longsword in hand wreathed in faint blue runic light — a warrior-mage, not a robed wizard.",
+      "reference": "assets/heroes/gen/high_elf_spellblade_m1_face.png",
+      "out": "assets/heroes/gen/high_elf_spellblade_m1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_high_elf_spellblade_m2_face",
+      "style": "hero_portrait",
+      "prompt": "a tall graceful high elf man with pale skin and long pointed ears, grizzled and older, with grey-streaked hair and a weathered face, in fitted elven leather and a slim silvered mail shirt, a leaf-shaped elven longsword in hand wreathed in faint blue runic light — a warrior-mage, not a robed wizard.",
+      "out": "assets/heroes/gen/high_elf_spellblade_m2_face.png",
+      "size": 512,
+      "post": "trim"
+    },
+    {
+      "id": "hero_high_elf_spellblade_m2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a tall graceful high elf man with pale skin and long pointed ears, grizzled and older, with grey-streaked hair and a weathered face, in fitted elven leather and a slim silvered mail shirt, a leaf-shaped elven longsword in hand wreathed in faint blue runic light — a warrior-mage, not a robed wizard.",
+      "reference": "assets/heroes/gen/high_elf_spellblade_m2_face.png",
+      "out": "assets/heroes/gen/high_elf_spellblade_m2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_high_elf_spellblade_f1_face",
+      "style": "hero_portrait",
+      "prompt": "a tall graceful high elf woman with pale skin and long pointed ears, dark-haired, young and determined, in fitted elven leather and a slim silvered mail shirt, a leaf-shaped elven longsword in hand wreathed in faint blue runic light — a warrior-mage, not a robed wizard.",
+      "out": "assets/heroes/gen/high_elf_spellblade_f1_face.png",
+      "size": 512,
+      "post": "trim"
+    },
+    {
+      "id": "hero_high_elf_spellblade_f1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a tall graceful high elf woman with pale skin and long pointed ears, dark-haired, young and determined, in fitted elven leather and a slim silvered mail shirt, a leaf-shaped elven longsword in hand wreathed in faint blue runic light — a warrior-mage, not a robed wizard.",
+      "reference": "assets/heroes/gen/high_elf_spellblade_f1_face.png",
+      "out": "assets/heroes/gen/high_elf_spellblade_f1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_high_elf_spellblade_f2_face",
+      "style": "hero_portrait",
+      "prompt": "a tall graceful high elf woman with pale skin and long pointed ears, with striking silver-or-copper hair, seasoned and confident, in fitted elven leather and a slim silvered mail shirt, a leaf-shaped elven longsword in hand wreathed in faint blue runic light — a warrior-mage, not a robed wizard.",
+      "out": "assets/heroes/gen/high_elf_spellblade_f2_face.png",
+      "size": 512,
+      "post": "trim"
+    },
+    {
+      "id": "hero_high_elf_spellblade_f2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a tall graceful high elf woman with pale skin and long pointed ears, with striking silver-or-copper hair, seasoned and confident, in fitted elven leather and a slim silvered mail shirt, a leaf-shaped elven longsword in hand wreathed in faint blue runic light — a warrior-mage, not a robed wizard.",
+      "reference": "assets/heroes/gen/high_elf_spellblade_f2_face.png",
+      "out": "assets/heroes/gen/high_elf_spellblade_f2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_dwarf_stoneshaper_m1_face",
+      "style": "hero_portrait",
+      "prompt": "a stocky dwarf man, broad and strong with a magnificent thick beard, dark-haired, young and determined, in heavy stone-gray plate etched with glowing amber rune-lines, a rune-carved warhammer in one hand and a round stone-faced shield on the arm — a stone-priest warrior.",
+      "out": "assets/heroes/gen/dwarf_stoneshaper_m1_face.png",
+      "size": 512,
+      "post": "trim"
+    },
+    {
+      "id": "hero_dwarf_stoneshaper_m1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a stocky dwarf man, broad and strong with a magnificent thick beard, dark-haired, young and determined, in heavy stone-gray plate etched with glowing amber rune-lines, a rune-carved warhammer in one hand and a round stone-faced shield on the arm — a stone-priest warrior.",
+      "reference": "assets/heroes/gen/dwarf_stoneshaper_m1_face.png",
+      "out": "assets/heroes/gen/dwarf_stoneshaper_m1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_dwarf_stoneshaper_m2_face",
+      "style": "hero_portrait",
+      "prompt": "a stocky dwarf man, broad and strong with a magnificent thick beard, grizzled and older, with grey-streaked hair and a weathered face, in heavy stone-gray plate etched with glowing amber rune-lines, a rune-carved warhammer in one hand and a round stone-faced shield on the arm — a stone-priest warrior.",
+      "out": "assets/heroes/gen/dwarf_stoneshaper_m2_face.png",
+      "size": 512,
+      "post": "trim"
+    },
+    {
+      "id": "hero_dwarf_stoneshaper_m2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a stocky dwarf man, broad and strong with a magnificent thick beard, grizzled and older, with grey-streaked hair and a weathered face, in heavy stone-gray plate etched with glowing amber rune-lines, a rune-carved warhammer in one hand and a round stone-faced shield on the arm — a stone-priest warrior.",
+      "reference": "assets/heroes/gen/dwarf_stoneshaper_m2_face.png",
+      "out": "assets/heroes/gen/dwarf_stoneshaper_m2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_dwarf_stoneshaper_f1_face",
+      "style": "hero_portrait",
+      "prompt": "a stocky dwarf woman, broad and strong with ornately braided hair, dark-haired, young and determined, in heavy stone-gray plate etched with glowing amber rune-lines, a rune-carved warhammer in one hand and a round stone-faced shield on the arm — a stone-priest warrior.",
+      "out": "assets/heroes/gen/dwarf_stoneshaper_f1_face.png",
+      "size": 512,
+      "post": "trim"
+    },
+    {
+      "id": "hero_dwarf_stoneshaper_f1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a stocky dwarf woman, broad and strong with ornately braided hair, dark-haired, young and determined, in heavy stone-gray plate etched with glowing amber rune-lines, a rune-carved warhammer in one hand and a round stone-faced shield on the arm — a stone-priest warrior.",
+      "reference": "assets/heroes/gen/dwarf_stoneshaper_f1_face.png",
+      "out": "assets/heroes/gen/dwarf_stoneshaper_f1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_dwarf_stoneshaper_f2_face",
+      "style": "hero_portrait",
+      "prompt": "a stocky dwarf woman, broad and strong with ornately braided hair, with striking silver-or-copper hair, seasoned and confident, in heavy stone-gray plate etched with glowing amber rune-lines, a rune-carved warhammer in one hand and a round stone-faced shield on the arm — a stone-priest warrior.",
+      "out": "assets/heroes/gen/dwarf_stoneshaper_f2_face.png",
+      "size": 512,
+      "post": "trim"
+    },
+    {
+      "id": "hero_dwarf_stoneshaper_f2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a stocky dwarf woman, broad and strong with ornately braided hair, with striking silver-or-copper hair, seasoned and confident, in heavy stone-gray plate etched with glowing amber rune-lines, a rune-carved warhammer in one hand and a round stone-faced shield on the arm — a stone-priest warrior.",
+      "reference": "assets/heroes/gen/dwarf_stoneshaper_f2_face.png",
+      "out": "assets/heroes/gen/dwarf_stoneshaper_f2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_half_elf_ranger_m1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a lean half-elf man with subtly pointed ears and weathered human features, dark-haired, young and determined, in worn green-and-brown leathers and a hooded travel cloak, a yew longbow over the shoulder and a hunting knife at each hip — a wilderness hunter, Aragorn at the ford.",
+      "out": "assets/heroes/gen/half_elf_ranger_m1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_half_elf_ranger_m1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a lean half-elf man with subtly pointed ears and weathered human features, dark-haired, young and determined, in worn green-and-brown leathers and a hooded travel cloak, a yew longbow over the shoulder and a hunting knife at each hip — a wilderness hunter, Aragorn at the ford.",
+      "reference": "assets/heroes/gen/half_elf_ranger_m1_face.png",
+      "out": "assets/heroes/gen/half_elf_ranger_m1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_half_elf_ranger_m2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a lean half-elf man with subtly pointed ears and weathered human features, grizzled and older, with grey-streaked hair and a weathered face, in worn green-and-brown leathers and a hooded travel cloak, a yew longbow over the shoulder and a hunting knife at each hip — a wilderness hunter, Aragorn at the ford.",
+      "out": "assets/heroes/gen/half_elf_ranger_m2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_half_elf_ranger_m2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a lean half-elf man with subtly pointed ears and weathered human features, grizzled and older, with grey-streaked hair and a weathered face, in worn green-and-brown leathers and a hooded travel cloak, a yew longbow over the shoulder and a hunting knife at each hip — a wilderness hunter, Aragorn at the ford.",
+      "reference": "assets/heroes/gen/half_elf_ranger_m2_face.png",
+      "out": "assets/heroes/gen/half_elf_ranger_m2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_half_elf_ranger_f1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a lean half-elf woman with subtly pointed ears and weathered human features, dark-haired, young and determined, in worn green-and-brown leathers and a hooded travel cloak, a yew longbow over the shoulder and a hunting knife at each hip — a wilderness hunter, Aragorn at the ford.",
+      "out": "assets/heroes/gen/half_elf_ranger_f1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_half_elf_ranger_f1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a lean half-elf woman with subtly pointed ears and weathered human features, dark-haired, young and determined, in worn green-and-brown leathers and a hooded travel cloak, a yew longbow over the shoulder and a hunting knife at each hip — a wilderness hunter, Aragorn at the ford.",
+      "reference": "assets/heroes/gen/half_elf_ranger_f1_face.png",
+      "out": "assets/heroes/gen/half_elf_ranger_f1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_half_elf_ranger_f2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a lean half-elf woman with subtly pointed ears and weathered human features, with striking silver-or-copper hair, seasoned and confident, in worn green-and-brown leathers and a hooded travel cloak, a yew longbow over the shoulder and a hunting knife at each hip — a wilderness hunter, Aragorn at the ford.",
+      "out": "assets/heroes/gen/half_elf_ranger_f2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_half_elf_ranger_f2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a lean half-elf woman with subtly pointed ears and weathered human features, with striking silver-or-copper hair, seasoned and confident, in worn green-and-brown leathers and a hooded travel cloak, a yew longbow over the shoulder and a hunting knife at each hip — a wilderness hunter, Aragorn at the ford.",
+      "reference": "assets/heroes/gen/half_elf_ranger_f2_face.png",
+      "out": "assets/heroes/gen/half_elf_ranger_f2.png",
+      "size": 1024
     }
   ]
 }
