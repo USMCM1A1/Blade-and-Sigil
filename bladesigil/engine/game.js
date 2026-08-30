@@ -212,6 +212,37 @@ export class Game {
     this.refreshChoices();
   }
 
+  // ---- Marching order (O): reorder the party, flip front/back rows ----
+  // Never mid-battle (placement is already decided). Edits the party def
+  // that built the run and re-saves it when a saved party exists, so the
+  // order survives a refresh; the premade party keeps its order for the run.
+  moveHero(idx, dir) {
+    if (this.battle) return false;
+    const j = idx + dir;
+    if (idx < 0 || j < 0 || idx >= this.party.length || j >= this.party.length) return false;
+    [this.party[idx], this.party[j]] = [this.party[j], this.party[idx]];
+    if (this.partyDef) [this.partyDef[idx], this.partyDef[j]] = [this.partyDef[j], this.partyDef[idx]];
+    this.saveMarchingOrder();
+    return true;
+  }
+
+  setRow(ch, row) {
+    if (this.battle || !['front', 'back'].includes(row) || ch.row === row) return false;
+    ch.row = row;
+    const def = this.partyDef?.[this.party.indexOf(ch)];
+    if (def) def.row = row;
+    this.saveMarchingOrder();
+    this.log(`${ch.name} takes the ${row} row.`, 'info');
+    return true;
+  }
+
+  saveMarchingOrder() {
+    if (!this.partyDef) return;
+    try {
+      if (localStorage.getItem('bs_party')) localStorage.setItem('bs_party', JSON.stringify(this.partyDef));
+    } catch { /* private mode: the order lasts the run */ }
+  }
+
   // ---- Novamagus (Phase 4): the home base between dungeon dives ----
   enterTown(first = false) {
     const t = this.data.town;

@@ -54,7 +54,7 @@ export function choiceOpen() {
 // Called every frame: opens the next owed choice whenever the party is on
 // the map (never mid-battle) and nothing else is being decided.
 export function maybeOpenChoice(game) {
-  if (game.battle || game.over || !game.choiceQueue.length || choiceOpen() || buildingOpen() || equipmentOpen() || spellbookOpen() || playtestOpen()) return;
+  if (game.battle || game.over || !game.choiceQueue.length || choiceOpen() || buildingOpen() || equipmentOpen() || spellbookOpen() || playtestOpen() || marchingOpen()) return;
   renderChoice(game, game.choiceQueue[0]);
 }
 
@@ -1311,6 +1311,42 @@ function renderSpellbook(game) {
     b.onclick = () => { game.copyScroll(b.dataset.copy, ch); renderSpellbook(game); };
   }
   sideEl.querySelector('[data-open-sheet]').onclick = () => flipToSheet(game);
+}
+
+// ---- Marching order (O) ----
+export function marchingOpen() { return document.getElementById('marching').style.display === 'block'; }
+
+export function toggleMarching(game, show) {
+  const panel = document.getElementById('marching');
+  const opening = show ?? !marchingOpen();
+  if (opening && game.battle) { game.log('The line is already drawn — no reordering mid-battle.', 'info'); return; }
+  panel.style.display = opening ? 'block' : 'none';
+  if (opening) renderMarching(game);
+}
+
+function renderMarching(game) {
+  const panel = document.getElementById('marching');
+  const n = game.party.length;
+  panel.innerHTML = `
+    <h2>Marching order</h2>
+    <p class="pt-sub">Top to bottom is the order of march. Front-row heroes take the field nearest the enemy; the back row stands behind them. Ambushes fall on the front.</p>
+    ${game.party.map((ch, i) => `
+      <div class="mo-row${ch.alive ? '' : ' dead'}">
+        <img src="${ch.alive ? game.heroPortrait(ch) : (ch.cls.sprite_dead || ch.cls.sprite)}" alt="">
+        <div class="mo-name"><b>${i + 1}. ${ch.name}</b><small>Level ${ch.level} ${ch.race.name} ${game.displayClass(ch)} · ${ch.weapon.name}${ch.alive ? '' : ' · fallen'}</small></div>
+        <button data-row="front" data-i="${i}" class="${ch.row === 'front' ? 'front' : ''}" title="Front row: takes the hits">Front</button>
+        <button data-row="back" data-i="${i}" class="${ch.row === 'back' ? 'back' : ''}" title="Back row: behind the line">Back</button>
+        <button data-move="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>
+        <button data-move="1" data-i="${i}" ${i === n - 1 ? 'disabled' : ''} title="Move down">▼</button>
+      </div>`).join('')}
+    <p class="pt-note" style="margin-top:10px">${game.party.filter(c => c.row === 'front').length ? '' : 'Nobody in the front row — the enemy will reach the back line at once. '}${localStorage.getItem('bs_party') ? 'Saved with your party.' : 'The premade party keeps this order for the run.'}</p>
+    <div class="dismiss" style="text-align:center;color:var(--dim);font-style:italic">O or Esc closes</div>`;
+  for (const b of panel.querySelectorAll('[data-move]')) {
+    b.onclick = () => { if (game.moveHero(Number(b.dataset.i), Number(b.dataset.move))) { buildPartyPanel(game); renderMarching(game); } };
+  }
+  for (const b of panel.querySelectorAll('[data-row]')) {
+    b.onclick = () => { if (game.setRow(game.party[Number(b.dataset.i)], b.dataset.row)) { buildPartyPanel(game); renderMarching(game); } };
+  }
 }
 
 export function buildPartyPanel(game) {

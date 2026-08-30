@@ -3,7 +3,7 @@
 import { loadJSON, showFatal } from './loader.js';
 import { Game, validateItems } from './game.js';
 import { Renderer, preloadImages } from './render.js';
-import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding, maybeOpenChoice, choiceOpen, choicePick, togglePlaytest, playtestOpen, levelupOpen, dismissLevelup, toggleSpellbook, spellbookOpen, flipToSheet, flipToBook } from './ui.js';
+import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding, maybeOpenChoice, choiceOpen, choicePick, togglePlaytest, playtestOpen, levelupOpen, dismissLevelup, toggleSpellbook, spellbookOpen, flipToSheet, flipToBook, toggleMarching, marchingOpen } from './ui.js';
 import { validateProgression } from './progression.js';
 import { validateDungeon } from './dungeon.js';
 import { validateMagic, deriveScrollItems } from './magic.js';
@@ -41,6 +41,7 @@ async function boot() {
   validateDungeon(data);     // …and for every dungeon tier's roster/loot/traps
   const partyDef = await choosePartyDef(data);
   const game = new Game({ ...data, party: { ...party, party: partyDef } });
+  game.partyDef = partyDef; // the marching-order panel (O) edits and re-saves this
 
   // Collect every sprite the data mentions and preload it.
   const sprites = new Set(['assets/misc/loot_drop.jpg', 'assets/misc/door_1.png', 'assets/heroes/party-icon.png']);
@@ -214,6 +215,10 @@ async function boot() {
       if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') togglePlaytest(game, false);
       return;
     }
+    if (marchingOpen()) {
+      if (e.key === 'o' || e.key === 'O' || e.key === 'Escape') toggleMarching(game, false);
+      return;
+    }
     if (MOVES[e.key]) {
       e.preventDefault();
       game.tryMove(...MOVES[e.key]);
@@ -228,6 +233,8 @@ async function boot() {
       if (!game.over && !game.victory) toggleSpellbook(game);
     } else if (e.key === '`' || e.key === '~') {
       game.startArena();
+    } else if (e.key === 'o' || e.key === 'O') {
+      if (!game.over && !game.victory) toggleMarching(game);
     } else if (e.key === 'p' || e.key === 'P') {
       if (!game.over && !game.victory) togglePlaytest(game);
     } else if (e.key === 'm' || e.key === 'M') {
