@@ -128,7 +128,13 @@ export function choosePartyDef(data) {
           const LABELS = { m1: 'Male', m2: 'Male', f1: 'Female', f2: 'Female' };
           root.innerHTML = `
             <div class="cr-panel">
-              <div class="cr-step">Hero ${idx + 1} of ${PARTY_SIZE} — step 2 of 2: name &amp; appearance</div>
+              <div class="cr-head">
+                <div class="cr-step">Hero ${idx + 1} of ${PARTY_SIZE} — step 2 of 2: name &amp; appearance</div>
+                <div class="cr-nav">
+                  <button id="cr-back" class="cr-minor">← Race &amp; class</button>
+                  <button id="cr-next">${idx === PARTY_SIZE - 1 ? 'Begin the Descent ▼' : 'Next hero →'}</button>
+                </div>
+              </div>
               <div class="cr-lookhead">
                 <input id="cr-name" maxlength="14" value="${state.name.replace(/"/g, '&quot;')}" placeholder="Name your ${race.name} ${cls.name}">
                 <span class="cr-dim">${race.name} ${cls.name} · HP ${hp} · AC ${ac} · to-hit ${fmtMod(hit)}${spellPointsFor(cls, 1) ? ` · SP ${spellPointsFor(cls, 1)}` : ''}</span>
@@ -142,10 +148,6 @@ export function choosePartyDef(data) {
                     <span class="cr-lookdoll"><img src="assets/heroes/gen/${state.race}_${state.class}_${v}.png"
                          onerror="this.src='${cls.sprite}'; this.onerror=null" alt=""></span>
                   </button>`).join('')}
-              </div>
-              <div class="cr-nav">
-                <button id="cr-back" class="cr-minor">← Race &amp; class</button>
-                <button id="cr-next">${idx === PARTY_SIZE - 1 ? 'Begin the Descent ▼' : 'Next hero →'}</button>
               </div>
             </div>`;
 
@@ -174,12 +176,12 @@ export function choosePartyDef(data) {
           const FAMILIES = ['undead', 'outsider', 'beast', 'vermin', 'humanoid', 'construct', 'ooze', 'aberration', 'dragon', 'elemental'];
           const favoredHtml = cls.favored_enemy ? `
                   <label class="cr-label">Favored enemy <span class="cr-dim">(+1 to hit and damage against one kind of monster; more picks at levels ${cls.favored_enemy.levels.slice(1).join('/')})</span></label>
-                  <div class="cr-choices cr-rows">
+                  <div class="cr-grid">
                     ${FAMILIES.map(f => `<button class="cr-choice ${f === state.favored ? 'picked' : ''}" data-favored="${f}"><b>${f}</b></button>`).join('')}
                   </div>` : '';
           const floatHtml = race.floating_bonus ? `
                   <label class="cr-label">The floating +${race.floating_bonus} <span class="cr-dim">(a ${race.name} chooses where it lands)</span></label>
-                  <div class="cr-choices cr-rows">
+                  <div class="cr-grid">
                     ${ABILITIES.map(ab => `<button class="cr-choice ${ab === state.bonusAbility ? 'picked' : ''}" data-bonus="${ab}"><b>${ab.toUpperCase()}</b></button>`).join('')}
                   </div>` : '';
           const giftHtml = pick ? `
@@ -192,21 +194,27 @@ export function choosePartyDef(data) {
                       </button>`).join('')}
                   </div>
                   ${giftOpt?.ac_vs_element !== undefined ? `
-                  <div class="cr-choices cr-rows">
+                  <div class="cr-grid">
                     ${ELEMENTS.map(e => `<button class="cr-choice ${e === state.gift.element ? 'picked' : ''}" data-element="${e}"><b>${e}</b></button>`).join('')}
                   </div>` : ''}` : '';
 
           root.innerHTML = `
             <div class="cr-panel">
-              <div class="cr-step">Hero ${idx + 1} of ${PARTY_SIZE} — step 1 of 2: race, class &amp; abilities</div>
-              <div class="cr-columns">
+              <div class="cr-head">
+                <div class="cr-step">Hero ${idx + 1} of ${PARTY_SIZE} — step 1 of 2: race, class &amp; abilities</div>
+                <div class="cr-nav">
+                  <button id="cr-back" class="cr-minor">${idx === 0 ? '← Title' : '← Previous hero'}</button>
+                  <button id="cr-next">Name &amp; appearance →</button>
+                </div>
+              </div>
+              <div class="cr-columns3">
                 <div class="cr-col">
                   <label class="cr-label">Race</label>
                   <div class="cr-choices" id="cr-races">
                     ${Object.entries(data.races.races).map(([id, r]) => `
                       <button class="cr-choice ${id === state.race ? 'picked' : ''}" data-race="${id}">
                         <b>${r.name}</b>
-                        <span>${Object.entries(r.ability_bonus).map(([ab, b]) => `${fmtMod(b)} ${ab.toUpperCase()}`).join(', ')} · ${r.traits.join(' · ')}</span>
+                        <span>${[Object.entries(r.ability_bonus).map(([ab, b]) => `${fmtMod(b)} ${ab.toUpperCase()}`).join(', '), ...r.traits].filter(Boolean).join(' · ')}</span>
                       </button>`).join('')}
                   </div>
 
@@ -218,6 +226,18 @@ export function choosePartyDef(data) {
                         <span>d${c.hp_die} hits · ${weap(id).name} ${weap(id).damage}${spellPointsFor(c, 1) ? ` · ${spellPointsFor(c, 1)} spell points` : ''}</span>
                       </button>`).join('')}
                   </div>
+                  <div class="cr-preview">
+                    <img src="assets/heroes/gen/${state.race}_${state.class}_${state.look}.png"
+                         onerror="this.src='${cls.sprite}'" alt="${cls.name}">
+                    <div>${race.name} ${cls.name}<br>
+                      <span class="cr-dim">HP ${hp} · AC ${ac} · to-hit ${fmtMod(hit)}${spellPointsFor(cls, 1) ? ` · SP ${spellPointsFor(cls, 1)}` : ''}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="cr-col">
+                  <label class="cr-label">Of kind &amp; calling <span class="cr-dim">(what a ${race.name} ${cls.name} chooses at the start)</span></label>
+                  ${floatHtml || favoredHtml || giftHtml ? '' : `<p class="cr-none">Nothing more to choose — a ${race.name} ${cls.name} finds their road at level 5.</p>`}
                   ${floatHtml}
                   ${favoredHtml}
                   ${giftHtml}
@@ -240,19 +260,7 @@ export function choosePartyDef(data) {
                     <button class="cr-choice ${state.row === 'front' ? 'picked' : ''}" data-row="front"><b>Front row</b><span>takes the hits</span></button>
                     <button class="cr-choice ${state.row === 'back' ? 'picked' : ''}" data-row="back"><b>Back row</b><span>safe while the front line stands</span></button>
                   </div>
-
-                  <div class="cr-preview">
-                    <img src="assets/heroes/gen/${state.race}_${state.class}_${state.look}.png"
-                         onerror="this.src='${cls.sprite}'" alt="${cls.name}">
-                    <div>${race.name} ${cls.name}<br>
-                      <span class="cr-dim">HP ${hp} · AC ${ac} · to-hit ${fmtMod(hit)}${spellPointsFor(cls, 1) ? ` · SP ${spellPointsFor(cls, 1)}` : ''}</span>
-                    </div>
-                  </div>
                 </div>
-              </div>
-              <div class="cr-nav">
-                <button id="cr-back" class="cr-minor">${idx === 0 ? '← Title' : '← Previous hero'}</button>
-                <button id="cr-next">Name &amp; appearance →</button>
               </div>
             </div>`;
 

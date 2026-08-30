@@ -493,12 +493,12 @@
   }
   #creation .cr-panel { background: rgba(22,22,30,0.94); }
   .cr-panel {
-    width: 860px; max-width: 94vw; max-height: 94vh;
+    width: 1380px; max-width: 97vw; max-height: 96vh;
     overflow-y: auto;
     background: var(--panel);
     border: 2px solid var(--gold);
     border-radius: 8px;
-    padding: 26px 34px;
+    padding: 20px 30px;
     box-shadow: 0 12px 60px rgba(0,0,0,0.85);
   }
   .cr-title { text-align: center; width: 520px; }
@@ -520,6 +520,19 @@
   .cr-title-buttons button { text-align: center; font-size: 16px; }
   #cr-new { border-color: var(--gold); color: var(--gold); }
   .cr-step { color: var(--gold); font-variant: small-caps; letter-spacing: 2px; font-size: 18px; margin-bottom: 14px; }
+  /* Creation layout v3 (2026-08-30): wide, three columns, nav in the header so nothing hides below the fold */
+  .cr-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+  .cr-head .cr-step { margin-bottom: 0; }
+  .cr-head .cr-nav { margin-top: 0; gap: 10px; }
+  .cr-columns3 { display: grid; grid-template-columns: 1.05fr 1fr 1fr; gap: 24px; align-items: start; }
+  .cr-col .cr-label:first-child { margin-top: 4px; }
+  .cr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 5px; }
+  .cr-grid .cr-choice { text-align: center; padding: 8px 6px !important; }
+  .cr-choice { padding: 6px 12px !important; }
+  #cr-races, #cr-classes { gap: 4px; }
+  .cr-preview { margin-top: 10px; padding: 8px 10px; }
+  .cr-preview img { width: 56px; height: 56px; }
+  .cr-none { color: var(--dim); font-style: italic; font-size: 13px; margin-top: 8px; }
   .cr-columns { display: flex; gap: 28px; }
   .cr-col { flex: 1; min-width: 0; }
   .cr-label { display: block; color: var(--gold); font-variant: small-caps; letter-spacing: 1px; margin: 14px 0 6px; }
@@ -556,9 +569,10 @@
   /* Step 2 of hero creation: name & appearance, art shown LARGE (2026-08-27) */
   .cr-lookhead { display: flex; align-items: center; gap: 16px; margin: 12px 0 16px; }
   .cr-lookhead input { flex: 1; }
-  .cr-lookgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cr-lookgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 1200px) { .cr-lookgrid { grid-template-columns: 1fr 1fr; } .cr-columns3 { grid-template-columns: 1fr 1fr; } }
   .cr-lookbig {
-    display: flex; gap: 14px; align-items: center; justify-content: center;
+    display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center;
     position: relative; padding: 14px 10px 10px;
     font-family: Georgia, serif;
     background: #1d1d28; color: var(--parchment);
@@ -568,8 +582,8 @@
   .cr-lookbig.picked { border-color: var(--gold); background: #23202c; box-shadow: 0 0 16px rgba(212,169,78,0.3); }
   .cr-looklabel { position: absolute; top: 7px; left: 12px; font-size: 12px; letter-spacing: 1.5px; color: var(--dim); font-variant: small-caps; }
   .cr-lookbig.picked .cr-looklabel { color: var(--gold); }
-  .cr-lookface { width: 150px; height: 150px; object-fit: cover; border-radius: 6px; border: 1px solid #3a3a4c; }
-  .cr-lookdoll { width: 165px; height: 250px; display: flex; align-items: flex-end; justify-content: center; }
+  .cr-lookface { width: 140px; height: 140px; object-fit: cover; border-radius: 6px; border: 1px solid #3a3a4c; }
+  .cr-lookdoll { width: 165px; height: 240px; display: flex; align-items: flex-end; justify-content: center; }
   .cr-lookdoll img { max-width: 100%; max-height: 100%; display: block; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.8)); }
   .cr-nav { display: flex; justify-content: space-between; margin-top: 22px; }
   #cr-next { border-color: var(--gold); color: var(--gold); font-size: 16px; }
