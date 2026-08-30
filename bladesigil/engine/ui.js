@@ -4,7 +4,7 @@
 
 import { abilityMod } from './rules.js';
 import { classProg, laneOf, passiveOf, riteTier, favoredPicksOwed } from './progression.js';
-import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, FAMILIES } from './magic.js';
+import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, activeStances, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
 
 // Every UI button clicks (designer's pick 2026-08-26: GAM_09) — except where
@@ -82,6 +82,7 @@ function spellMetaLine(game, ch, s) {
   if (s.hidden) bits.push('unseen');
   if (s.resist) bits.push(s.resist === 'all' ? 'all elements halved' : `${s.resist.join('/')} halved`);
   if (s.immune_conditions) bits.push('no afflictions');
+  if (s.stance) bits.push('a Stance — until the next full rest');
   if (s.rounds) bits.push(`${s.rounds} rounds`);
   if (s.cures) bits.push(s.cures === 'all' ? 'cures all' : `cures ${s.cures.map(c => game.conditionDef(c)?.name?.toLowerCase() ?? c).join('/')}`);
   if (s.drain) bits.push(`drains ${Math.round(s.drain * 100)}%`);
@@ -975,7 +976,7 @@ const POWER_HOW = {
   ward_surge: "It's a reaction: as a foe swings at you, the battle pauses and asks. Y spends the SP for +4 AC and saves against that one blow; N lets the die roll as it will.",
   unyielding: 'It happens on its own: any blow that would drop you to 0 HP leaves you at 1 instead. Poison and spellfire are not blows — mind them.',
   shared_fortitude: 'Joins the C menu: aim at an ally and spend the SP — they gain a pool of absorbed damage that drinks blows first, all battle long.',
-  whirling_verse: "Open the C menu and choose it — for 3 rounds every landed hit strikes again. Every OTHER song you keep up drains SP each round; sing it unbuffed and it's free.",
+  whirling_verse: "Open the C menu and choose it — it takes EVERY spell point you have left and ends your Stance, and for 3 rounds every landed hit strikes again. An all-in gamble: when it ends you have nothing.",
   mirror_ward: 'Open the C menu and choose it — for 3 rounds half of every wound flies back at the attacker, but you cannot move. Plant yourself where they must come.',
   mountains_heart: 'Open the C menu and choose it — for 3 rounds wounds are halved, but your hit/damage bonus is nothing and you cannot move. Hold a doorway; let others swing.',
   deep_roots: 'Joins the C menu, once per rest: raise your wards FIRST, then spend every spell point to spread them across the whole party for 3 rounds.',
@@ -1133,7 +1134,8 @@ function renderMagic(game, ch) {
   } else if (model === 'known') {
     line = `${known.length} spell${known.length === 1 ? '' : 's'} in the blood · Overchannel counted in each cost`;
   } else if (model === 'lane') {
-    line = `${known.length} verse${known.length === 1 ? '' : 's'} of ${laneOf(game.data, ch)?.name ?? 'the road before the fork'} · every verse is a self- or ally-ward`;
+    const held = activeStances(ch).map(b => b.name);
+    line = `${known.length} verse${known.length === 1 ? '' : 's'} of ${laneOf(game.data, ch)?.name ?? 'the road before the fork'} · ${held.length ? `<b>${held.join(' & ')}</b> held until the next rest` : 'no Stance held — sing one from the spellbook (B)'}`;
   } else if (known.length) {
     line = `${known.length} prayer${known.length === 1 ? '' : 's'} of ${ch.name}'s training`;
   }
@@ -1209,11 +1211,24 @@ function renderSpellbook(game) {
     const unlockAt = [0, 1, 4, 8, 12, 16][lvl];
     const deep = lvl > tier;
     if (!list.length && deep) continue; // nothing to say about a level not yet reached
-    pages += `<div class="sb-level"><div class="eq-sec">Level ${lvl} spells<span>${spellCost(game.data, ch, { level: lvl })} SP each${deep ? ` · castable at character level ${unlockAt}` : ''}${model === 'spellbook' && !deep && !list.length ? ' · no pages yet' : ''}</span></div>`;
+    const stanceLvl = model === 'lane' && list.length && list.every(s => s.stance);
+    pages += `<div class="sb-level"><div class="eq-sec">Level ${lvl} spells<span>${stanceLvl ? `Stance — ${list[0].stance} SP, until the next full rest` : `${spellCost(game.data, ch, { level: lvl })} SP each`}${deep ? ` · castable at character level ${unlockAt}` : ''}${model === 'spellbook' && !deep && !list.length ? ' · no pages yet' : ''}</span></div>`;
     if (!list.length) pages += `<div class="sb-page"><small>${model === 'spellbook' ? 'Study or a scroll will fill this level.' : model === 'known' ? 'No spell of this level in the blood.' : model === 'lane' ? (ch.lane ? 'No verse of this level.' : 'The road forks at level 5 — the lane decides the verses.') : 'Nothing of this level.'}</small></div>`;
     for (const s of list) {
       const prepped = model === 'spellbook' && ch.prepared.includes(s.id);
       let btn = '';
+      if (model === 'lane' && s.stance) {
+        // v1.1: a Stance is sung from here, on the map — held until the next full rest.
+        const cost = spellCost(game.data, ch, s);
+        const targets = s.targets === 'ally' ? game.party.filter(c => c.alive) : [ch];
+        btn = '<div class="sb-stance">' + targets.map(t => {
+          const idx = game.party.indexOf(t);
+          const held = activeStances(t).some(b => b.spell === s.id);
+          const label = s.targets === 'ally' ? (held ? `${t.name}: held` : `over ${t.name}`) : (held ? 'Held till the next rest' : `Sing it — ${cost} SP`);
+          const why = held ? `${s.name} already holds on ${t.name} until the next full rest.` : game.battle ? 'In battle, sing it from the C menu.' : ch.sp < cost ? `Costs ${cost} SP — ${ch.name} has ${ch.sp}.` : !ch.alive ? `${ch.name} has fallen.` : '';
+          return `<button data-stance="${s.id}" data-target="${idx}"${why ? ` disabled title="${why.replace(/"/g, '&quot;')}"` : ` title="${cost} SP, one map turn — lasts until the next full rest"`}>${label}</button>`;
+        }).join('') + '</div>';
+      }
       if (model === 'spellbook') {
         btn = deep
           ? `<button disabled title="A level-${s.level} spell — beyond ${ch.name}'s reach until character level ${unlockAt}.">too deep</button>`
@@ -1251,10 +1266,11 @@ function renderSpellbook(game) {
   } else if (model === 'lane') {
     const lane = laneOf(game.data, ch);
     const prog = classProg(game.data, ch);
+    const held = activeStances(ch).map(b => b.name);
     side += `<div class="eq-sec">The verses</div><p class="pt-note">${lane
       ? `${lane.name}'s verses open on their own as each spell level does — no book, no study, no picks.`
-      : `Before the fork ${ch.name} knows ${giftOf(ch)?.spell ? 'only the creation gift' : 'the first verse of each road'}; at level ${prog?.fork_level ?? 5} the lane decides the rest.`}
-      ${ch.cls.spell_cost ? ` Half-caster costs: spell level + ${ch.cls.spell_cost.base} SP.` : ''}</p>`;
+      : `Before the fork ${ch.name} knows ${giftOf(ch)?.spell ? 'only the creation gift' : 'the first verse'}; at level ${prog?.fork_level ?? 5} the lane decides the rest (a Stance the lane does not sing is swapped free).`}</p>
+      <div class="eq-sec" style="margin-top:12px">Stance &amp; Surge</div><p class="pt-note">The level-1 verse is a <b>Stance</b>: a flat 1 SP, sung here on the map or in battle, and held through every fight until the next full rest (camp or inn). Every deeper verse is a <b>Surge</b> at the usual cost (level × 2 + 1) for one fight or a few rounds — hoard the points for the battle that needs them.${held.length ? ` <b>Held now: ${held.join(' & ')}.</b>` : ''}</p>`;
   } else {
     const rl = ch.cls.revelation_levels ?? {};
     const next = Object.entries(rl).map(([l, at]) => [Number(l), at]).filter(([, at]) => at > ch.level).sort((a, b) => a[1] - b[1])[0];
@@ -1309,6 +1325,9 @@ function renderSpellbook(game) {
   }
   for (const b of root.querySelectorAll('[data-copy]')) {
     b.onclick = () => { game.copyScroll(b.dataset.copy, ch); renderSpellbook(game); };
+  }
+  for (const b of root.querySelectorAll('[data-stance]')) {
+    b.onclick = () => { game.castStance(ch, b.dataset.stance, game.party[Number(b.dataset.target)]); renderSpellbook(game); };
   }
   sideEl.querySelector('[data-open-sheet]').onclick = () => flipToSheet(game);
 }
@@ -1403,7 +1422,7 @@ export function updateUI(game) {
     const badges = ch.conditions.map(c => {
       const def = game.conditionDef(c.id);
       return def ? `<span style="color:${def.color}">${def.name}</span>` : '';
-    }).join(' · ');
+    }).concat(activeStances(ch).map(b => `<span style="color:#d4a94e" title="a Stance — held until the next full rest">♪ ${b.name}</span>`)).join(' · ');
     if (u.status.innerHTML !== badges) u.status.innerHTML = badges;
   }
 

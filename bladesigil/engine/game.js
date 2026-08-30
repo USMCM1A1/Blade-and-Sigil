@@ -5,7 +5,7 @@ import { DataError } from './loader.js';
 import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
 import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement } from './progression.js';
-import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, FAMILIES } from './magic.js';
+import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
 
 // Itemization v2: friendly boot-time validation for the new item fields.
@@ -100,11 +100,50 @@ export class Game {
     for (const ch of this.party) {
       if (!ch.alive) continue;
       ch.spentRest = {};
+      // A Stance (v1.1) lasts exactly until this moment: the verse fades
+      // with the rest, and the hero sings it anew for its flat cost.
+      const held = activeStances(ch);
+      if (held.length) {
+        ch.timedBuffs = (ch.timedBuffs ?? []).filter(b => !b.stance);
+        this.log(`${ch.name}'s ${held.map(b => b.name).join(' & ')} fades with the rest — sing it again from the spellbook (B) for ${held.map(b => this.data.spells.spells[b.spell]?.stance ?? 1).join('/')} SP.`, 'info');
+      }
       if (magicModel(this.data, ch) === 'spellbook') {
         ch.prepFresh = true;
         this.log(`${ch.name}'s mind is clear — prepared spells may be re-picked on the character sheet (C) until the next fight.`, 'info');
       }
     }
+  }
+
+  // Sing a Stance on the map (v1.1): the half-casters' level-1 verse, cast
+  // once after a rest for its flat cost and held until the next one. From
+  // the spellbook screen (B); `target` is the hero it lands on (an ally-
+  // targeted verse names one, a self verse ignores it). Costs one map turn,
+  // like a potion. Returns true if the verse was sung.
+  castStance(ch, spellId, target = null) {
+    if (this.over || this.victory) return false;
+    if (this.battle) { this.log('In battle a verse is sung from the C menu.', 'info'); return false; }
+    const s = { id: spellId, ...this.data.spells.spells[spellId] };
+    if (!s.stance) { this.log(`${s.name ?? spellId} is not a Stance — it is sung in battle only.`, 'info'); return false; }
+    if (!ch.alive) { this.log(`${ch.name} cannot sing — they have fallen.`, 'info'); return false; }
+    if (!castableSpells(this.data, ch).some(k => k.id === spellId)) { this.log(`${ch.name} does not know ${s.name}.`, 'info'); return false; }
+    const cost = spellCost(this.data, ch, s);
+    if (ch.sp < cost) { this.log(`${s.name} costs ${cost} SP — ${ch.name} has ${ch.sp}. Rest, or drink a mana potion.`, 'info'); return false; }
+    const who = s.targets === 'ally' ? target : ch;
+    if (!who || !who.alive) { this.log(`${s.name} needs a living ally to settle on.`, 'info'); return false; }
+    if (activeStances(who).some(b => b.spell === spellId)) { this.log(`${s.name} already holds on ${who.name} — it lasts until the next full rest.`, 'info'); return false; }
+    ch.sp -= cost;
+    who.timedBuffs = (who.timedBuffs ?? []).filter(b => b.name !== s.name);
+    who.timedBuffs.push(spellBuff(s));
+    if (who !== ch && laneOf(this.data, ch)?.rite?.tracked === 'alliesFortified') ch.counters.alliesFortified++;
+    audio.play(s.fx?.sound ? `spell_${s.fx.sound}` : 'spell_buff'); // the same element rule as battle.js spellSound
+    const bits = [];
+    if (s.hit) bits.push(`${s.hit > 0 ? '+' : ''}${s.hit} hit`);
+    if (s.dmg) bits.push(`${s.dmg > 0 ? '+' : ''}${s.dmg} damage`);
+    if (s.ac) bits.push(`${s.ac > 0 ? '+' : ''}${s.ac} AC`);
+    if (s.saves) bits.push(`${s.saves > 0 ? '+' : ''}${s.saves} saves`);
+    this.log(`${ch.name} sings ${s.name}${who !== ch ? ` over ${who.name}` : ''} (−${cost} SP): ${bits.join(', ')} — a Stance, held until the next full rest.`, 'good');
+    this.advanceTime(1);
+    return true;
   }
 
   // Copy a scroll into a Wizard-lane hero's spellbook. The scroll burns.
@@ -148,8 +187,22 @@ export class Game {
         this.log(`${ch.name} keeps the book — ${ch.spellbook.length} spells inked, ${preparedSlots(this.data, ch)} prepared at a time (re-pick at any rest), and every scroll found is a page to be.`, 'good');
       } else if (model === 'lane') {
         // The half-casters' fixed list: the lane's verses open as their levels do.
-        const names = laneSpells(this.data, ch).filter(sp => sp.level <= maxSpellLevel(ch.level)).map(sp => sp.name);
+        const list = laneSpells(this.data, ch);
+        const names = list.filter(sp => sp.level <= maxSpellLevel(ch.level)).map(sp => sp.name);
         this.log(`${ch.name}'s ${lane.name} opens its verses: ${names.join(', ')} — the rest arrive as each spell level does.`, 'good');
+        // v1.1: a Stance the lane does not sing is swapped for the lane's
+        // own, free — the fork just replaces it (the doc's ruling).
+        const replacement = list.find(sp => sp.stance) ?? null;
+        for (const b of activeStances(ch)) {
+          if (list.some(sp => sp.id === b.spell)) continue;
+          ch.timedBuffs = ch.timedBuffs.filter(x => x !== b);
+          if (replacement) {
+            ch.timedBuffs.push(spellBuff(replacement));
+            this.log(`${b.name} is exchanged for ${replacement.name} at no cost — the lane's own verse, held until the next rest.`, 'good');
+          } else {
+            this.log(`${b.name} falls silent — ${lane.name} does not sing it.`, 'info');
+          }
+        }
       } else if (model === 'known') {
         // The Raw Gift: the book is set aside. Its pages may still be
         // chosen as bloodline (spellPicksOwed offers the former book).
@@ -369,6 +422,7 @@ export class Game {
     ch.hp = ch.maxHp;
     ch.sp = ch.maxSp;
     ch.conditions = [];
+    ch.timedBuffs = []; // a Stance died with them
     audio.play('temple_revive');
     this.log(`Light floods the altar — ${ch.name} draws breath once more! (−${price} gold)`, 'good');
     return true;
@@ -1284,6 +1338,7 @@ export class Game {
       }
       if (n < 20) ch.rite = null; // dropping below the pinnacle un-runs the Rite (re-testable)
       ch.spentRest = {}; // the jump is a fresh day — once-per-rest powers return
+      ch.timedBuffs = []; // …and any Stance held is sung anew
       refreshSpellbook(this.data, ch); // the kit opens if the book is empty; preparation stays legal
       if (magicModel(this.data, ch) === 'spellbook') {
         // Study credits for the jump are spent on the spot (no modal avalanche).
@@ -1390,6 +1445,7 @@ export class Game {
       conditions: ch.conditions.map(c => ({ ...c })),
       counters: { ...ch.counters }, // sparring feats don't count toward titles
       spentRest: { ...ch.spentRest }, // arena previews of once-per-rest powers are free
+      stances: activeStances(ch).map(b => ({ ...b })), // a Stance held going in is held coming out
     }));
     this.arena = true;
     const dummies = Object.entries(this.data.monsters.monsters).map(([id, def]) => ({
@@ -1407,7 +1463,7 @@ export class Game {
       ch.hp = s.hp; ch.sp = s.sp; ch.xp = s.xp; ch.alive = s.alive;
       ch.buffs = s.buffs;
       ch.conditions = s.conditions;
-      ch.timedBuffs = []; // Rage and its kin are battle-scoped — nothing leaves the ring
+      ch.timedBuffs = s.stances; // Rage and its kin are battle-scoped — only the Stances held before leave the ring
       ch.counters = s.counters;
       ch.spentRest = s.spentRest;
       ch.insight = null; // Arcane Insight is battle-scoped

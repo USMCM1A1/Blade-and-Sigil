@@ -1,5 +1,5 @@
 {
-  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. SPELL POINTS (magic v2, doc formula): casters use \"spell_points\": {\"base\": N, \"multiplier\": M} — max SP = base + (level x multiplier x 3), so a Wizard (4, 1.0) has 7 SP at level 1 and 64 at level 20. A legacy per-level array still works; classes with neither have no magic. hit_bonus applies to attack AND damage rolls. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules. 'detect': per-level % chance (design doc tables, thief & archer) to notice secret doors and traps — the party uses its best detector, +5% per point of DEX modifier, +race detect_bonus. 'disarms': true lets the class defuse a DETECTED trap by stepping onto it (thieves only, per the doc). | \"locked\": true hides a class from character creation until its progression lanes are built (2026-08-26: archer/spellblade/summoner wait; delete the flag to release one). | Itemization v2: 'robe' in armor_types is the armor_robe category (scholar's robes) — every class wears them, including mages. | MAGIC v3 (2026-08-28): 'caster': arcane | divine says which school a class works in — ARCANE casters may READ scrolls in battle. A 'spellbook' block makes the class keep a spellbook FROM LEVEL 1: 'starting_spells' (the kit every new hero opens with), 'study_levels' (each listed level grants one free STUDY pick of any common class spell of castable level — arrives as a card on the map), 'slots_base' (+ max spell level + one per 'extra_slot_levels' reached = prepared spells at a time). 'revelation_levels' (priests): {spell level: character level} — the RARE prayers of that level are revealed automatically on reaching it. | NEW CLASSES (2026-08-29, companion doc v1): 'magic': 'lane' = the fixed-list half-caster model (Spellblade, Stoneshaper) — the hero knows the class's level-1 spells before the fork (or only the creation-gift spell, if the gift is a spell) and, from the fork on, every spell tagged with their lane in spells.json as its level opens. 'spell_cost': {per_level, base} overrides the level x 2 + 1 cost (default {2, 1}). 'creation_pick' = a level-1 gift chosen in character creation: options carry 'spell' (known from level 1), 'detect' (+% trap/secret skill), or 'ac_vs_element' (+AC vs one element chosen at creation). | RANGER (2026-08-29): the Archer class is DROPPED (doc ruling); see the ranger entry's comment for spell_unlocks / dual_wield / point_blank_penalty / favored_enemy.",
+  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. SPELL POINTS (magic v2, doc formula): casters use \"spell_points\": {\"base\": N, \"multiplier\": M} — max SP = base + (level x multiplier x 3), so a Wizard (4, 1.0) has 7 SP at level 1 and 64 at level 20. A legacy per-level array still works; classes with neither have no magic. hit_bonus applies to attack AND damage rolls. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules. 'detect': per-level % chance (design doc tables, thief & archer) to notice secret doors and traps — the party uses its best detector, +5% per point of DEX modifier, +race detect_bonus. 'disarms': true lets the class defuse a DETECTED trap by stepping onto it (thieves only, per the doc). | \"locked\": true hides a class from character creation until its progression lanes are built (2026-08-26: archer/spellblade/summoner wait; delete the flag to release one). | Itemization v2: 'robe' in armor_types is the armor_robe category (scholar's robes) — every class wears them, including mages. | MAGIC v3 (2026-08-28): 'caster': arcane | divine says which school a class works in — ARCANE casters may READ scrolls in battle. A 'spellbook' block makes the class keep a spellbook FROM LEVEL 1: 'starting_spells' (the kit every new hero opens with), 'study_levels' (each listed level grants one free STUDY pick of any common class spell of castable level — arrives as a card on the map), 'slots_base' (+ max spell level + one per 'extra_slot_levels' reached = prepared spells at a time). 'revelation_levels' (priests): {spell level: character level} — the RARE prayers of that level are revealed automatically on reaching it. | NEW CLASSES (2026-08-29, companion doc v1): 'magic': 'lane' = the fixed-list half-caster model (Spellblade, Stoneshaper) — before the fork the hero knows only the creation-gift spell (if the gift is a spell), else the class's 'starting_spells' list, else every level-1 lane spell; from the fork on, every spell tagged with their lane in spells.json as its level opens (a swapped-out Stance is exchanged free). Level-1 lane spells are STANCES (spells.json 'stance': flat SP cost, lasts until the next full rest); the rest cost the standard level x 2 + 1. 'spell_cost': {per_level, base} may still override the formula for a class (unused since the v1.1 playtest revision). 'creation_pick' = a level-1 gift chosen in character creation: options carry 'spell' (known from level 1), 'detect' (+% trap/secret skill), or 'ac_vs_element' (+AC vs one element chosen at creation). | RANGER (2026-08-29): the Archer class is DROPPED (doc ruling); see the ranger entry's comment for spell_unlocks / dual_wield / point_blank_penalty / favored_enemy.",
   "classes": {
     "warrior": {
       "name": "Warrior",
@@ -507,49 +507,45 @@
         2
       ],
       "spell_points": [
-        2,
-        2,
-        3,
         3,
         3,
         4,
-        4,
-        4,
-        5,
         5,
         5,
         6,
-        6,
-        6,
-        7,
-        7,
         7,
         8,
+        8,
         9,
-        10
+        9,
+        10,
+        10,
+        11,
+        11,
+        12,
+        12,
+        13,
+        13,
+        14
       ],
       "caster": "arcane",
-      "_comment": "Elven Spellblade (companion doc v1, 2026-08-29): a half-caster whose whole spell list is self-buffs. High Elf only. Group B hit/dmg, d8 HP, mage AC, spell points from the doc's per-level table (the generic formula overshoots, so the table is canon). 'magic': 'lane' = a FIXED spell list decided by the level-5 lane (spells.json 'lane' field) — no book, no study, no picks. 'spell_cost' (a PROPOSAL, the doc's table gives 2 SP at level 1 against a 3 SP level-1 spell): half-casters pay level + 1 (2/3/4/5/6) instead of level x 2 + 1. 'creation_pick' = the level-1 starting-gift choice (the doc's single-race creation texture): each option is a spell id the hero knows from level 1, before the fork.",
+      "_comment": "Elven Spellblade (companion doc v1, 2026-08-29; playtest revision v1.1 2026-08-30): a half-caster whose whole spell list is self-buffs. High Elf only. Group B hit/dmg, d8 HP, mage AC, spell points from a per-level table (the generic formula overshoots). 'magic': 'lane' = a FIXED spell list decided by the level-5 lane (spells.json 'lane' field) — no book, no study, no picks. COSTS: the level-1 verse is a STANCE (1 SP flat, lasts until the next full rest — spells.json 'stance'); levels 2-5 are SURGES at the doc's standard level x 2 + 1 (5/7/9/11 SP). 'creation_pick' = the level-1 Stance chosen in character creation: the hero knows only that verse before the fork; if the level-5 lane sings the other one, it is swapped for free. SP TABLE (designer ruling 2026-08-30): raised from the doc's 2…10 to 3…14 so every Surge is castable the level its tier opens with the Stance still held — 5 SP at level 4 (tier 2), 8 at 8 (tier 3), 10 at 12 (tier 4), 12 at 16 (tier 5), 14 at 20.",
       "magic": "lane",
-      "spell_cost": {
-        "per_level": 1,
-        "base": 1
-      },
       "creation_pick": {
         "title": "A first song",
-        "blurb": "Every Spellblade is taught one verse before the road forks. Which?",
+        "blurb": "Every Spellblade is taught one Stance before the road forks — a verse sung once after each rest that lasts the whole way. Which?",
         "options": [
           {
             "id": "edge",
             "name": "Edge of Dawn",
             "spell": "edge_of_dawn",
-            "blurb": "The blade-verse: a short self-buff to hit and damage."
+            "blurb": "The blade-verse Stance: +1 to hit and +1 damage until your next full rest, for 1 SP."
           },
           {
             "id": "aegis",
             "name": "Aegis of Dawn",
             "spell": "aegis_of_dawn",
-            "blurb": "The ward-verse: a short self-buff to armor and saves."
+            "blurb": "The ward-verse Stance: +1 AC and +1 on every save until your next full rest, for 1 SP."
           }
         ]
       }
@@ -665,7 +661,7 @@
       "caster": "arcane"
     },
     "stoneshaper": {
-      "_comment": "Dwarven Stoneshaper (companion doc v1, 2026-08-29): the toughest thing in the party and the weakest attacker of any melee class. Dwarf only. d10 HP, Group B hit/dmg, a slow martial AC climb (0 to +6), the Spellblade's half-caster spell points; every spell is hardiness — self (Bulwark lane) or shared (Hearthstone lane). 'magic': 'lane' as the Spellblade. 'caster': 'divine' — stone-magic reads no arcane scrolls. Weapons: blunt + the new 'axe' category (hammers and axes, the dwarven kit). 'creation_pick' options here are PASSIVE gifts: 'detect' adds trap/secret-door % (Stonespeak), 'ac_vs_element' asks for an element at creation and gives +1 AC against monsters that attack with it (Ironward).",
+      "_comment": "Dwarven Stoneshaper (companion doc v1, 2026-08-29; playtest revision v1.1 2026-08-30). 'starting_spells' = the verses known BEFORE the level-5 fork (Skin of Stone, the self-only Stance, is what every Stoneshaper casts through levels 1-4); at the fork the lane's list takes over — Bulwark keeps Skin of Stone, Hearthstone swaps it (free) for the ally-targeting Stonekin's Blessing. COSTS: the level-1 verse is a STANCE (1 SP flat, until the next full rest); levels 2-5 are SURGES at the standard level x 2 + 1 (5/7/9/11 SP). The creation gift (Stonespeak / Ironward) is a passive, independent of the spells. SP TABLE (designer ruling 2026-08-30): raised from the doc's 2…10 to 3…14 so every Surge is castable the level its tier opens with the Stance still held — 5 SP at level 4 (tier 2), 8 at 8 (tier 3), 10 at 12 (tier 4), 12 at 16 (tier 5), 14 at 20.",
       "name": "Stoneshaper",
       "sprite": "assets/heroes/gen/dwarf_stoneshaper_m1.png",
       "sprite_dead": "assets/heroes/warrior_dead.png",
@@ -755,33 +751,32 @@
         2
       ],
       "spell_points": [
-        2,
-        2,
-        3,
         3,
         3,
         4,
-        4,
-        4,
-        5,
         5,
         5,
         6,
-        6,
-        6,
-        7,
-        7,
         7,
         8,
+        8,
         9,
-        10
+        9,
+        10,
+        10,
+        11,
+        11,
+        12,
+        12,
+        13,
+        13,
+        14
       ],
       "caster": "divine",
       "magic": "lane",
-      "spell_cost": {
-        "per_level": 1,
-        "base": 1
-      },
+      "starting_spells": [
+        "skin_of_stone"
+      ],
       "creation_pick": {
         "title": "Stone-gift",
         "blurb": "Every Stoneshaper carries one gift of the deep places from the first day. Which?",

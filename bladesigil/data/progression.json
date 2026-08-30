@@ -579,7 +579,7 @@
       ]
     },
     "spellblade": {
-      "_comment": "Elven Spellblade (companion doc v1, 2026-08-29): Bladesong (offense) vs Wardsong (defense), a ±1 lean on hit/AC like the Warrior's fork. PASSIVES: weapon_focus wearing the name Edge Eternal (+1 damage with a chosen weapon type — the pick pops at the fork), sundered_calm (+'saves' on every save). VERBS: runic_riposte (a free retaliatory attack whenever a monster's melee blow lands on you; at 18 also when it lands on an ally beside you), ward_surge (a Y/N reaction BEFORE a monster's swing at you resolves: spend 'cost' SP for +'ac' AC and saves against that one attack; at 18 also for an ally beside you). CAPSTONES: whirling_verse ('rounds' rounds: every landed weapon hit grants one free extra strike; each round every OTHER active buff on you drains 'drain_per_buff' SP or fades — the doc's 'double upkeep'), mirror_ward ('rounds' rounds: 'reflect' of every melee wound is thrown back at the attacker; you cannot move while it holds). Tracked: riposteKills / wardDeflects (surges that turned a hit into a miss + wounds reflected).",
+      "_comment": "Elven Spellblade (companion doc v1, 2026-08-29): Bladesong (offense) vs Wardsong (defense), a ±1 lean on hit/AC like the Warrior's fork. PASSIVES: weapon_focus wearing the name Edge Eternal (+1 damage with a chosen weapon type — the pick pops at the fork), sundered_calm (+'saves' on every save). VERBS: runic_riposte (a free retaliatory attack whenever a monster's melee blow lands on you; at 18 also when it lands on an ally beside you), ward_surge (a Y/N reaction BEFORE a monster's swing at you resolves: spend 'cost' SP for +'ac' AC and saves against that one attack; at 18 also for an ally beside you). CAPSTONES: whirling_verse (playtest revision v1.1: costs ALL remaining SP, 'min_sp' at least, and immediately ends your active Stance; 'rounds' rounds of one free extra strike per landed weapon hit — the all-in gamble), mirror_ward ('rounds' rounds: 'reflect' of every melee wound is thrown back at the attacker; you cannot move while it holds). Tracked: riposteKills / wardDeflects (surges that turned a hit into a miss + wounds reflected).",
       "fork_level": 5,
       "lanes": [
         {
@@ -607,8 +607,8 @@
             "level": 15,
             "name": "Whirling Verse",
             "rounds": 3,
-            "drain_per_buff": 2,
-            "blurb": "For 3 rounds every landed hit grants a free extra strike — while every other song you keep singing drains 2 SP a round, or falls silent."
+            "min_sp": 1,
+            "blurb": "Every spell point you have left, and your Stance falls silent: for 3 rounds every landed hit grants a free extra strike. An all-in gamble — when it ends you have nothing, not even the baseline verse."
           },
           "refinement": {
             "id": "riposte_allies",

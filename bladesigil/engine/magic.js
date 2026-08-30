@@ -171,7 +171,14 @@ export function validateMagic(data) {
         for (const e of list) if (!ELEMENTS.includes(e)) throw new DataError(where, `resist "${e}" — valid elements: ${ELEMENTS.join(', ')}.`);
       }
       if (s.rounds !== undefined && (typeof s.rounds !== 'number' || s.rounds < 1)) throw new DataError(where, `"rounds" must be 1 or more (leave it out for a buff that lasts the whole battle).`);
+      if (s.stance !== undefined) {
+        if (!Number.isInteger(s.stance) || s.stance < 1) throw new DataError(where, `"stance" is the flat SP cost of a Stance (1 or more) — a buff that lasts until the next full rest.`);
+        if (s.rounds !== undefined) throw new DataError(where, `A Stance lasts until the next full rest — drop "rounds".`);
+        if (s.once_per_rest) throw new DataError(where, `A Stance already lasts until the next rest — "once_per_rest" makes no sense on it.`);
+        if (s.absorb !== undefined || s.hidden) throw new DataError(where, `A Stance carries lasting modifiers (hit/dmg/ac/saves/attacks/resist/immune_conditions/reduce/halve/reflect/lifesteal/auto_hit/bonus_damage) — not absorb or hidden, which are battle things.`);
+      }
     }
+    if (s.stance !== undefined && s.type !== 'buff') throw new DataError(where, `"stance" belongs on a buff spell only.`);
     if (s.drain !== undefined && (typeof s.drain !== 'number' || s.drain <= 0 || s.drain > 1)) {
       throw new DataError(where, `"drain" is the fraction of damage dealt that heals the caster (0.5 = half).`);
     }
@@ -217,6 +224,14 @@ export function validateMagic(data) {
       const fe = cls.favored_enemy;
       if (!Array.isArray(fe.levels) || fe.levels.some(l => typeof l !== 'number' || l < 1 || l > 20)) throw new DataError(where, `favored_enemy "levels" lists the character levels (1-20) that grant a pick.`);
       if (fe.cap !== undefined && (typeof fe.cap !== 'number' || fe.cap < 1)) throw new DataError(where, `favored_enemy "cap" is the highest bonus one family can reach.`);
+    }
+    if (cls.starting_spells !== undefined) {
+      if (cls.magic !== 'lane') throw new DataError(where, `"starting_spells" at the class level is for "magic": "lane" classes (the verses known before the fork) — a spellbook class puts them inside its spellbook block.`);
+      if (!Array.isArray(cls.starting_spells) || !cls.starting_spells.length) throw new DataError(where, `"starting_spells" is a list of spell ids known before the fork.`);
+      for (const id of cls.starting_spells) {
+        if (!spells[id]) throw new DataError(where, `starting_spells names "${id}", which isn't in spells.json.`);
+        if (!spells[id].classes.includes(cid)) throw new DataError(where, `starting_spells names "${id}", which a ${cls.name} cannot cast (its "classes" list lacks ${cid}).`);
+      }
     }
     if (cls.spell_cost && (typeof cls.spell_cost.per_level !== 'number' || typeof cls.spell_cost.base !== 'number')) {
       throw new DataError(where, `"spell_cost" needs {"per_level": N, "base": N} — cost = spell level × per_level + base.`);
@@ -312,6 +327,7 @@ export function spellPointsFor(cls, level) {
 // ({per_level, base}: the half-casters pay level + 1); the Sorcerer's
 // Overchannel shaves 1 (floor 1).
 export function spellCost(data, ch, spell) {
+  if (spell.stance) return spell.stance; // a Stance: flat, cheap, until the next full rest (v1.1)
   const f = ch.cls.spell_cost ?? {};
   let cost = spell.level * (f.per_level ?? 2) + (f.base ?? 1);
   const p = passiveOf(data, ch);
@@ -348,20 +364,42 @@ export function magicModel(data, ch) {
 }
 
 // The 'lane' model (Spellblade, Stoneshaper): before the fork the hero
-// knows the class's level-1 spells of every lane — or ONLY the creation
-// gift's spell, if the gift named one; from the fork on, every spell
-// tagged with the walked lane (untagged class spells belong to both),
-// plus the gift spell forever. Returns [{id, ...def}], all levels.
+// knows ONLY the creation gift's spell (if the gift named one), else the
+// class's 'starting_spells' (the Stoneshaper's Skin of Stone), else the
+// class's level-1 spells of every lane; from the fork on, every spell
+// tagged with the walked lane (untagged class spells belong to both). A
+// gift verse the lane does not sing is swapped away at the fork (v1.1 —
+// game.applyChoice exchanges an active Stance free). Returns [{id, ...def}].
 export function laneSpells(data, ch) {
   const clsId = classIdOf(data, ch);
   const all = classSpellList(data, clsId);
   const gift = giftOf(ch)?.spell ?? null;
   if (!ch.lane) {
     if (gift) return all.filter(s => s.id === gift);
+    if (ch.cls.starting_spells?.length) return all.filter(s => ch.cls.starting_spells.includes(s.id));
     return all.filter(s => s.level === 1 && heroMaxSpellLevel(ch) >= 1);
   }
-  return all.filter(s => !s.lane || s.lane === ch.lane || s.id === gift);
+  return all.filter(s => !s.lane || s.lane === ch.lane);
 }
+
+// The buff a spell lays on a hero (magic v3): every named part reaches the
+// combat math through ch.timedBuffs. rounds null = the whole battle; a
+// STANCE (v1.1) is flagged so it outlives the fight — until the next full
+// rest. `extra` carries what only the cast knows: scaled ac, rounds, the
+// absorb roll.
+export function spellBuff(s, extra = {}) {
+  return {
+    name: s.name, spell: s.id ?? null, stance: !!s.stance,
+    hit: s.hit ?? 0, dmg: s.dmg ?? 0, ac: extra.ac ?? s.ac ?? 0, saves: s.saves ?? 0, attacks: s.attacks ?? 0,
+    rounds: s.stance ? null : (extra.rounds ?? (s.rounds || null)), absorb: extra.absorb ?? 0,
+    bonus_damage: s.bonus_damage ?? null, resist: s.resist ?? null,
+    immune_conditions: s.immune_conditions ?? false,
+    reduce: s.reduce ?? 0, halve: !!s.halve, reflect: s.reflect ?? 0, lifesteal: s.lifesteal ?? 0, auto_hit: !!s.auto_hit,
+  };
+}
+
+// The Stances a hero holds right now (buffs that outlast the battle).
+export function activeStances(ch) { return (ch.timedBuffs ?? []).filter(b => b.stance); }
 
 // The creation gift a hero carries (classes.json creation_pick option).
 export function giftOf(ch) {

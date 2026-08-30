@@ -5,7 +5,7 @@
 import { roll, d20, maxRoll, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
 import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName } from './progression.js';
-import { spellCost, unpreparedSpells, knownSpells, scaleSteps, giftOf } from './magic.js';
+import { spellCost, spellBuff, activeStances, unpreparedSpells, knownSpells, scaleSteps, giftOf } from './magic.js';
 import * as audio from './audio.js';
 
 // Sum of a field across a hero's timed buffs (Rage etc.).
@@ -34,7 +34,8 @@ export class Battle {
     this.sanctuary = null; // the Cleric's Rite: {c} — nobody falls while it holds
     for (const ch of game.party) {
       ch.buffs = { hit: 0, dmg: 0 }; // buffs last one battle
-      ch.timedBuffs = [];
+      // Stances (v1.1) hold until the next full rest; everything else is fresh.
+      ch.timedBuffs = (ch.timedBuffs ?? []).filter(b => b.stance);
       // Magic v2 battle state: Arcane Insight's chosen edge, the Overcast and
       // Zealous Strike stances, and the armed one-shot wonders — all fresh
       // each fight. Battle also slams the Prepared Mind window shut.
@@ -192,7 +193,6 @@ export class Battle {
             this.game.log(`${c.ref.name}'s ${b.name.toLowerCase()} fades.`);
           }
         }
-        this.verseUpkeep(c);
         const verdict = this.tickConditions(c); // burn ticks, paralysis check
         if (this.checkEnd()) return;
         if (verdict === 'dead') continue;
@@ -313,26 +313,6 @@ export class Battle {
 
   // A buff that plants the hero in place (Mirror Ward, Mountain's Heart).
   rootedBy(ref) { return (ref.timedBuffs ?? []).find(b => b.rooted) ?? null; }
-
-  // Whirling Verse's price: every OTHER song the singer keeps up drains
-  // spell points each round — or falls silent. Runs at the singer's turn.
-  verseUpkeep(c) {
-    const ref = c.ref;
-    const verse = (ref.timedBuffs ?? []).find(b => b.verse);
-    if (!verse) return;
-    const drain = verse.drain_per_buff ?? 2;
-    for (const b of [...ref.timedBuffs]) {
-      if (b === verse) continue;
-      if (this.game.arena || ref.sp >= drain) {
-        if (!this.game.arena) ref.sp -= drain;
-        this.game.log(`${verse.name} drains ${drain} SP to keep ${b.name} singing (${ref.sp} SP left).`, 'info');
-      } else {
-        ref.timedBuffs = ref.timedBuffs.filter(x => x !== b);
-        this.addFx(c.x, c.y, `${b.name} falls silent`, '#9a94a8');
-        this.game.log(`${ref.name} has no spell points left for ${b.name} — it falls silent under ${verse.name}.`, 'info');
-      }
-    }
-  }
 
   // Warding Presence (Hearthstone passive): +saves for allies standing
   // beside the dwarf. game.heroSaveBonus asks here in battle.
@@ -969,8 +949,10 @@ export class Battle {
           description: `${cap.rounds ?? 3} rounds: every shot also strikes each foe within ${cap.spread ?? 1} of its target (one arrow each) — and you cannot move.${ref.weapon?.range ? '' : ' Needs a bow in hand.'}` });
       }
       if (cap.id === 'whirling_verse') {
-        out.push({ kind: 'active', id: 'whirling_verse', name: cap.name ?? 'Whirling Verse', cost: 0, affordable: true,
-          description: `${cap.rounds ?? 3} rounds: every landed hit grants a free extra strike — every other song you keep up drains ${cap.drain_per_buff ?? 2} SP a round or falls silent.` });
+        const minSp = cap.min_sp ?? 1;
+        const stance = activeStances(ref).map(b => b.name).join(' & ');
+        out.push({ kind: 'active', id: 'whirling_verse', name: cap.name ?? 'Whirling Verse', cost: Math.max(minSp, ref.sp), affordable: this.game.arena || ref.sp >= minSp,
+          description: `ALL remaining SP (${ref.sp}; needs ${minSp}+)${stance ? ` and ${stance} falls silent` : ''}: for ${cap.rounds ?? 3} rounds every landed hit grants a free extra strike. When it ends you have nothing left.` });
       }
       if (cap.id === 'mirror_ward') {
         out.push({ kind: 'active', id: 'mirror_ward', name: cap.name ?? 'Mirror Ward', cost: 0, affordable: true,
@@ -1307,11 +1289,15 @@ export class Battle {
       return;
     }
     if (entry.id === 'whirling_verse') {
+      // v1.1: the all-in gamble — every spell point, and the Stance with it.
+      const spent = this.game.arena ? 0 : ref.sp;
+      if (!this.game.arena) ref.sp = 0;
+      const silenced = activeStances(ref).map(b => b.name);
+      ref.timedBuffs = ref.timedBuffs.filter(b => !b.verse && !b.stance);
+      ref.timedBuffs.push({ name: cap.name ?? 'Whirling Verse', hit: 0, dmg: 0, ac: 0, saves: 0, attacks: 0, rounds: cap.rounds ?? 3, verse: true });
       audio.play('spell_buff');
-      ref.timedBuffs = ref.timedBuffs.filter(b => !b.verse);
-      ref.timedBuffs.push({ name: cap.name ?? 'Whirling Verse', hit: 0, dmg: 0, ac: 0, saves: 0, attacks: 0, rounds: cap.rounds ?? 3, verse: true, drain_per_buff: cap.drain_per_buff ?? 2 });
       this.addFx(c.x, c.y, `${(cap.name ?? 'WHIRLING VERSE').toUpperCase()}!`, '#e0c060');
-      this.game.log(`${ref.name} begins ${cap.name ?? 'the Whirling Verse'} — every hit will earn another, and every other song will bleed spell points to keep pace.`, 'good');
+      this.game.log(`${ref.name} pours everything into ${cap.name ?? 'the Whirling Verse'} — ${spent} SP gone${silenced.length ? `, ${silenced.join(' & ')} falls silent` : ''}. For ${cap.rounds ?? 3} rounds every hit will earn another.`, 'good');
       this.endHeroTurn();
       return;
     }
@@ -2139,18 +2125,13 @@ export class Battle {
     if (s.lifesteal) bits.push(`${Math.round(s.lifesteal * 100)}% of weapon damage heals you`);
     if (s.auto_hit) bits.push('attacks cannot miss');
     if (s.hidden) bits.push('unseen');
-    const rounds = s.rounds ? s.rounds + m.extraRounds : null;
+    const rounds = s.rounds && !s.stance ? s.rounds + m.extraRounds : null;
     let absorbText = '';
     for (const ch of targets) {
       ch.timedBuffs = (ch.timedBuffs ?? []).filter(b => b.name !== s.name);
       const absorb = s.absorb ? Math.max(1, roll(s.absorb)) : 0;
       if (absorb) absorbText = ` — drinks ${absorb} (${s.absorb})`;
-      ch.timedBuffs.push({
-        name: s.name, hit: s.hit ?? 0, dmg: s.dmg ?? 0, ac, saves: s.saves ?? 0, attacks: s.attacks ?? 0,
-        rounds, absorb, bonus_damage: s.bonus_damage ?? null, resist: s.resist ?? null,
-        immune_conditions: s.immune_conditions ?? false,
-        reduce: s.reduce ?? 0, halve: !!s.halve, reflect: s.reflect ?? 0, lifesteal: s.lifesteal ?? 0, auto_hit: !!s.auto_hit,
-      });
+      ch.timedBuffs.push(spellBuff(s, { ac, rounds, absorb }));
       // A Hearthstone dwarf's tracked deed: every ally sheltered by a verse.
       if (ch !== c.ref && laneOf(this.game.data, c.ref)?.rite?.tracked === 'alliesFortified') c.ref.counters.alliesFortified++;
       if (s.hidden) { ch.hidden = true; audio.play('vanish'); }
@@ -2159,7 +2140,7 @@ export class Battle {
       if (tc) this.particleFx(tc.x, tc.y, s.fx?.kind === 'wisp' ? 'wisp' : 'sparkle', s.fx?.color ?? '#d4a94e');
     }
     const who = s.targets === 'self' ? c.ref.name : s.targets === 'ally' ? targets[0].name : 'the party';
-    this.game.log(`${s.name} settles on ${who}: ${bits.join(', ')}${absorbText}${rounds ? ` for ${rounds} round${rounds > 1 ? 's' : ''}${m.extraRounds ? ` (+${m.extraRounds} caster level)` : ''}` : ' this battle'}.`, 'good');
+    this.game.log(`${s.name} settles on ${who}: ${bits.join(', ')}${absorbText}${rounds ? ` for ${rounds} round${rounds > 1 ? 's' : ''}${m.extraRounds ? ` (+${m.extraRounds} caster level)` : ''}` : s.stance ? ' — a Stance, held until the next full rest' : ' this battle'}.`, 'good');
   }
 
   // A buff that needs no aim (self / the whole party): straight to resolution.
@@ -2248,7 +2229,7 @@ export class Battle {
   // A hero's AC in the moment: sheet AC, timed buffs (Rage's recklessness),
   // and Bulwark — a knight standing beside you turns blades aside.
   heroAcOf(hc, m = null) {
-    let ac = hc.ref.ac + timedSum(hc.ref, 'ac') + this.game.condStat(hc.ref, 'ac');
+    let ac = hc.ref.ac + this.game.condStat(hc.ref, 'ac'); // timed buffs arrive by name via acExtras
     for (const other of this.heroes()) {
       if (other === hc || !other.ref.alive) continue;
       const lane = laneOf(this.game.data, other.ref);
@@ -2265,6 +2246,7 @@ export class Battle {
   // creation gift, vs one element) and a Ward Surge sung over this blow.
   acExtras(ref, m) {
     const parts = [];
+    for (const b of ref.timedBuffs ?? []) if (b.ac) parts.push([b.ac, b.name]); // Aegis of Dawn, Rage's recklessness…
     const gift = ref.cls.creation_pick?.options.find(o => o.id === ref.gift?.id);
     if (gift?.ac_vs_element && m?.element && m.element === ref.gift.element) parts.push([gift.ac_vs_element, `${gift.name} vs ${m.element}`]);
     if (this.wardBonus && this.wardBonus.target === ref) parts.push([this.wardBonus.ac, this.wardBonus.name]);
@@ -2554,6 +2536,7 @@ export class Battle {
       return false;
     }
     ref.alive = false;
+    ref.timedBuffs = []; // every verse dies with the singer — a Stance too
     audio.play('hero_falls'); // silent until the designer maps it
     this.fxOn(ref, 'FALLEN', '#b03535');
     this.game.log(`${ref.name} has fallen!`, 'death');
@@ -2656,7 +2639,7 @@ export class Battle {
   stripBattleConditions() {
     for (const ch of this.game.party) {
       ch.conditions = ch.conditions.filter(c => this.game.conditionDef(c.id)?.lingers);
-      ch.timedBuffs = []; // Rage and its kin gutter out with the fight
+      ch.timedBuffs = ch.alive ? ch.timedBuffs.filter(b => b.stance) : []; // Rage and its kin gutter out; a Stance (v1.1) holds till the next rest
       ch.hidden = false;  // shadows are for battlefields
       // Magic v2 battle state guttering out with the fight.
       ch.insight = null;
