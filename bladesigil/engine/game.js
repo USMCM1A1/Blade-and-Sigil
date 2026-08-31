@@ -994,6 +994,18 @@ export class Game {
     return Math.max(0, ...this.party.filter(ch => ch.alive).map(ch => this.heroSkill(ch)));
   }
 
+  // WHO has that best eye — the hero whose skill detectChance() uses, so
+  // every discovery message can give them the credit (designer rule
+  // 2026-08-30: the finder is named, ties go to marching order).
+  bestDetector() {
+    let best = null;
+    for (const ch of this.party) {
+      if (!ch.alive) continue;
+      if (!best || this.heroSkill(ch) > this.heroSkill(best)) best = ch;
+    }
+    return best;
+  }
+
   // Called after every step: each hidden feature beside the party gets a
   // fresh detection roll (designer ruling 2026-08-27 — walking past gives a
   // few chances, lingering nearby will find it; Space is the sure thing).
@@ -1007,7 +1019,7 @@ export class Game {
       if (Math.random() * 100 < chance) {
         t.detected = true;
         audio.play('discover');
-        this.log(`Sharp eyes catch a ${this.data.dungeon.traps[t.id].name.toLowerCase()} hidden in the floor!`, 'good');
+        this.log(`${this.bestDetector().name}'s sharp eyes catch a ${this.data.dungeon.traps[t.id].name.toLowerCase()} hidden in the floor!`, 'good');
       }
     }
     for (const t of this.chestTraps ?? []) {
@@ -1015,7 +1027,7 @@ export class Game {
       if (Math.random() * 100 < chance) {
         t.detected = true;
         audio.play('discover');
-        this.log(`Sharp eyes spot a ${this.data.dungeon.traps[t.id].name.toLowerCase()} rigged to the chest's latch!`, 'good');
+        this.log(`${this.bestDetector().name} spots a ${this.data.dungeon.traps[t.id].name.toLowerCase()} rigged to the chest's latch!`, 'good');
       }
     }
     for (let y = this.partyPos.y - 1; y <= this.partyPos.y + 1; y++) {
@@ -1024,7 +1036,7 @@ export class Game {
         if (Math.random() * 100 < chance) {
           this.revealed.add(`${x},${y}`);
           audio.play('discover');
-          this.log('A seam in the stonework — there is a secret door here!', 'good');
+          this.log(`${this.bestDetector().name} notices a seam in the stonework — there is a secret door here!`, 'good');
         }
       }
     }
@@ -1203,18 +1215,18 @@ export class Game {
     for (const t of this.traps) {
       if (t.detected || !near(t.x, t.y)) continue;
       t.detected = true; found++;
-      this.log(`The search uncovers a ${this.data.dungeon.traps[t.id].name.toLowerCase()} hidden in the floor!`, 'good');
+      this.log(`${this.bestDetector().name}'s search uncovers a ${this.data.dungeon.traps[t.id].name.toLowerCase()} hidden in the floor!`, 'good');
     }
     for (const t of this.chestTraps ?? []) {
       if (t.detected || !near(t.x, t.y)) continue;
       t.detected = true; found++;
-      this.log(`The search uncovers a ${this.data.dungeon.traps[t.id].name.toLowerCase()} rigged to the chest's latch!`, 'good');
+      this.log(`${this.bestDetector().name}'s search uncovers a ${this.data.dungeon.traps[t.id].name.toLowerCase()} rigged to the chest's latch!`, 'good');
     }
     for (let y = this.partyPos.y - 1; y <= this.partyPos.y + 1; y++) {
       for (let x = this.partyPos.x - 1; x <= this.partyPos.x + 1; x++) {
         if (this.grid[y]?.[x] !== 'S' || this.revealed.has(`${x},${y}`)) continue;
         this.revealed.add(`${x},${y}`); found++;
-        this.log('A seam in the stonework — there is a secret door here!', 'good');
+        this.log(`${this.bestDetector().name} finds a seam in the stonework — there is a secret door here!`, 'good');
       }
     }
     if (found) audio.play('discover');
