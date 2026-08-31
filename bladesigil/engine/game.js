@@ -654,7 +654,15 @@ export class Game {
   // Legacy player.py rule (the design doc is silent on XP): reaching the
   // next level costs 50 × current level XP; the doc's per-level class
   // tables (already in classes.json) say what each new level grants.
-  xpToLevel(ch) { return 50 * ch.level; }
+  // XP to the next level: progression.json's xp_curve (base x growth^(level-1),
+  // rounded to 5s) - or the flat legacy 50 x level when the block is absent.
+  // Raised from the flat rule after the 2026-08-30 playtest: rising monster
+  // XP against a linear ladder had the party at 20 by floor 13.
+  xpToLevel(ch) {
+    const c = this.data.progression?.xp_curve;
+    if (!c) return 50 * ch.level;
+    return Math.max(5, Math.round((c.base ?? 50) * Math.pow(c.growth ?? 1.3, ch.level - 1) / 5) * 5);
+  }
 
   // Every living hero shares the kill — but XP only ACCUMULATES here.
   // Taking the level is the player's act: a gold cross marks who's ready,
