@@ -249,7 +249,7 @@ export function choosePartyDef(data) {
                     ${ABILITIES.map((ab, i) => `
                       <button class="cr-ability ${swapFrom === i ? 'swapping' : ''}" data-ab="${i}">
                         <span class="cr-ab-name">${ABILITY_NAMES[ab]}</span>
-                        <span class="cr-ab-score">${state.rolls[i]}${bonus(ab) ? `<i> ${fmtMod(bonus(ab))}</i>` : ''}</span>
+                        <span class="cr-ab-score">${bonus(ab) ? `${state.rolls[i]}<i> ${fmtMod(bonus(ab))} ${race.name} = </i>${final(ab)}` : state.rolls[i]}</span>
                         <span class="cr-ab-mod">${fmtMod(abilityMod(final(ab)))}</span>
                       </button>`).join('')}
                   </div>

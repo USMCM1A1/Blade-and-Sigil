@@ -21,14 +21,18 @@ export function maxRoll(diceStr) {
 }
 
 // Ability modifier table from the design doc.
+// Ability modifiers — designer's revised table (2026-08-30, replaces the
+// doc's original 13-15/+1 curve): 12-13 +1, 14-15 +2, 16-17 +3, 18 +4,
+// 19+ +5 (a 20, reachable with racial bonuses, is treated as 19 — the
+// designer's table stops there).
 export function abilityMod(score) {
   if (score <= 5) return -2;
   if (score <= 8) return -1;
-  if (score <= 12) return 0;
-  if (score <= 15) return 1;
-  if (score <= 17) return 2;
-  if (score === 18) return 3;
-  if (score === 19) return 4;
+  if (score <= 11) return 0;
+  if (score <= 13) return 1;
+  if (score <= 15) return 2;
+  if (score <= 17) return 3;
+  if (score === 18) return 4;
   return 5;
 }
 
