@@ -360,7 +360,8 @@
       ],
       "traps": [
         "spike_pit",
-        "dart_trap"
+        "dart_trap",
+        "spear_trap"
       ],
       "trap_count": "1d3-1",
       "secret_doors": "1d2",
@@ -431,7 +432,8 @@
       ],
       "traps": [
         "spike_pit",
-        "dart_trap"
+        "dart_trap",
+        "spear_trap"
       ],
       "trap_count": "1d3-1",
       "secret_doors": "1d2",
@@ -501,7 +503,8 @@
       ],
       "traps": [
         "spike_pit",
-        "dart_trap"
+        "dart_trap",
+        "spear_trap"
       ],
       "trap_count": "1d3-1",
       "secret_doors": "1d2",
@@ -572,7 +575,8 @@
       ],
       "traps": [
         "spike_pit",
-        "dart_trap"
+        "dart_trap",
+        "spear_trap"
       ],
       "trap_count": "1d3-1",
       "secret_doors": "1d2",
@@ -651,6 +655,7 @@
       ],
       "traps": [
         "dart_trap",
+        "swinging_blade",
         "flame_jet"
       ],
       "trap_count": "1d3",
@@ -731,6 +736,7 @@
       ],
       "traps": [
         "dart_trap",
+        "swinging_blade",
         "flame_jet"
       ],
       "trap_count": "1d3",
@@ -810,6 +816,7 @@
       ],
       "traps": [
         "dart_trap",
+        "swinging_blade",
         "flame_jet"
       ],
       "trap_count": "1d3",
@@ -890,6 +897,7 @@
       ],
       "traps": [
         "dart_trap",
+        "swinging_blade",
         "flame_jet"
       ],
       "trap_count": "1d3",
@@ -967,6 +975,7 @@
         }
       ],
       "traps": [
+        "swinging_blade",
         "flame_jet",
         "crushing_block"
       ],
@@ -1046,6 +1055,7 @@
         }
       ],
       "traps": [
+        "swinging_blade",
         "flame_jet",
         "crushing_block"
       ],
@@ -1125,6 +1135,7 @@
         }
       ],
       "traps": [
+        "swinging_blade",
         "flame_jet",
         "crushing_block"
       ],
@@ -1202,6 +1213,7 @@
         }
       ],
       "traps": [
+        "swinging_blade",
         "flame_jet",
         "crushing_block"
       ],
@@ -1535,6 +1547,18 @@
       },
       "element": "poison"
     },
+    "spear_trap": {
+      "name": "Spear Trap",
+      "dice": "2d6",
+      "save": "dex",
+      "dc": 13
+    },
+    "swinging_blade": {
+      "name": "Swinging Blade",
+      "dice": "3d6",
+      "save": "dex",
+      "dc": 14
+    },
     "flame_jet": {
       "name": "Flame Jet",
       "dice": "2d6",
@@ -1548,15 +1572,15 @@
     },
     "crushing_block": {
       "name": "Crushing Block",
-      "dice": "3d6",
+      "dice": "5d6",
       "save": "dex",
       "dc": 15
     },
     "soul_fire": {
       "name": "Soul Fire",
-      "dice": "4d6",
+      "dice": "7d6",
       "save": "wis",
-      "dc": 16,
+      "dc": 17,
       "condition": {
         "id": "burning",
         "rounds": 3
