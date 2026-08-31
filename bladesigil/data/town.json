@@ -131,10 +131,22 @@
         "at_depth": 8
       },
       {
-        "id": "enchanted_longsword",
+        "id": "enchanted_mace",
+        "at_depth": 8
+      },
+      {
+        "id": "enchanted_short_sword",
+        "at_depth": 8
+      },
+      {
+        "id": "enchanted_dagger",
+        "at_depth": 8
+      },
+      {
+        "id": "enchanted_short_bow",
         "at_depth": 8
       }
     ],
-    "_comment": "Economy pass (designer philosophy 2026-08-31): the store SCALES WITH THE PARTY'S ACHIEVEMENTS and complements adventuring — it never outruns the dungeon. A stock entry may be {'id', 'at_depth': N}: it appears only once the party has REACHED dungeon depth N this run (game.deepest; plain string = always stocked). Locked rows show greyed with the depth needed — aspiration, not absence. Bands (all proposals): start = survival basics + simple arms; depth 2 = the full basic arsenal + light/ring armor; depth 5 = heavy steel (scale/chain/tower, big two-handers); depth 7 = the Mastersmith's work + plate. ARCANE SPELL SCROLLS ARE GONE FROM THE SHELF (designer ruling: a new spell is a prize from adventuring, never a transaction — scrolls still DROP per dungeon.json scroll_drops). The one scroll sold is Cure Light Wounds — a divine prayer-scroll, cheaper than a Health Potion, readable only by a divine caster: the cleric's edge. DESPERATION SHELF (2026-08-31): exactly two Enchanted pieces at depth 8 — enchanted_staff (400g) and enchanted_longsword (800g) — so a party with no +1 drop is never locked out of magic_to_hit foes; keep the selection tiny, the price steep."
+    "_comment": "Economy pass (designer philosophy 2026-08-31): the store SCALES WITH THE PARTY'S ACHIEVEMENTS and complements adventuring — it never outruns the dungeon. A stock entry may be {'id', 'at_depth': N}: it appears only once the party has REACHED dungeon depth N this run (game.deepest; plain string = always stocked). Locked rows show greyed with the depth needed — aspiration, not absence. Bands (all proposals): start = survival basics + simple arms; depth 2 = the full basic arsenal + light/ring armor; depth 5 = heavy steel (scale/chain/tower, big two-handers); depth 7 = the Mastersmith's work + plate. ARCANE SPELL SCROLLS ARE GONE FROM THE SHELF (designer ruling: a new spell is a prize from adventuring, never a transaction — scrolls still DROP per dungeon.json scroll_drops). The one scroll sold is Cure Light Wounds — a divine prayer-scroll, cheaper than a Health Potion, readable only by a divine caster: the cleric's edge. DESPERATION SHELF (designer rulings 2026-08-31, revised after playtest run 3's all-staves party): FIVE class-flavored +1 pieces at depth 8, ALL 600g — staff, mace, short sword, dagger, short bow — so every class has one honest (pricey) route to a spirit-biting weapon; bigger +1 arms stay drop-only."
   }
 }

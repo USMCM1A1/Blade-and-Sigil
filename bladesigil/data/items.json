@@ -526,7 +526,7 @@
       "hit": 1,
       "finesse": true,
       "enchanted": true,
-      "value": 400,
+      "value": 600,
       "description": "A dagger with runes cold to the touch — it bites what mundane steel cannot."
     },
     "enchanted_tanto": {
@@ -547,7 +547,7 @@
       "damage": "1d6+1",
       "hit": 1,
       "enchanted": true,
-      "value": 400,
+      "value": 600,
       "description": "A short sword with runes cold to the touch — it bites what mundane steel cannot."
     },
     "enchanted_longsword": {
@@ -610,7 +610,7 @@
       "damage": "1d4+1",
       "hit": 1,
       "enchanted": true,
-      "value": 400,
+      "value": 600,
       "description": "A staff with runes cold to the touch — it bites what mundane steel cannot."
     },
     "enchanted_mace": {
@@ -620,7 +620,7 @@
       "damage": "1d6+1",
       "hit": 1,
       "enchanted": true,
-      "value": 480,
+      "value": 600,
       "description": "A mace with runes cold to the touch — it bites what mundane steel cannot."
     },
     "enchanted_warhammer": {
@@ -642,7 +642,7 @@
       "range": 5,
       "hands": 2,
       "enchanted": true,
-      "value": 400,
+      "value": 600,
       "description": "A short bow with runes cold to the touch — it bites what mundane steel cannot."
     },
     "enchanted_longbow": {
