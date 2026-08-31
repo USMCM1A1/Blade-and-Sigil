@@ -384,7 +384,7 @@
       "tier": 1,
       "dice": "1d8",
       "effect": "heal",
-      "value": 20,
+      "value": 50,
       "description": "A straw-colored potion that restores a small amount of health."
     },
     "extra_healing_potion": {
@@ -393,7 +393,7 @@
       "tier": 2,
       "dice": "3d8",
       "effect": "heal",
-      "value": 60,
+      "value": 140,
       "description": "A deep crimson draught that knits serious wounds."
     },
     "greater_healing_potion": {
@@ -402,7 +402,7 @@
       "tier": 3,
       "dice": "6d8",
       "effect": "heal",
-      "value": 150,
+      "value": 320,
       "description": "A radiant vial that pulls a hero back from the brink."
     },
     "antidote_potion": {
@@ -420,7 +420,7 @@
       "tier": 1,
       "dice": "1d8",
       "effect": "mana",
-      "value": 30,
+      "value": 60,
       "description": "A humming blue philter that restores a few spell points."
     },
     "extra_mana_potion": {
@@ -429,7 +429,7 @@
       "tier": 2,
       "dice": "3d8",
       "effect": "mana",
-      "value": 90,
+      "value": 200,
       "description": "A swirling sapphire draught that refills a caster's well."
     },
     "greater_mana_potion": {
@@ -438,7 +438,7 @@
       "tier": 3,
       "dice": "6d8",
       "effect": "mana",
-      "value": 220,
+      "value": 450,
       "description": "Liquid starlight. The archmage's nightcap."
     },
     "invisibility_potion": {

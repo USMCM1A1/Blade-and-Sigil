@@ -68,7 +68,8 @@ export function deriveScrollItems(data) {
       spell: id,
       value: o.value ?? Math.round(base * (s.rare ? rareMult : 1)),
       tier: o.tier ?? s.level,
-      description: s.rare ? `${s.name}, in a hand no living school teaches — read once, or copy it into a spellbook` : `${s.name}, transcribed — read once, or copy it into a spellbook`,
+      description: spellSchool(s) === 'divine' ? `${s.name} as a prayer-scroll — voiced once by a divine caster; no book can copy it`
+        : s.rare ? `${s.name}, in a hand no living school teaches — read once, or copy it into a spellbook` : `${s.name}, transcribed — read once, or copy it into a spellbook`,
       synthesized: true,
     };
     covered.add(id);
@@ -152,6 +153,7 @@ export function validateMagic(data) {
       for (const k of ['hit', 'dmg', 'ac', 'saves', 'attacks', 'reduce']) {
         if (s[k] !== undefined && typeof s[k] !== 'number') throw new DataError(where, `Buff field "${k}" must be a number.`);
       }
+      if (s.enchant !== undefined && s.enchant !== true) throw new DataError(where, `"enchant" is simply true — while the buff holds, the target's weapon counts as ENCHANTED and bites magic_to_hit foes.`);
       for (const k of ['reflect', 'lifesteal']) {
         if (s[k] !== undefined && (typeof s[k] !== 'number' || s[k] <= 0 || s[k] > 1)) throw new DataError(where, `"${k}" is a fraction (0.5 = half)${k === 'reflect' ? ' of melee damage taken thrown back at the attacker' : ' of weapon damage dealt that heals you'}.`);
       }
@@ -276,9 +278,8 @@ export function validateMagic(data) {
     if (!s) throw new DataError(`data/items.json ("${id}")`, `This scroll names a spell "${it.spell}" that isn't in spells.json. Valid: ${Object.keys(spells).join(', ')}`);
     if (seen.has(it.spell)) throw new DataError(`data/items.json ("${id}")`, `Two scrolls for the same spell ("${seen.get(it.spell)}" and "${id}") — drops would double-weight it. Keep one.`);
     seen.set(it.spell, id);
-    if (spellSchool(s) !== 'arcane') {
-      throw new DataError(`data/items.json ("${id}")`, `"${it.spell}" is a divine spell — only arcane spells go on scrolls in this version (priests receive rare prayers as revelations, see classes.json revelation_levels).`);
-    }
+    // Divine prayer-scrolls opened 2026-08-31 (the shop's Cure Light Wounds):
+    // read by divine casters, never copied — only arcane words take ink.
   }
   for (const [id, s] of Object.entries(spells)) {
     if (s.rare && spellSchool(s) === 'arcane' && !seen.has(id)) {
@@ -394,7 +395,7 @@ export function spellBuff(s, extra = {}) {
     rounds: s.stance ? null : (extra.rounds ?? (s.rounds || null)), absorb: extra.absorb ?? 0,
     bonus_damage: s.bonus_damage ?? null, resist: s.resist ?? null,
     immune_conditions: s.immune_conditions ?? false,
-    reduce: s.reduce ?? 0, halve: !!s.halve, reflect: s.reflect ?? 0, lifesteal: s.lifesteal ?? 0, auto_hit: !!s.auto_hit,
+    reduce: s.reduce ?? 0, halve: !!s.halve, reflect: s.reflect ?? 0, lifesteal: s.lifesteal ?? 0, auto_hit: !!s.auto_hit, enchant: !!s.enchant,
   };
 }
 
@@ -607,11 +608,14 @@ export function describeScale(spell) {
 
 // ---- Scrolls ----
 // May this hero READ this scroll's spell in battle? null = yes, else the
-// reason (designer-facing). Arcane casters only, up to max spell level + 1.
+// reason (designer-facing). Each school reads its own: arcane hands for
+// arcane scrolls, divine voices for prayer-scrolls. Up to max spell level + 1.
 export function scrollReadable(data, ch, spell) {
   if (!ch.alive) return `${ch.name} is beyond reading.`;
-  if (ch.cls.caster !== 'arcane') return `Only an arcane caster can read the words off a scroll — ${ch.name} is a ${ch.cls.name}.`;
-  if (spellSchool(spell) !== 'arcane') return `A divine prayer — no scroll can carry it.`;
+  const school = spellSchool(spell);
+  if (ch.cls.caster !== school) return school === 'divine'
+    ? `Only a divine caster can voice a prayer-scroll — ${ch.name} is a ${ch.cls.name}.`
+    : `Only an arcane caster can read the words off a scroll — ${ch.name} is a ${ch.cls.name}.`;
   const limit = maxSpellLevel(ch.level) + 1;
   if (spell.level > limit) return `Too deep to read — a level-${spell.level} spell (${ch.name} can read up to level ${limit}). Copy it and wait, or sell it.`;
   return null;

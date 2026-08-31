@@ -50,6 +50,7 @@ function buildPayload(game) {
     turn: game.turn,
     mode: game.mode,
     depth: game.depth,
+    deepest: game.deepest ?? 0,
     preBossDepth: game.preBossDepth ?? null,
     partyPos: game.partyPos,
     floors,
@@ -134,6 +135,7 @@ export function loadRun(game, p) {
   game.inventory = p.inventory ?? {};
   game.turn = p.turn ?? 0;
   game.preBossDepth = p.preBossDepth ?? null;
+  game.deepest = p.deepest ?? (typeof p.depth === 'number' ? p.depth : 20);
   game.floors = {};
   for (const [d, f] of Object.entries(p.floors ?? {})) {
     game.floors[d] = { ...f, chestTraps: f.chestTraps ?? [], revealed: new Set(f.revealed ?? []) };

@@ -70,6 +70,7 @@ export class Game {
     this.battle = null;     // active tactical battle, or null while exploring
     this.floors = {};       // visited floors keyed by depth — cleared rooms STAY cleared this run
     this.depth = 0;         // current floor number ('boss' on the final floor)
+    this.deepest = 0;       // deepest floor REACHED this run — the shop's stock scales with it (economy pass 2026-08-31)
     this.party = data.party.party.map(p => this.buildCharacter(p));
     // Each hero brings their own purse to the pool (data/party.json rule).
     const goldDice = data.party.starting_gold || '4d6+200';
@@ -163,6 +164,10 @@ export class Game {
     }
     if (ch.spellbook.includes(def.spell)) {
       this.log(`${spell.name} is already inked in ${ch.name}'s book.`, 'info');
+      return false;
+    }
+    if (spellSchool(spell) !== 'arcane') {
+      this.log(`A prayer-scroll takes no ink — ${spell.name} can only be voiced, once, by a divine caster.`, 'info');
       return false;
     }
     this.inventory[id]--;
@@ -365,6 +370,7 @@ export class Game {
       : generateFloor(this.data, depth);
     this.mode = 'dungeon';
     this.depth = depth;
+    this.deepest = Math.max(this.deepest ?? 0, typeof depth === 'number' ? depth : 20);
     if (cached) {
       this.level = cached.level;
       this.grid = cached.grid;
@@ -429,9 +435,20 @@ export class Game {
     return true;
   }
 
+  // The shop's stock scales with the party's deeds: an entry may be
+  // {"id", "at_depth": N} in town.json — locked until depth N is reached.
+  shopStockEntries() {
+    return (this.data.town.shop.stock ?? []).map(e => typeof e === 'string' ? { id: e, at_depth: 0 } : e);
+  }
+
   shopBuy(id) {
     const def = this.itemDef(id);
     if (!def) return false;
+    const entry = this.shopStockEntries().find(e => e.id === id);
+    if (entry && (entry.at_depth ?? 0) > (this.deepest ?? 0)) {
+      this.log(`The shopkeep shakes their head — the ${def.name.toLowerCase()} is for delvers who have seen depth ${entry.at_depth}.`, 'info');
+      return false;
+    }
     if (def.max_carry && (this.inventory[id] || 0) >= def.max_carry) {
       this.log(`The party can only carry ${def.max_carry} ${def.name.toLowerCase()}.`, 'info');
       return false;

@@ -135,7 +135,7 @@
       },
       "monster_count": "2d3+2",
       "chest_count": "1d3",
-      "chest_gold": "3d20+20",
+      "chest_gold": "2d10+8",
       "chest_items": [
         {
           "id": "health_potion",
@@ -152,6 +152,14 @@
         {
           "id": "arrows",
           "chance": 0.3
+        },
+        {
+          "id": "short_sword",
+          "chance": 0.1
+        },
+        {
+          "id": "leather_armor",
+          "chance": 0.08
         }
       ],
       "traps": [
@@ -178,7 +186,7 @@
       },
       "monster_count": "2d3+2",
       "chest_count": "1d3",
-      "chest_gold": "3d20+20",
+      "chest_gold": "2d10+8",
       "chest_items": [
         {
           "id": "health_potion",
@@ -195,6 +203,14 @@
         {
           "id": "arrows",
           "chance": 0.3
+        },
+        {
+          "id": "short_sword",
+          "chance": 0.1
+        },
+        {
+          "id": "leather_armor",
+          "chance": 0.08
         }
       ],
       "traps": [
@@ -221,7 +237,7 @@
       },
       "monster_count": "2d3+2",
       "chest_count": "1d3",
-      "chest_gold": "3d20+20",
+      "chest_gold": "2d10+8",
       "chest_items": [
         {
           "id": "health_potion",
@@ -242,6 +258,18 @@
         {
           "id": "arrows",
           "chance": 0.3
+        },
+        {
+          "id": "mace",
+          "chance": 0.08
+        },
+        {
+          "id": "ring_mail",
+          "chance": 0.06
+        },
+        {
+          "id": "battle_axe",
+          "chance": 0.06
         }
       ],
       "traps": [
@@ -268,7 +296,7 @@
       },
       "monster_count": "2d3+2",
       "chest_count": "1d3",
-      "chest_gold": "3d20+20",
+      "chest_gold": "2d10+8",
       "chest_items": [
         {
           "id": "health_potion",
@@ -289,6 +317,18 @@
         {
           "id": "arrows",
           "chance": 0.3
+        },
+        {
+          "id": "mace",
+          "chance": 0.08
+        },
+        {
+          "id": "ring_mail",
+          "chance": 0.06
+        },
+        {
+          "id": "battle_axe",
+          "chance": 0.06
         }
       ],
       "traps": [
@@ -356,6 +396,18 @@
         {
           "id": "arrows",
           "chance": 0.3
+        },
+        {
+          "id": "scale_mail",
+          "chance": 0.07
+        },
+        {
+          "id": "warhammer",
+          "chance": 0.06
+        },
+        {
+          "id": "mastersmith_longsword",
+          "chance": 0.04
         }
       ],
       "traps": [
@@ -428,6 +480,18 @@
         {
           "id": "arrows",
           "chance": 0.3
+        },
+        {
+          "id": "scale_mail",
+          "chance": 0.07
+        },
+        {
+          "id": "warhammer",
+          "chance": 0.06
+        },
+        {
+          "id": "mastersmith_longsword",
+          "chance": 0.04
         }
       ],
       "traps": [
@@ -499,6 +563,26 @@
         {
           "id": "arrows",
           "chance": 0.3
+        },
+        {
+          "id": "scale_mail",
+          "chance": 0.07
+        },
+        {
+          "id": "warhammer",
+          "chance": 0.06
+        },
+        {
+          "id": "mastersmith_longsword",
+          "chance": 0.04
+        },
+        {
+          "id": "enchanted_short_sword",
+          "chance": 0.05
+        },
+        {
+          "id": "enchanted_mace",
+          "chance": 0.05
         }
       ],
       "traps": [
@@ -571,6 +655,26 @@
         {
           "id": "arrows",
           "chance": 0.3
+        },
+        {
+          "id": "scale_mail",
+          "chance": 0.07
+        },
+        {
+          "id": "warhammer",
+          "chance": 0.06
+        },
+        {
+          "id": "mastersmith_longsword",
+          "chance": 0.04
+        },
+        {
+          "id": "enchanted_short_sword",
+          "chance": 0.05
+        },
+        {
+          "id": "enchanted_mace",
+          "chance": 0.05
         }
       ],
       "traps": [
@@ -651,6 +755,18 @@
         {
           "id": "arrows",
           "chance": 0.3
+        },
+        {
+          "id": "enchanted_longsword",
+          "chance": 0.05
+        },
+        {
+          "id": "enchanted_warhammer",
+          "chance": 0.04
+        },
+        {
+          "id": "enchanted_short_bow",
+          "chance": 0.04
         }
       ],
       "traps": [
@@ -732,6 +848,18 @@
         {
           "id": "arrows",
           "chance": 0.3
+        },
+        {
+          "id": "enchanted_longsword",
+          "chance": 0.05
+        },
+        {
+          "id": "enchanted_warhammer",
+          "chance": 0.04
+        },
+        {
+          "id": "enchanted_short_bow",
+          "chance": 0.04
         }
       ],
       "traps": [

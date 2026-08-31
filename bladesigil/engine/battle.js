@@ -539,9 +539,11 @@ export class Battle {
   strike(c, foeC, verb) {
     const ch = c.ref, monster = foeC.ref;
     // Itemization v2: some foes exist half-elsewhere — mundane steel passes
-    // straight through them. Only an 'enchanted' weapon (tier 2+) or a spell
-    // can bite a monster marked magic_to_hit in monsters.json.
-    if (monster.magic_to_hit && !ch.weapon.enchanted) {
+    // straight through them. Only an 'enchanted' weapon (tier 2+), a spell,
+    // or a weapon under an ENCHANT buff (Blooded Steel, Enchant Weapon —
+    // designer's magic-to-hit ruling 2026-08-31) can bite a monster marked
+    // magic_to_hit in monsters.json.
+    if (monster.magic_to_hit && !ch.weapon.enchanted && !(ch.timedBuffs ?? []).some(b => b.enchant)) {
       ch.hidden = false;
       foeC.aware = true;
       this.addFx(foeC.x, foeC.y, 'needs magic!', '#9a94a8');
@@ -2124,6 +2126,7 @@ export class Battle {
     if (s.reflect) bits.push(`${Math.round(s.reflect * 100)}% of melee wounds thrown back`);
     if (s.lifesteal) bits.push(`${Math.round(s.lifesteal * 100)}% of weapon damage heals you`);
     if (s.auto_hit) bits.push('attacks cannot miss');
+    if (s.enchant) bits.push('the weapon strikes as enchanted');
     if (s.hidden) bits.push('unseen');
     const rounds = s.rounds && !s.stance ? s.rounds + m.extraRounds : null;
     let absorbText = '';

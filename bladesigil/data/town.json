@@ -29,47 +29,112 @@
       "health_potion",
       "antidote_potion",
       "mana_potion",
+      "scroll_cure_light_wounds",
       "dagger",
       "hunting_knife",
-      "tanto",
+      {
+        "id": "tanto",
+        "at_depth": 2
+      },
       "short_sword",
-      "longsword",
-      "katana",
-      "two_handed_sword",
+      {
+        "id": "longsword",
+        "at_depth": 2
+      },
+      {
+        "id": "katana",
+        "at_depth": 5
+      },
+      {
+        "id": "two_handed_sword",
+        "at_depth": 5
+      },
       "hand_axe",
-      "battle_axe",
-      "great_axe",
+      {
+        "id": "battle_axe",
+        "at_depth": 2
+      },
+      {
+        "id": "great_axe",
+        "at_depth": 5
+      },
       "staff",
       "mace",
-      "warhammer",
+      {
+        "id": "warhammer",
+        "at_depth": 2
+      },
       "short_bow",
-      "longbow",
-      "crossbow",
-      "mastersmith_longsword",
-      "mastersmith_mace",
-      "mastersmith_longbow",
+      {
+        "id": "longbow",
+        "at_depth": 2
+      },
+      {
+        "id": "crossbow",
+        "at_depth": 5
+      },
+      {
+        "id": "mastersmith_longsword",
+        "at_depth": 7
+      },
+      {
+        "id": "mastersmith_mace",
+        "at_depth": 7
+      },
+      {
+        "id": "mastersmith_longbow",
+        "at_depth": 7
+      },
       "leather_armor",
-      "studded_leather",
-      "ring_mail",
-      "scale_mail",
-      "chain_mail",
-      "plate_mail",
+      {
+        "id": "studded_leather",
+        "at_depth": 2
+      },
+      {
+        "id": "ring_mail",
+        "at_depth": 2
+      },
+      {
+        "id": "scale_mail",
+        "at_depth": 5
+      },
+      {
+        "id": "chain_mail",
+        "at_depth": 5
+      },
+      {
+        "id": "plate_mail",
+        "at_depth": 7
+      },
       "buckler",
-      "medium_shield",
-      "tower_shield",
-      "robes",
-      "iron_helm",
+      {
+        "id": "medium_shield",
+        "at_depth": 2
+      },
+      {
+        "id": "tower_shield",
+        "at_depth": 5
+      },
+      {
+        "id": "robes",
+        "at_depth": 2
+      },
+      {
+        "id": "iron_helm",
+        "at_depth": 2
+      },
       "hat",
       "travelers_cloak",
       "sturdy_boots",
-      "scroll_magic_missile",
-      "scroll_lesser_fireball",
-      "scroll_poison_dart",
-      "scroll_sleep",
-      "scroll_shield",
-      "scroll_frost_lance",
-      "scroll_web",
-      "scroll_invisibility"
-    ]
+      {
+        "id": "enchanted_staff",
+        "at_depth": 8
+      },
+      {
+        "id": "enchanted_longsword",
+        "at_depth": 8
+      }
+    ],
+    "_comment": "Economy pass (designer philosophy 2026-08-31): the store SCALES WITH THE PARTY'S ACHIEVEMENTS and complements adventuring — it never outruns the dungeon. A stock entry may be {'id', 'at_depth': N}: it appears only once the party has REACHED dungeon depth N this run (game.deepest; plain string = always stocked). Locked rows show greyed with the depth needed — aspiration, not absence. Bands (all proposals): start = survival basics + simple arms; depth 2 = the full basic arsenal + light/ring armor; depth 5 = heavy steel (scale/chain/tower, big two-handers); depth 7 = the Mastersmith's work + plate. ARCANE SPELL SCROLLS ARE GONE FROM THE SHELF (designer ruling: a new spell is a prize from adventuring, never a transaction — scrolls still DROP per dungeon.json scroll_drops). The one scroll sold is Cure Light Wounds — a divine prayer-scroll, cheaper than a Health Potion, readable only by a divine caster: the cleric's edge. DESPERATION SHELF (2026-08-31): exactly two Enchanted pieces at depth 8 — enchanted_staff (400g) and enchanted_longsword (800g) — so a party with no +1 drop is never locked out of magic_to_hit foes; keep the selection tiny, the price steep."
   }
 }

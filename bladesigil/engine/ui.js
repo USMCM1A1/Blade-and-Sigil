@@ -4,7 +4,7 @@
 
 import { abilityMod } from './rules.js';
 import { classProg, laneOf, passiveOf, riteTier, favoredPicksOwed } from './progression.js';
-import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, activeStances, FAMILIES } from './magic.js';
+import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, activeStances, spellSchool, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
 
 // Every UI button clicks (designer's pick 2026-08-26: GAM_09) — except where
@@ -80,6 +80,7 @@ function spellMetaLine(game, ch, s) {
   if (s.absorb) bits.push(`ward ${s.absorb}`);
   if (s.bonus_damage) bits.push(`+${s.bonus_damage.dice} ${s.bonus_damage.element}`);
   if (s.hidden) bits.push('unseen');
+  if (s.enchant) bits.push('weapon counts as enchanted');
   if (s.resist) bits.push(s.resist === 'all' ? 'all elements halved' : `${s.resist.join('/')} halved`);
   if (s.immune_conditions) bits.push('no afflictions');
   if (s.stance) bits.push('a Stance — until the next full rest');
@@ -691,11 +692,14 @@ function renderBuilding(game, kind) {
     sale.className = 'eq-sec';
     sale.textContent = 'For sale';
     body.appendChild(sale);
-    for (const id of conf.stock) {
-      const def = game.itemDef(id);
+    for (const entry of game.shopStockEntries()) {
+      const def = game.itemDef(entry.id);
       if (!def) continue; // unknown ids in town.json just don't appear
-      row(def.name, itemStats(def), `Buy — ${def.value} gold`,
-        game.gold < (def.value ?? 0) ? 'Not enough gold.' : null, () => game.shopBuy(id));
+      const locked = (entry.at_depth ?? 0) > (game.deepest ?? 0);
+      const el = row(def.name, itemStats(def), locked ? `Depth ${entry.at_depth}` : `Buy — ${def.value} gold`,
+        locked ? `The shopkeep's finer stock waits on deeper deeds — reach dungeon depth ${entry.at_depth} (deepest so far: ${game.deepest ?? 0}).`
+          : game.gold < (def.value ?? 0) ? 'Not enough gold.' : null, () => game.shopBuy(entry.id));
+      if (locked) el.style.opacity = '0.45';
     }
     const sellHead = document.createElement('div');
     sellHead.className = 'eq-sec';
@@ -1286,9 +1290,11 @@ function renderSpellbook(game) {
   for (const sc of scrolls) {
     const spell = game.data.spells.spells[sc.def.spell];
     const already = model === 'spellbook' && spell && ch.spellbook.includes(sc.def.spell);
-    const reason = model !== 'spellbook'
-      ? `Only a spellbook holds a scroll's lore — ${ch.name} keeps none.`
-      : already ? `${spell.name} is already inked in the book.` : null;
+    const reason = spell && spellSchool(spell) !== 'arcane'
+      ? `A prayer-scroll takes no ink — it is voiced, once, by a divine caster.`
+      : model !== 'spellbook'
+        ? `Only a spellbook holds a scroll's lore — ${ch.name} keeps none.`
+        : already ? `${spell.name} is already inked in the book.` : null;
     const readNote = spell ? (scrollReadable(game.data, ch, spell) ?? `${ch.name} can read it in battle (I) — once, for no SP`) : '';
     side += `<div class="sb-page"><div class="sb-page-main"><b>${sc.def.name}</b> <span class="inv-count">×${sc.count}</span>
         <small>${spell ? `${spell.description} — ${spellMetaLine(game, ch, { id: sc.def.spell, ...spell })}` : `names an unknown spell "${sc.def.spell}"`}</small>

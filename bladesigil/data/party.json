@@ -1,6 +1,6 @@
 {
-  "_comment": "Pregenerated Phase 1 party (character creation UI arrives in Phase 2). Abilities are the six rolled scores BEFORE racial bonus. 'row': front-row characters take the hits; back row is protected while any front-row member lives. Party marching order is the order of this list. 'starting_gold' is rolled once PER HERO and pooled into the shared purse (legacy rule from player.py). 'look' picks the hero's appearance variant — m1/m2 (male) or f1/f2 (female) from the generated art; leave it out to use the old class art.",
-  "starting_gold": "4d6+200",
+  "_comment": "Pregenerated Phase 1 party (character creation UI arrives in Phase 2). Abilities are the six rolled scores BEFORE racial bonus. 'row': front-row characters take the hits; back row is protected while any front-row member lives. Party marching order is the order of this list. 'starting_gold' is rolled once PER HERO and pooled into the shared purse (economy pass 2026-08-31, designer's pacing: the pooled ~115g buys two basic weapons OR one studded leather — replacing rusty steel must be EARNED; the old 4d6+200 legacy roll bought the whole shop on day one). 'look' picks the hero's appearance variant — m1/m2 (male) or f1/f2 (female) from the generated art; leave it out to use the old class art.",
+  "starting_gold": "3d6+18",
   "party": [
     {
       "name": "Borin",
