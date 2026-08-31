@@ -8,6 +8,7 @@ import { validateProgression } from './progression.js';
 import { validateDungeon } from './dungeon.js';
 import { validateMagic, deriveScrollItems } from './magic.js';
 import { choosePartyDef } from './creation.js';
+import { loadRun } from './save.js';
 import * as audio from './audio.js';
 
 async function boot() {
@@ -39,7 +40,7 @@ async function boot() {
   validateMagic(data);       // …and for spells.json / scroll items
   validateItems(data);       // …and for items.json (tiers, immunities, potion effects)
   validateDungeon(data);     // …and for every dungeon tier's roster/loot/traps
-  const partyDef = await choosePartyDef(data);
+  const { def: partyDef, run } = await choosePartyDef(data);
   const game = new Game({ ...data, party: { ...party, party: partyDef } });
   game.partyDef = partyDef; // the marching-order panel (O) edits and re-saves this
 
@@ -56,6 +57,12 @@ async function boot() {
   const renderer = new Renderer(canvas, game, images);
   window.game = game; // console access for debugging/playtesting
   game.onBuilding = kind => openBuilding(game, kind);
+  // Continue (Phase 6): overlay the saved run onto the freshly built party.
+  // A save that names retired things steps aside with a message, not a crash.
+  if (run) {
+    try { loadRun(game, run); }
+    catch (e) { game.log(`The old save could not be read (${e.message}) — the run starts fresh.`, 'info'); }
+  }
   buildPartyPanel(game);
 
   // Fill the window: the canvas takes all the room the sidebar, log, and
@@ -78,6 +85,8 @@ async function boot() {
     renderer.rows = Math.floor(canvas.height / TILE);
   };
   window.addEventListener('resize', fitCanvas);
+  // A refresh mid-step keeps the last moment: flush the debounced autosave.
+  window.addEventListener('beforeunload', () => game.autosave(true));
   fitCanvas();
 
   const MOVES = {

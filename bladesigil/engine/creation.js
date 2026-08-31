@@ -6,6 +6,8 @@
 import { abilityMod } from './rules.js';
 import { spellPointsFor } from './magic.js';
 
+import { peekRun } from './save.js';
+
 const SAVE_KEY = 'bs_party';
 const PARTY_SIZE = 4;
 const ABILITIES = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
@@ -36,10 +38,10 @@ function loadSavedParty(data) {
 export function choosePartyDef(data) {
   const root = document.getElementById('creation');
   return new Promise(resolve => {
-    const finish = def => {
+    const finish = (def, run = null) => {
       root.style.display = 'none';
       root.innerHTML = '';
-      resolve(def);
+      resolve({ def, run });
     };
     showTitle();
 
@@ -49,16 +51,19 @@ export function choosePartyDef(data) {
     function showTitle() {
       const saved = loadSavedParty(data);
       const play = saved ?? data.party.party;
+      const run = peekRun(data); // a saved run offers to continue (engine/save.js)
       root.style.display = 'flex';
       root.innerHTML = `
         <div class="cr-panel cr-title">
           <h1>Blade &amp; Sigil</h1>
           <p class="cr-sub">An old-school party dungeon crawl</p>
           <div class="cr-title-buttons">
+            ${run ? `<button id="cr-continue">Continue the Descent (${run.partyDef.map(h => h.name).join(', ')} &middot; ${run.mode === 'town' ? 'in town' : run.depth === 'boss' ? 'the final floor' : `floor ${run.depth}`} &middot; turn ${run.turn})</button>` : ''}
             <button id="cr-new">Create New Party</button>
-            <button id="cr-play">${saved ? 'Play Your Party' : 'Quick Start'} (${play.map(h => h.name).join(', ')})</button>
+            <button id="cr-play">${saved ? 'Play Your Party' : 'Quick Start'} (${play.map(h => h.name).join(', ')})${run ? ' — a fresh run' : ''}</button>
           </div>
         </div>`;
+      if (run) root.querySelector('#cr-continue').onclick = () => finish(run.partyDef, run);
       root.querySelector('#cr-new').onclick = () => startWizard();
       root.querySelector('#cr-play').onclick = () => finish(play);
     }

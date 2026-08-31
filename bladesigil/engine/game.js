@@ -6,6 +6,7 @@ import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
 import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement } from './progression.js';
 import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances, FAMILIES } from './magic.js';
+import { autosave as autosaveRun } from './save.js';
 import * as audio from './audio.js';
 
 // Itemization v2: friendly boot-time validation for the new item fields.
@@ -831,7 +832,13 @@ export class Game {
   log(text, kind = 'combat') {
     this.messages.push({ text, kind });
     if (this.messages.length > 200) this.messages.shift();
+    // Nearly every state change speaks — so every message quietly refreshes
+    // the run autosave (debounced; never in battle/arena; a wipe clears it).
+    this.autosave();
   }
+
+  // The run autosave (engine/save.js): one localStorage slot, map moments only.
+  autosave(flush = false) { autosaveRun(this, flush); }
 
   // ---- Vision (fog of war with line of sight) ----
   // A tile is visible when it's in torch radius AND an unblocked sight line
@@ -1851,6 +1858,7 @@ export class Game {
   }
 
   advanceTime(turns) {
+    this.autosave(); // steps and searches count, even the quiet ones
     for (let t = 0; t < turns; t++) {
       this.turn++;
       for (const ch of this.party) {

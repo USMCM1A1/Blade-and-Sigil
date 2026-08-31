@@ -2611,6 +2611,7 @@ export class Battle {
         if (game.battle === this) {
           game.battle = null;
           game.updateVision();
+          game.autosave(); // the dust settles — the run is worth keeping again
         }
       }, 2000);
       return true;
