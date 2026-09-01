@@ -59,6 +59,21 @@ function validateTier(tier, data) {
       throw new DataError('data/dungeon.json', `Tier "${tier.name}" lists monster "${id}" but monsters.json has no such monster. Valid: ${Object.keys(data.monsters.monsters).join(', ')}`);
     }
   }
+  (tier.encounters ?? []).forEach((e, i) => {
+    const where = `Tier "${tier.name}" encounter ${i + 1}`;
+    if (!Array.isArray(e.group) || !e.group.length) throw new DataError('data/dungeon.json', `${where} needs a "group" list of monster ids (a group of one is the lone terror).`);
+    for (const entry of e.group) {
+      const id = typeof entry === 'string' ? entry : entry?.id;
+      if (!id || !data.monsters.monsters[id]) throw new DataError('data/dungeon.json', `${where} names monster "${id ?? JSON.stringify(entry)}" but monsters.json has no such monster.`);
+      if (typeof entry === 'object' && entry.count !== undefined && typeof entry.count !== 'number' && !/^\d+d\d+([+-]\d+)?$/.test(entry.count)) {
+        throw new DataError('data/dungeon.json', `${where}: "count" must be a number or dice (e.g. "1d2" or "1d2-1").`);
+      }
+    }
+    if (e.weight !== undefined && (typeof e.weight !== 'number' || e.weight < 1)) throw new DataError('data/dungeon.json', `${where}: "weight" must be 1 or more.`);
+  });
+  if (tier.encounters?.length && tier.encounter_count !== undefined && typeof tier.encounter_count !== 'string' && typeof tier.encounter_count !== 'number') {
+    throw new DataError('data/dungeon.json', `Tier "${tier.name}": "encounter_count" is dice (e.g. "1d2+2") — how many groups spawn per floor.`);
+  }
   for (const entry of tier.chest_items || []) {
     if (!data.items.items[entry.id]) {
       throw new DataError('data/dungeon.json', `Tier "${tier.name}" chest_items lists "${entry.id}" but items.json has no such item.`);
@@ -342,23 +357,62 @@ export function generateFloor(data, depth) {
     return null;
   };
 
-  // Monsters: weighted picks from the tier's roster.
-  const bag = [];
-  for (const [id, weight] of Object.entries(tier.monsters)) {
-    for (let i = 0; i < weight; i++) bag.push(id);
-  }
+  // Monsters. ENCOUNTERS (designer ruling 2026-08-31): a tier with an
+  // 'encounters' list spawns named GROUPS — a vampire with wight and shadow
+  // in its thrall — clustered within two tiles of an anchor so the battle
+  // radius pulls the whole court in. A group of one is the deliberate lone
+  // terror. Tiers without the list keep the old scattered weighted singles.
   const legend = {}, letters = {};
   let nextLetter = 'a'.charCodeAt(0);
   const monsterPool = [...openFar];
-  for (let i = 0, n = rollMin0(tier.monster_count || '2d3+2'); i < n; i++) {
-    const spot = takeSpot(monsterPool);
-    if (!spot) break;
-    const id = pick(bag);
+  const placeAs = (id, x, y) => {
     if (!letters[id]) {
       letters[id] = String.fromCharCode(nextLetter++);
       legend[letters[id]] = id;
     }
-    g[spot.y][spot.x] = letters[id];
+    g[y][x] = letters[id];
+  };
+  const packs = [];
+  if (tier.encounters?.length) {
+    const ebag = [];
+    for (const e of tier.encounters) for (let i = 0; i < (e.weight ?? 1); i++) ebag.push(e);
+    for (let i = 0, n = rollMin0(tier.encounter_count || '1d2+2'); i < n; i++) {
+      const enc = pick(ebag);
+      const anchor = takeSpot(monsterPool);
+      if (!anchor) break;
+      const members = [];
+      for (const entry of enc.group) {
+        const id = typeof entry === 'string' ? entry : entry.id;
+        const ct = typeof entry === 'string' ? 1
+          : typeof entry.count === 'number' ? entry.count : rollMin0(entry.count ?? '1');
+        for (let k = 0; k < ct; k++) members.push(id);
+      }
+      if (!members.length) continue;
+      const spots = [anchor];
+      outer: for (let r = 1; r <= 2 && spots.length < members.length; r++) {
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const x = anchor.x + dx, y = anchor.y + dy;
+          if (g[y]?.[x] === '.') { spots.push({ x, y }); if (spots.length >= members.length) break outer; }
+        }
+      }
+      const placed = [];
+      members.slice(0, spots.length).forEach((id, k) => {
+        placeAs(id, spots[k].x, spots[k].y);
+        placed.push([spots[k].x, spots[k].y]);
+      });
+      if (enc.name && placed.length > 1) packs.push({ name: enc.name, spots: placed });
+    }
+  } else {
+    const bag = [];
+    for (const [id, weight] of Object.entries(tier.monsters)) {
+      for (let i = 0; i < weight; i++) bag.push(id);
+    }
+    for (let i = 0, n = rollMin0(tier.monster_count || '2d3+2'); i < n; i++) {
+      const spot = takeSpot(monsterPool);
+      if (!spot) break;
+      placeAs(pick(bag), spot.x, spot.y);
+    }
   }
 
   // Chests anywhere, traps only past the doorstep.
@@ -391,6 +445,7 @@ export function generateFloor(data, depth) {
   for (let i = 0, n = rollMin0(tier.secret_doors || '0d1'); i < n; i++) carveVault(g, W, H);
 
   return {
+    packs,
     name: `Depth ${depth} — ${tier.name}`,
     map: g.map(row => row.join('')),
     legend,

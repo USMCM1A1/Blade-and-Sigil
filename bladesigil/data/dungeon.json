@@ -167,7 +167,34 @@
       ],
       "trap_count": "1d2-1",
       "secret_doors": "1d2",
-      "rest_ambush": 0.25
+      "rest_ambush": 0.25,
+      "encounter_count": "1d2+1",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a rat pack",
+          "group": [
+            "giant_rat",
+            {
+              "id": "giant_rat",
+              "count": "1d2"
+            }
+          ]
+        },
+        {
+          "weight": 2,
+          "group": [
+            "skeleton",
+            "skeleton"
+          ]
+        },
+        {
+          "weight": 1,
+          "group": [
+            "skeleton"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -218,7 +245,36 @@
       ],
       "trap_count": "1d2-1",
       "secret_doors": "1d2",
-      "rest_ambush": 0.25
+      "rest_ambush": 0.25,
+      "encounter_count": "1d2+1",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a goblin ratcatcher",
+          "group": [
+            "goblin",
+            {
+              "id": "giant_rat",
+              "count": "1d2"
+            }
+          ]
+        },
+        {
+          "weight": 2,
+          "group": [
+            "skeleton",
+            "skeleton"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "a goblin pair",
+          "group": [
+            "goblin",
+            "goblin"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -277,7 +333,35 @@
       ],
       "trap_count": "1d2-1",
       "secret_doors": "1d2",
-      "rest_ambush": 0.25
+      "rest_ambush": 0.25,
+      "encounter_count": "1d2+1",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a bone patrol",
+          "group": [
+            "skeleton",
+            "skeleton",
+            {
+              "id": "skeleton",
+              "count": "1d2-1"
+            }
+          ]
+        },
+        {
+          "weight": 2,
+          "group": [
+            "goblin",
+            "goblin"
+          ]
+        },
+        {
+          "weight": 1,
+          "group": [
+            "large_spider"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -336,7 +420,39 @@
       ],
       "trap_count": "1d2-1",
       "secret_doors": "1d2",
-      "rest_ambush": 0.25
+      "rest_ambush": 0.25,
+      "encounter_count": "1d2+1",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a goblin warband",
+          "group": [
+            "goblin",
+            "goblin",
+            {
+              "id": "goblin",
+              "count": "1d2-1"
+            }
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "an orc and its goblins",
+          "group": [
+            "orc",
+            "goblin",
+            "goblin"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "a spider nest",
+          "group": [
+            "large_spider",
+            "large_spider"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -417,7 +533,41 @@
       ],
       "trap_count": "1d3-1",
       "secret_doors": "1d2",
-      "rest_ambush": 0.3
+      "rest_ambush": 0.3,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "an orc raiding party",
+          "group": [
+            "orc",
+            "orc",
+            {
+              "id": "goblin",
+              "count": "1d2-1"
+            }
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a spider nest",
+          "group": [
+            "large_spider",
+            {
+              "id": "large_spider",
+              "count": "1d2"
+            }
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "shambling dead",
+          "group": [
+            "zombie",
+            "zombie"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -501,7 +651,47 @@
       ],
       "trap_count": "1d3-1",
       "secret_doors": "1d2",
-      "rest_ambush": 0.3
+      "rest_ambush": 0.3,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a hobgoblin patrol",
+          "group": [
+            "hobgoblin",
+            "orc",
+            "orc"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "grave-stench shamblers",
+          "group": [
+            "ghoul",
+            {
+              "id": "zombie",
+              "count": "1d2"
+            }
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "blades with no hands",
+          "group": [
+            "animated_sword",
+            "animated_sword"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "a spider brood",
+          "group": [
+            "large_spider",
+            "large_spider",
+            "large_spider"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -592,7 +782,39 @@
       ],
       "trap_count": "1d3-1",
       "secret_doors": "1d2",
-      "rest_ambush": 0.3
+      "rest_ambush": 0.3,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a hobgoblin warband",
+          "group": [
+            "hobgoblin",
+            "hobgoblin",
+            "orc"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "grave-stench shamblers",
+          "group": [
+            "ghoul",
+            "zombie",
+            "zombie"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "a knot of mephits",
+          "group": [
+            "mephit",
+            {
+              "id": "mephit",
+              "count": "1d2"
+            }
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -684,7 +906,50 @@
       ],
       "trap_count": "1d3-1",
       "secret_doors": "1d2",
-      "rest_ambush": 0.3
+      "rest_ambush": 0.3,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a bugbear hunting party",
+          "group": [
+            "bugbear",
+            "bugbear"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a wight with grave-mephits",
+          "group": [
+            "wight",
+            "mephit",
+            "mephit"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a spider brood",
+          "group": [
+            "monstrous_spider",
+            {
+              "id": "monstrous_spider",
+              "count": "1d2"
+            }
+          ]
+        },
+        {
+          "weight": 1,
+          "group": [
+            "black_pudding"
+          ]
+        },
+        {
+          "weight": 1,
+          "group": [
+            "gelatinous_cube"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -776,7 +1041,47 @@
       ],
       "trap_count": "1d3",
       "secret_doors": "1d3",
-      "rest_ambush": 0.35
+      "rest_ambush": 0.35,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a wight commanding shadows",
+          "group": [
+            "wight",
+            "shadow",
+            {
+              "id": "shadow",
+              "count": "1d2"
+            }
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a bugbear ambush",
+          "group": [
+            "bugbear",
+            "bugbear",
+            "bugbear"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a haunted panoply",
+          "group": [
+            "animated_armor",
+            "mephit",
+            "mephit"
+          ]
+        },
+        {
+          "weight": 1,
+          "group": [
+            "monstrous_spider",
+            "monstrous_spider"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -869,7 +1174,43 @@
       ],
       "trap_count": "1d3",
       "secret_doors": "1d3",
-      "rest_ambush": 0.35
+      "rest_ambush": 0.35,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a wight's cortege",
+          "group": [
+            "wight",
+            "shadow",
+            "shadow"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a succubus and her thralls",
+          "group": [
+            "succubus",
+            "shadow",
+            "shadow"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "slaad and bound spark",
+          "group": [
+            "red_slaad",
+            "elemental_small"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "a lone troll",
+          "group": [
+            "troll"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -949,7 +1290,44 @@
       ],
       "trap_count": "1d3",
       "secret_doors": "1d3",
-      "rest_ambush": 0.35
+      "rest_ambush": 0.35,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "wights on the hunt",
+          "group": [
+            "wight",
+            "wight",
+            "shadow"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a troll den",
+          "group": [
+            "troll",
+            {
+              "id": "troll",
+              "count": "1d2-1"
+            }
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "slaad and sparks",
+          "group": [
+            "blue_slaad",
+            "elemental_small"
+          ]
+        },
+        {
+          "weight": 1,
+          "group": [
+            "black_pudding"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -1030,7 +1408,41 @@
       ],
       "trap_count": "1d3",
       "secret_doors": "1d3",
-      "rest_ambush": 0.35
+      "rest_ambush": 0.35,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "an illithid with its thrall",
+          "group": [
+            "illithid",
+            "flesh_golem"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a spectral haunting",
+          "group": [
+            "spectre",
+            "spectre"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "slaadi at play",
+          "group": [
+            "green_slaad",
+            "elemental_medium"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "an incubus alone",
+          "group": [
+            "incubus"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -1109,7 +1521,43 @@
       ],
       "trap_count": "1d3",
       "secret_doors": "1d3",
-      "rest_ambush": 0.4
+      "rest_ambush": 0.4,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a vampire with wight and shadow in its thrall",
+          "group": [
+            "vampire",
+            "wight",
+            "shadow"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "illithids in concert",
+          "group": [
+            "illithid",
+            "illithid"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a spectral procession",
+          "group": [
+            "spectre",
+            "spectre",
+            "shadow"
+          ]
+        },
+        {
+          "weight": 1,
+          "group": [
+            "grey_slaad",
+            "elemental_medium"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -1189,7 +1637,50 @@
       ],
       "trap_count": "1d3",
       "secret_doors": "1d3",
-      "rest_ambush": 0.4
+      "rest_ambush": 0.4,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a mummy and its risen guard",
+          "group": [
+            "mummy",
+            "wight",
+            "wight"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a drider with its brood",
+          "group": [
+            "drider",
+            "monstrous_spider",
+            "monstrous_spider"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a dao and bound elementals",
+          "group": [
+            "dao",
+            "elemental_small",
+            "elemental_small"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "a lone beholder",
+          "group": [
+            "beholder"
+          ]
+        },
+        {
+          "weight": 1,
+          "group": [
+            "clay_golem"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -1269,7 +1760,51 @@
       ],
       "trap_count": "1d3",
       "secret_doors": "1d3",
-      "rest_ambush": 0.4
+      "rest_ambush": 0.4,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "an alhoon and its dead thralls",
+          "group": [
+            "alhoon",
+            "spectre",
+            "spectre"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a mummy procession",
+          "group": [
+            "mummy",
+            "mummy",
+            "wight"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a djinn and its whirlwinds",
+          "group": [
+            "djinn",
+            "elemental_medium",
+            "elemental_medium"
+          ]
+        },
+        {
+          "weight": 1,
+          "group": [
+            "death_slaad",
+            "red_slaad"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "the floating eye",
+          "group": [
+            "beholder"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -1347,7 +1882,45 @@
       ],
       "trap_count": "1d3",
       "secret_doors": "1d3",
-      "rest_ambush": 0.4
+      "rest_ambush": 0.4,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a death knight and its retinue",
+          "group": [
+            "death_knight",
+            "wight",
+            "wight",
+            "shadow"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "an efreet with fire on a leash",
+          "group": [
+            "efreet",
+            "elemental_medium",
+            "mephit"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "an alhoon's seance",
+          "group": [
+            "alhoon",
+            "spectre",
+            "spectre"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "the iron sentinel",
+          "group": [
+            "iron_golem"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -1425,7 +1998,46 @@
       ],
       "trap_count": "1d4",
       "secret_doors": "1d3",
-      "rest_ambush": 0.45
+      "rest_ambush": 0.45,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a drow war-party",
+          "group": [
+            "drow_priestess",
+            "drow_blademaster",
+            {
+              "id": "drow_blademaster",
+              "count": "1d2-1"
+            }
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a mummy lord and its tomb-guard",
+          "group": [
+            "mummy_lord",
+            "mummy",
+            "mummy"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "death knights errant",
+          "group": [
+            "death_knight",
+            "death_knight"
+          ]
+        },
+        {
+          "weight": 1,
+          "group": [
+            "white_slaad",
+            "grey_slaad"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -1501,7 +2113,44 @@
       ],
       "trap_count": "1d4",
       "secret_doors": "1d3",
-      "rest_ambush": 0.45
+      "rest_ambush": 0.45,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a vampire lord's court",
+          "group": [
+            "vampire_lord",
+            "vampire",
+            "spectre",
+            "shadow"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a mad wizard and his creations",
+          "group": [
+            "mad_wizard",
+            "flesh_golem",
+            "animated_armor"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "the dead eye drifts",
+          "group": [
+            "undead_beholder",
+            "spectre"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "the mad wizard alone",
+          "group": [
+            "mad_wizard"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -1577,7 +2226,44 @@
       ],
       "trap_count": "1d4",
       "secret_doors": "1d3",
-      "rest_ambush": 0.45
+      "rest_ambush": 0.45,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a lich and its grave-court",
+          "group": [
+            "lich",
+            "spectre",
+            "wight",
+            "wight"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "an efreeti lord's cortege",
+          "group": [
+            "efreeti_lord",
+            "efreet",
+            "elemental_medium"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "slaadi of the void",
+          "group": [
+            "black_slaad",
+            "death_slaad"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "the lich alone",
+          "group": [
+            "lich"
+          ]
+        }
+      ]
     },
     {
       "floors": [
@@ -1654,7 +2340,46 @@
       ],
       "trap_count": "1d4",
       "secret_doors": "1d3",
-      "rest_ambush": 0.45
+      "rest_ambush": 0.45,
+      "encounter_count": "1d2+2",
+      "encounters": [
+        {
+          "weight": 3,
+          "name": "a pit fiend and its host",
+          "group": [
+            "pit_fiend",
+            "succubus",
+            "mephit",
+            "mephit"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "the elder brain's chorus",
+          "group": [
+            "elder_brain",
+            "illithid",
+            "illithid",
+            "alhoon"
+          ]
+        },
+        {
+          "weight": 2,
+          "name": "a slaad lord's retinue",
+          "group": [
+            "slaad_lord",
+            "death_slaad",
+            "red_slaad"
+          ]
+        },
+        {
+          "weight": 1,
+          "name": "the red dragon",
+          "group": [
+            "red_dragon"
+          ]
+        }
+      ]
     }
   ],
   "traps": {
@@ -1744,5 +2469,6 @@
       "########..<..########",
       "#####################"
     ]
-  }
+  },
+  "_encounters_comment": "ENCOUNTERS (designer ruling 2026-08-31: fights should be ENCOUNTERS, not lone monsters — 'a vampire with a wight and a shadow under its command'). A tier with an 'encounters' list spawns encounter_count (dice) GROUPS per floor instead of scattered singles: each entry {weight, name (optional, spoken in the battle-start line when the group fights together), group: [monster ids or {id, count: dice}]} — a group of one is the deliberate lone terror. Groups may reach OUTSIDE the tier's roster for thematic retinues (a floor-16 death knight leads floor-8 wights). Members spawn CLUSTERED (within 2 tiles) so the battle radius pulls the whole court in. The old 'monsters'+'monster_count' fields remain as the fallback (and feed camp-ambush legends). All groups and weights are CONTENT PROPOSALS — recompose freely."
 }

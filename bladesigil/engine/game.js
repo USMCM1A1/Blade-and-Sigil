@@ -850,6 +850,14 @@ export class Game {
       }
     }
     if (!this.partyPos) throw new DataError(src, 'No "@" (party start position) found on the map.');
+    // Encounters: members of a named group wear its name — the battle-start
+    // line speaks it when the court fights together.
+    for (const pk of levelData.packs ?? []) {
+      for (const [px, py] of pk.spots) {
+        const m = this.monsters.find(mm => mm.x === px && mm.y === py);
+        if (m) m.pack = pk.name;
+      }
+    }
     this.updateVision();
   }
 
@@ -1529,11 +1537,15 @@ export class Game {
     if (!foes.includes(trigger)) foes.push(trigger);
     audio.play('battle_start');
     const article = /^[aeiou]/i.test(trigger.name) ? 'An' : 'A';
+    // A named encounter announces itself when the group fights together.
+    const packName = trigger.pack && foes.filter(f => f.pack === trigger.pack).length > 1 ? trigger.pack : null;
     this.log(ambush
-      ? 'Battle! They are upon you before you can form ranks!'
-      : foes.length === 1
-        ? `Battle! ${article} ${trigger.name} blocks your path!`
-        : `Battle! ${foes.length} monsters close in!`, 'info');
+      ? `Battle! ${packName ? `${packName[0].toUpperCase()}${packName.slice(1)} is` : 'They are'} upon you before you can form ranks!`
+      : packName
+        ? `Battle! ${packName[0].toUpperCase()}${packName.slice(1)}!`
+        : foes.length === 1
+          ? `Battle! ${article} ${trigger.name} blocks your path!`
+          : `Battle! ${foes.length} monsters close in!`, 'info');
     const pool = (this.level.tacticsNames || []).filter(n => this.data.tactics[n]);
     const names = pool.length ? pool : Object.keys(this.data.tactics);
     const pick = this.data.tactics[names[Math.floor(Math.random() * names.length)]];
