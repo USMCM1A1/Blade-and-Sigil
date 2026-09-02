@@ -4,7 +4,7 @@
 
 import { roll, d20, maxRoll, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
-import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName } from './progression.js';
+import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName, focusMatches, groupOfType, focusName } from './progression.js';
 import { spellCost, spellBuff, activeStances, unpreparedSpells, knownSpells, scaleSteps, giftOf } from './magic.js';
 import * as audio from './audio.js';
 
@@ -546,8 +546,11 @@ export class Battle {
     for (const b of ch.timedBuffs ?? []) if (b.dmg) parts.push([b.dmg, b.name]);
     if (ch.gearDmg) parts.push([ch.gearDmg, 'gear']);
     const p = passiveOf(this.game.data, ch);
-    if (p?.id === 'weapon_focus' && ch.focusType && ch.weapon.type === `weapon_${ch.focusType}`) {
-      parts.push([p.dmg ?? 1, passiveName(p, 'Weapon Focus')]);
+    // Weapon Focus is sworn to a GROUP (Blades, Blunt, Axes, Bows) — any
+    // weapon in it earns the bonus, so a great find is never wasted.
+    if (p?.id === 'weapon_focus' && focusMatches(this.game.data, ch, ch.weapon)) {
+      const fam = groupOfType(this.game.data, ch.weapon.type); // the family this weapon belongs to
+      parts.push([p.dmg ?? 1, `${passiveName(p, 'Weapon Focus')}, ${focusName(this.game.data, fam).toLowerCase()}`]);
     }
     if (p?.id === 'vital_strike' && opts.vital) parts.push([p.dmg ?? 2, `Vital Strike, ${opts.vital}`]);
     if (p?.id === 'sacred_weapon') parts.push([p.dmg ?? 1, 'Sacred Weapon']);

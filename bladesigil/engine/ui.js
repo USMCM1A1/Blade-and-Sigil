@@ -3,7 +3,7 @@
 // toggled with I, E, or C).
 
 import { abilityMod } from './rules.js';
-import { classProg, laneOf, passiveOf, riteTier, favoredPicksOwed } from './progression.js';
+import { classProg, laneOf, passiveOf, riteTier, favoredPicksOwed, groupOfType, focusGroupOf, focusList, focusName } from './progression.js';
 import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, activeStances, spellSchool, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
 
@@ -240,23 +240,60 @@ function renderChoice(game, choice, after) {
       b.onclick = () => { game.applyChoice(choice, b.dataset.favored); close(); after?.(); };
     }
   } else if (choice.type === 'focus') {
-    const current = ch.weapon?.type?.replace('weapon_', '');
+    const current = groupOfType(game.data, ch.weapon?.type);
     const opts = game.focusOptions(ch);
+    const fg = game.data.items.focus_groups ?? {};
+    const held = focusList(game.data, ch);
     root.innerHTML = `
       <div class="cr-panel ch-panel">
         <div class="cr-step">Weapon Focus</div>
         <div class="ch-head"><img src="${portrait}" alt="">
-          <div><b>${ch.name}</b> hones one kind of weapon — +1 damage with it, forever. Which?</div></div>
+          <div>${held.length
+            ? `<b>${ch.name}</b> already fights by ${held.map(g => (fg[g]?.name ?? g).toLowerCase()).join(' and ')}. Training adds another family — +1 damage with those weapons too.`
+            : `<b>${ch.name}</b> hones one family of weapons — +1 damage with every weapon in it, forever. Which?`}</div></div>
         <div class="cr-choices">
           ${opts.map((t, i) => `
             <button class="cr-choice" data-focus="${t}">
-              <b>${i + 1}. ${t.replace('_', ' ')}</b>
+              <b>${i + 1}. ${fg[t]?.name ?? t}</b>
+              ${fg[t]?.blurb ? `<span>${fg[t].blurb}</span>` : ''}
               ${t === current ? '<span>(in hand right now)</span>' : ''}
             </button>`).join('')}
         </div>
       </div>`;
     for (const b of root.querySelectorAll('[data-focus]')) {
       b.onclick = () => { game.applyChoice(choice, b.dataset.focus); close(); after?.(); };
+    }
+  } else if (choice.type === 'ability') {
+    // The level-10 boost (2026-09-02): +1 to one ability, the hero's own
+    // and permanent. Each row shows what the point actually buys.
+    const amount = game.data.progression.ability_boost?.amount ?? 1;
+    const WHAT = {
+      str: 'melee to-hit and damage',
+      dex: 'bow to-hit and damage, AC, initiative',
+      con: 'the HP you roll from here on',
+      int: 'wizard spell damage and save DCs',
+      wis: 'priest spell power, and saves against fear',
+      cha: 'presence — few rules lean on it yet',
+    };
+    root.innerHTML = `
+      <div class="cr-panel ch-panel">
+        <div class="cr-step">A hero grows</div>
+        <div class="ch-head"><img src="${portrait}" alt="">
+          <div><b>${ch.name}</b> has come far enough to change in the bone. Add +${amount} to one ability — it is permanent, and no item in the world can do this for you.</div></div>
+        <div class="cr-choices">
+          ${['str', 'dex', 'con', 'int', 'wis', 'cha'].map((k, i) => {
+      const now = ch.baseAbilities[k], next = now + amount;
+      const m1 = abilityMod(now), m2 = abilityMod(next);
+      const gain = m2 > m1 ? ` — modifier ${m1 >= 0 ? '+' : ''}${m1} rises to ${m2 >= 0 ? '+' : ''}${m2}` : ` — modifier stays ${m1 >= 0 ? '+' : ''}${m1}`;
+      return `<button class="cr-choice" data-ability="${k}">
+              <b>${i + 1}. ${k.toUpperCase()} ${now} → ${next}</b>
+              <span>${WHAT[k]}${gain}</span>
+            </button>`;
+    }).join('')}
+        </div>
+      </div>`;
+    for (const b of root.querySelectorAll('[data-ability]')) {
+      b.onclick = () => { game.applyChoice(choice, b.dataset.ability); close(); after?.(); };
     }
   }
 }
@@ -1070,7 +1107,9 @@ function renderPath(game, ch) {
     rows += row(true, lane.name, lane.blurb);
     if (lane.passive) {
       rows += row(true, passiveBlurb(lane.passive).split(':')[0],
-        passiveBlurb(lane.passive).split(': ')[1] + (ch.focusType ? ` — ${ch.focusType.replace('_', ' ')}` : ''));
+        passiveBlurb(lane.passive).split(': ')[1] + (focusList(game.data, ch).length
+          ? ` — ${focusList(game.data, ch).map(g => focusName(game.data, g)).join(', ')}`
+          : ''));
     }
     if (lane.verb) {
       const has = ch.level >= lane.verb.level;

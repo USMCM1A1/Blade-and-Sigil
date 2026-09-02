@@ -71,6 +71,13 @@
       "Ember": "#e0762f"
     }
   },
+  "ability_boost": {
+    "levels": [
+      10
+    ],
+    "amount": 1,
+    "_comment": "THE LEVEL-10 ABILITY BOOST (designer ruling 2026-09-02): every class, every lane, gets +1 to ONE ability of the player's choice at each level listed. This is the ONLY way an ability rises after creation — no item in the game grants ability scores any more, so the race you picked keeps mattering. Add more levels to the list (e.g. [10, 20]) or raise 'amount' freely."
+  },
   "classes": {
     "warrior": {
       "fork_level": 5,
@@ -86,7 +93,13 @@
           },
           "passive": {
             "id": "weapon_focus",
-            "dmg": 1
+            "dmg": 1,
+            "extra_levels": [
+              8,
+              14,
+              16
+            ],
+            "_comment": "extra_levels (designer ruling 2026-09-02): the hero swears to ONE weapon family at the fork, then ADDS another at each of these levels — the +1 damage covers every family sworn. Empty the list to go back to a single family."
           },
           "verb": {
             "id": "rampage",
@@ -599,7 +612,13 @@
           "passive": {
             "id": "weapon_focus",
             "name": "Edge Eternal",
-            "dmg": 1
+            "dmg": 1,
+            "extra_levels": [
+              8,
+              14,
+              16
+            ],
+            "_comment": "extra_levels (designer ruling 2026-09-02): the hero swears to ONE weapon family at the fork, then ADDS another at each of these levels — the +1 damage covers every family sworn. Empty the list to go back to a single family."
           },
           "verb": {
             "id": "runic_riposte",

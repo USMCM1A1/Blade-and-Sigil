@@ -4,10 +4,15 @@ import { roll, d20, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
 import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
-import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement } from './progression.js';
+import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement, groupOfType, focusGroupOf, focusList, focusName, abilityPicksAllowed } from './progression.js';
 import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances, FAMILIES } from './magic.js';
 import { autosave as autosaveRun } from './save.js';
 import * as audio from './audio.js';
+
+// "a, b and c" — for lists spoken in the log.
+function listWords(words) {
+  return words.length < 2 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
+}
 
 // Itemization v2: friendly boot-time validation for the new item fields.
 export function validateItems(data) {
@@ -284,8 +289,22 @@ export class Game {
       ch.favoredPicks = (ch.favoredPicks ?? 0) + 1;
       this.log(`${ch.name} knows the ${value} now — favored enemy, +${ch.favored[value]} to hit and damage against them.`, 'good');
     } else if (choice.type === 'focus') {
-      ch.focusType = value;
-      this.log(`${ch.name}'s hands know the ${value.replace('_', ' ')} now — Weapon Focus (+1 damage with it).`, 'good');
+      (ch.focusTypes ??= focusList(this.data, ch)).push(value);
+      ch.focusType = ch.focusTypes[0]; // the headline oath, for older readers
+      const sworn = focusList(this.data, ch);
+      this.log(sworn.length === 1
+        ? `${ch.name}'s hands know ${focusName(this.data, value).toLowerCase()} now — Weapon Focus (+1 damage with every weapon in the family).`
+        : `${ch.name} takes up ${focusName(this.data, value).toLowerCase()} as well — Weapon Focus now covers ${listWords(sworn.map(g => focusName(this.data, g).toLowerCase()))}.`, 'good');
+    } else if (choice.type === 'ability') {
+      // The level-10 boost: it raises the ROLLED score, so it is permanent
+      // and shows as the hero's own, not as something the gear lends.
+      const amount = this.data.progression.ability_boost?.amount ?? 1;
+      const before = ch.baseAbilities[value];
+      ch.baseAbilities[value] = before + amount;
+      (ch.abilityBoosts ??= []).push(value); // kept in order so the bench can undo it
+      this.refreshDerived(ch);
+      const mod = abilityMod(ch.abilities[value]);
+      this.log(`${ch.name} grows: ${value.toUpperCase()} ${before} → ${ch.baseAbilities[value]} (modifier ${mod >= 0 ? '+' : ''}${mod}).`, 'good');
     } else if (choice.type === 'spell') {
       // The Sorcerer's pick: one spell, known forever. A wild pick (any
       // level, from bonus_pick_levels) counts against the bonus tally.
@@ -631,7 +650,11 @@ export class Game {
       // party.json may use the friendly variant key ("m1"/"f2"), expanded here.
       look: this.resolveLook(def),
       lane: def.lane ?? null,
-      focusType: def.focus ?? null,
+      // Weapon families sworn. party.json may say "focus": "blade" or a
+      // list; a focus saved under the older rules was a raw weapon type
+      // ('med_blade'), which is read as its family ('blade').
+      focusTypes: [def.focus ?? []].flat().map(f => this.data.items.focus_groups?.[f] ? f : groupOfType(this.data, f)).filter(Boolean),
+      abilityBoosts: [],
       // The creation gift (half-casters, companion doc v1): {id, element?}
       // from classes.json creation_pick — resolved below.
       gift: this.resolveGift(def, cls),
@@ -1442,10 +1465,24 @@ export class Game {
       ch.xp = 0;
       const prog = classProg(this.data, ch);
       if (prog && n < prog.fork_level) {
-        ch.lane = null; ch.focusType = null;
+        ch.lane = null; ch.focusType = null; ch.focusTypes = [];
         // Un-walk the caster lanes: the Raw Gift's set-aside book returns.
         if (ch.formerBook) { ch.spellbook = [...ch.formerBook]; ch.formerBook = null; }
         ch.knownSpells = []; ch.bonusPicksTaken = 0;
+      }
+      // Weapon families sworn above this level are given back, newest first.
+      const famAllowed = passiveOf(this.data, ch)?.id === 'weapon_focus'
+        ? 1 + (passiveOf(this.data, ch).extra_levels ?? []).filter(l => n >= l).length : 0;
+      if ((ch.focusTypes ?? []).length > famAllowed) {
+        ch.focusTypes = ch.focusTypes.slice(0, famAllowed);
+        ch.focusType = ch.focusTypes[0] ?? null;
+      }
+      // …and so are ability points bought above it, so the pick re-tests.
+      const abAllowed = abilityPicksAllowed(this.data, ch);
+      const amount = this.data.progression.ability_boost?.amount ?? 1;
+      while ((ch.abilityBoosts ?? []).length > abAllowed) {
+        const undo = ch.abilityBoosts.pop();
+        ch.baseAbilities[undo] -= amount;
       }
       if (n < 20) ch.rite = null; // dropping below the pinnacle un-runs the Rite (re-testable)
       ch.spentRest = {}; // the jump is a fresh day — once-per-rest powers return

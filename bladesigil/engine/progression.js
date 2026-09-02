@@ -32,8 +32,132 @@ export const TRACKED_STATS = ['rampageKills', 'standSaves', 'assassinateKills', 
 
 export const WEAPON_CATEGORIES = ['light_blade', 'med_blade', 'heavy_blade', 'axe', 'light_blunt', 'med_blunt', 'heavy_blunt', 'bow'];
 
+// ---- Weapon Focus groups (designer ruling 2026-09-02) ----
+// Focus is sworn to a GROUP (Blades / Blunt / Axes / Bows), not to the
+// narrow item type, so finding a great two-hander never wastes the pick.
+// The map lives in user-owned items.json → focus_groups; item `type` is
+// untouched and still governs class restrictions and equip slots.
+export function focusGroups(data) { return data.items.focus_groups ?? {}; }
+
+// The group a weapon type belongs to ('med_blade' → 'blade'), or null.
+export function groupOfType(data, type) {
+  const t = (type ?? '').replace(/^weapon_/, '');
+  return Object.keys(focusGroups(data)).find(g => focusGroups(data)[g].types?.includes(t)) ?? null;
+}
+
+// Every weapon family this hero has sworn to. A hero swears one at the
+// fork and ADDS another at each of the passive's extra_levels, so this is
+// a list. Tolerant of two older shapes: a single group id ('blade') and
+// the oldest raw weapon type ('med_blade') — both answer with the group.
+export function focusList(data, ch) {
+  const raw = ch.focusTypes ?? (ch.focusType ? [ch.focusType] : []);
+  const out = [];
+  for (const f of raw) {
+    const g = focusGroups(data)[f] ? f : groupOfType(data, f);
+    if (g && !out.includes(g)) out.push(g);
+  }
+  return out;
+}
+
+// The FIRST family sworn (the sheet's headline), or null.
+export function focusGroupOf(data, ch) { return focusList(data, ch)[0] ?? null; }
+
+// Does the weapon in hand belong to any family the hero has sworn?
+export function focusMatches(data, ch, weapon) {
+  const g = groupOfType(data, weapon?.type);
+  return !!g && focusList(data, ch).includes(g);
+}
+
+// How many more weapon families this hero may swear to right now: one at
+// the fork, plus one for each of the passive's extra_levels reached —
+// capped by the families their class can actually wield.
+export function focusPicksOwed(data, ch) {
+  const p = passiveOf(data, ch);
+  if (p?.id !== 'weapon_focus') return 0;
+  const granted = 1 + (p.extra_levels ?? []).filter(l => ch.level >= l).length;
+  const taken = focusList(data, ch).length;
+  const available = focusOptions(data, ch).length; // options already exclude taken
+  return Math.min(Math.max(0, granted - taken), available);
+}
+
+// ---- The level-10 ability boost (designer ruling 2026-09-02) ----
+// Every class gets +1 to an ability of the player's choice at each level
+// in progression.json → ability_boost.levels. Gear grants no ability
+// scores any more, so this is the only way one rises after creation.
+export function abilityBoost(data) { return data.progression.ability_boost ?? null; }
+
+// Picks are stored in the order they were made (ch.abilityBoosts, e.g.
+// ['str']) so the playtest bench can undo them when it drops a level.
+export function abilityPicksOwed(data, ch) {
+  const b = abilityBoost(data);
+  if (!b) return 0;
+  const granted = (b.levels ?? []).filter(l => ch.level >= l).length;
+  return Math.max(0, granted - (ch.abilityBoosts ?? []).length);
+}
+
+// How many picks this hero should have at their CURRENT level — the bench
+// uses it to hand points back when it drops someone below the boost level.
+export function abilityPicksAllowed(data, ch) {
+  const b = abilityBoost(data);
+  return b ? (b.levels ?? []).filter(l => ch.level >= l).length : 0;
+}
+
+// The display name of a focus group ('blade' → 'Blades').
+export function focusName(data, group) {
+  return focusGroups(data)[group]?.name ?? (group ?? '').replace('_', ' ');
+}
+
 // Friendly boot-time validation, in designer terms.
 export function validateProgression(data) {
+  // Weapon Focus groups (items.json → focus_groups): every weapon category
+  // must live in exactly one group, or a hero could swear to a focus that
+  // no weapon in the game answers to.
+  const groups = data.items.focus_groups;
+  if (!groups || !Object.keys(groups).length) {
+    throw new DataError('data/items.json', `"focus_groups" is missing — Weapon Focus needs at least one group, e.g. {"blade": {"name": "Blades", "types": ["light_blade", "med_blade", "heavy_blade"]}}.`);
+  }
+  const seen = new Map();
+  for (const [g, def] of Object.entries(groups)) {
+    if (!Array.isArray(def.types) || !def.types.length) {
+      throw new DataError('data/items.json', `focus group "${g}" needs a "types" list naming the weapon categories it covers. Valid categories: ${WEAPON_CATEGORIES.join(', ')}.`);
+    }
+    for (const t of def.types) {
+      if (!WEAPON_CATEGORIES.includes(t)) {
+        throw new DataError('data/items.json', `focus group "${g}" lists weapon type "${t}", which is not a weapon category. Valid: ${WEAPON_CATEGORIES.join(', ')}.`);
+      }
+      if (seen.has(t)) {
+        throw new DataError('data/items.json', `weapon type "${t}" is in two focus groups ("${seen.get(t)}" and "${g}") — each type belongs to exactly one.`);
+      }
+      seen.set(t, g);
+    }
+  }
+  const orphans = WEAPON_CATEGORIES.filter(t => !seen.has(t));
+  if (orphans.length) {
+    throw new DataError('data/items.json', `these weapon types belong to no focus group: ${orphans.join(', ')}. Add each to a group in "focus_groups" so Weapon Focus can cover them.`);
+  }
+  // The level-10 ability boost block.
+  const boost = data.progression.ability_boost;
+  if (boost) {
+    if (!Array.isArray(boost.levels) || !boost.levels.every(l => Number.isInteger(l) && l >= 1 && l <= 20)) {
+      throw new DataError('data/progression.json', `"ability_boost" needs "levels": a list of character levels from 1 to 20, e.g. [10].`);
+    }
+    if (!Number.isInteger(boost.amount) || boost.amount < 1) {
+      throw new DataError('data/progression.json', `"ability_boost" needs "amount": how many points the hero adds, a whole number 1 or more.`);
+    }
+  }
+  // Weapon Focus extra_levels, where a hero swears to another family.
+  for (const [cid, c] of Object.entries(data.progression.classes ?? {})) {
+    for (const lane of c.lanes ?? []) {
+      const ex = lane.passive?.extra_levels;
+      if (ex === undefined) continue;
+      if (lane.passive.id !== 'weapon_focus') {
+        throw new DataError('data/progression.json', `${cid} / ${lane.name}: "extra_levels" only means something on a "weapon_focus" passive (this one is "${lane.passive.id}").`);
+      }
+      if (!Array.isArray(ex) || !ex.every(l => Number.isInteger(l) && l >= 1 && l <= 20)) {
+        throw new DataError('data/progression.json', `${cid} / ${lane.name}: weapon_focus "extra_levels" must be a list of character levels 1-20, e.g. [8, 14, 16].`);
+      }
+    }
+  }
   const sigil = data.progression.sigil;
   if (sigil) {
     for (const part of ['shapes', 'modifiers', 'colors']) {
@@ -174,9 +298,15 @@ export function hasRiteAbility(data, ch, id) {
 }
 
 // Weapon categories this hero may focus in (the Blade-lane sub-choice).
+// The focus GROUPS this hero may still swear to: offered when the class
+// can actually wield something in it (a priest sees Blunt only), minus
+// the families they have already sworn.
 export function focusOptions(data, ch) {
   const types = ch.cls.weapon_types ?? ['any'];
-  return types.includes('any') ? WEAPON_CATEGORIES : types;
+  const all = types.includes('any') ? WEAPON_CATEGORIES : types;
+  const groups = focusGroups(data);
+  const held = focusList(data, ch);
+  return Object.keys(groups).filter(g => !held.includes(g) && groups[g].types?.some(t => all.includes(t)));
 }
 
 // Favored Enemy (the Ranger): picks granted by the class's favored_enemy
@@ -197,8 +327,11 @@ export function pendingChoices(data, ch) {
   const prog = classProg(data, ch);
   if (!prog) return out;
   if (ch.level >= prog.fork_level && !ch.lane) out.push({ type: 'lane', ch, prog });
-  const passive = passiveOf(data, ch);
-  if (passive?.id === 'weapon_focus' && !ch.focusType) out.push({ type: 'focus', ch });
+  // The level-10 boost: +1 to an ability of the player's choice. Every
+  // class, every lane — the only way an ability rises after creation.
+  for (let i = 0; i < abilityPicksOwed(data, ch); i++) out.push({ type: 'ability', ch });
+  // Weapon Focus: one family at the fork, another at each extra_level.
+  for (let i = 0; i < focusPicksOwed(data, ch); i++) out.push({ type: 'focus', ch });
   // The Sorcerer's narrow gift: each unlocked spell level owes its picks,
   // and the blood remembers a wild pick at each bonus level.
   for (const owed of spellPicksOwed(data, ch)) {

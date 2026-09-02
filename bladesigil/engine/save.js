@@ -5,6 +5,8 @@
 // lands on the title screen, where a valid save offers "Continue".
 // The party DEFINITION ('bs_party') is separate and untouched by any of this.
 
+import { groupOfType } from './progression.js';
+
 const RUN_KEY = 'bs_run';
 const SAVE_VERSION = 1;
 
@@ -12,7 +14,7 @@ const SAVE_VERSION = 1;
 // (abilities-with-gear, ac, weapon, maxSp, hitBase…) are recomputed by
 // refreshDerived on load; battle-scoped fields are rebuilt by every fight.
 const HERO_FIELDS = ['name', 'level', 'row', 'xp', 'hp', 'maxHp', 'sp', 'alive',
-  'look', 'lane', 'focusType', 'gift', 'bonusAbility', 'favored', 'favoredPicks',
+  'look', 'lane', 'focusType', 'focusTypes', 'abilityBoosts', 'gift', 'bonusAbility', 'favored', 'favoredPicks',
   'timedBuffs', 'counters', 'rite', 'spellbook', 'prepared', 'knownSpells',
   'formerBook', 'studyOwed', 'bonusPicksTaken', 'spentRest', 'prepFresh',
   'equipment', 'quiver', 'conditions', 'drained'];
@@ -125,6 +127,12 @@ export function loadRun(game, p) {
   p.party.forEach((s, i) => {
     const ch = game.party[i];
     for (const k of HERO_FIELDS) if (s[k] !== undefined) ch[k] = s[k];
+    // Focus saved under older rules: a single raw weapon type ('med_blade')
+    // or a single group id. Either way it becomes the list of families.
+    if (!ch.focusTypes?.length && ch.focusType) {
+      const g = data.items.focus_groups?.[ch.focusType] ? ch.focusType : groupOfType(data, ch.focusType);
+      ch.focusTypes = g ? [g] : [];
+    }
     ch.baseAbilities = { ...s.baseAbilities };
     ch.abilities = { ...s.baseAbilities }; // refreshDerived layers gear back on
     game.refreshDerived(ch);
