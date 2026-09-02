@@ -141,6 +141,9 @@ export class Battle {
       this.combatants.push({ kind: 'monster', ref: m, x: spot.x, y: spot.y, aware: this.ambush, alivePos: () => m.hp > 0 });
     });
     // Dead heroes still hold a square (a fallen body); dead monsters vanish.
+    // A stable battle-local id per combatant — fear conditions remember WHO
+    // scared their victim by this uid ("cannot approach the source").
+    this.combatants.forEach((c, i) => { c.uid = i; if (c.kind === 'hero') c.steeled = new Set(); });
   }
 
   rollInitiative() {
@@ -157,6 +160,55 @@ export class Battle {
   monsters() { return this.combatants.filter(c => c.kind === 'monster' && c.ref.hp > 0); }
   heroAt(x, y) { return this.heroes().find(c => c.ref.alive && c.x === x && c.y === y); }
   monsterAt(x, y) { return this.monsters().find(c => c.x === x && c.y === y); }
+  byUid(uid) { return this.combatants.find(cc => cc.uid === uid); }
+
+  // ---- Fear (behavioral, designer ruling 2026-09-02) ----
+  // A condition flagged "fear": true in conditions.json remembers WHO caused
+  // it (the condition's `source` uid) and forbids every step that would
+  // close the distance to that terror while it still stands. Applies to
+  // frightened heroes AND frightened monsters (Turn Undead does what its
+  // name promises now).
+  fearSources(ref) {
+    const out = [];
+    for (const cond of ref.conditions ?? []) {
+      if (cond.source === undefined || !this.game.conditionDef(cond.id)?.fear) continue;
+      const src = this.byUid(cond.source);
+      if (!src || src.ref === ref) continue;
+      if (src.kind === 'monster' ? src.ref.hp <= 0 : !src.ref.alive) continue; // a dead terror binds no one
+      out.push(src);
+    }
+    return out;
+  }
+
+  // The source this step would close with, or null if courage permits it.
+  fearBlock(ref, fromX, fromY, toX, toY) {
+    return this.fearSources(ref).find(src =>
+      this.dist(toX, toY, src.x, src.y) < this.dist(fromX, fromY, src.x, src.y)) ?? null;
+  }
+
+  // fear_aura (monsters.json — the death knight's black dread): stepping
+  // NEXT TO the bearer, or starting your turn beside it, demands a WIS save
+  // vs its dc. Pass once and the hero is steeled against that monster for
+  // the whole battle; fail and they're frightened (source = the bearer, so
+  // the fear rule also refuses the approach). Returns false when courage fails.
+  fearAuraCheck(hc, mc, closing) {
+    const aura = mc.ref.fear_aura;
+    if (!aura || mc.ref.hp <= 0 || hc.steeled?.has(mc.uid)) return true;
+    if ((hc.ref.conditions ?? []).some(cd => this.game.conditionDef(cd.id)?.fear && cd.source === mc.uid)) return false; // already cowed by it
+    const bonus = abilityMod(hc.ref.abilities.wis) + this.game.heroSaveBonus(hc.ref);
+    const die = d20();
+    const math = `save d20 ${die} ${bonus >= 0 ? '+' : '−'}${Math.abs(bonus)} = ${die + bonus} vs DC ${aura.dc}`;
+    if (die + bonus >= aura.dc) {
+      hc.steeled.add(mc.uid);
+      this.addFx(hc.x, hc.y, 'steeled!', '#ffd24a');
+      this.game.log(`Dread rolls off the ${mc.ref.name} — ${hc.ref.name} ${closing ? 'closes in anyway' : 'stands firm'} (${math}), steeled against it for the battle.`, 'good');
+      return true;
+    }
+    this.addFx(hc.x, hc.y, 'cowed!', '#c8b8e8');
+    this.game.log(`The ${mc.ref.name}'s dread crawls over ${hc.ref.name} (${math})!`, 'death');
+    this.game.applyCondition(hc.ref, 'frightened', aura.rounds, mc.uid);
+    return false;
+  }
 
   // ---- Turn order ----
   // Monster turns are paced with a short delay (and a red ring in the
@@ -205,6 +257,11 @@ export class Battle {
           return;
         }
         this.movesLeft = HERO_MOVE;
+        // A fear aura tests the hero who STARTS their turn beside the bearer
+        // ("to stay next to it you must pass a saving throw" — designer 2026-09-02).
+        for (const mc of this.monsters()) {
+          if (mc.ref.fear_aura && Math.abs(mc.x - c.x) + Math.abs(mc.y - c.y) === 1) this.fearAuraCheck(c, mc, false);
+        }
         // Mirror Ward / Mountain's Heart: the singer stands where they stand.
         const root = this.rootedBy(c.ref);
         if (root) {
@@ -224,8 +281,11 @@ export class Battle {
           if (this.game.battle !== this || c.ref.hp <= 0) return;
           const verdict = this.tickConditions(c);
           if (this.checkEnd()) return;
-          if (verdict !== 'dead' && verdict !== 'skip') this.monsterTurn(c);
-          if (this.pendingReaction) return; // frozen mid-blow — resolveReaction resumes
+          if (verdict !== 'dead' && verdict !== 'skip') {
+            this.tickMonsterState(c); // regen, cooldowns, a fading War Drums
+            this.monsterTurn(c);
+          }
+          if (this.pendingReaction || this.pendingAction) return; // frozen mid-blow, or an ability still in flight — resumeAfterBlow / finishMonsterAction continues
           if (this.checkEnd()) return;
           this.nextTurn();
         }, 600);
@@ -276,7 +336,7 @@ export class Battle {
   }
 
   // Something tries to inflict a condition: the victim saves against the DC.
-  tryInflict(targetC, condId, rounds, dc) {
+  tryInflict(targetC, condId, rounds, dc, source) {
     const def = this.game.conditionDef(condId);
     if (!def) return;
     const ref = targetC.ref;
@@ -295,7 +355,7 @@ export class Battle {
       this.game.log(`${ref.name} resists — not ${def.name.toLowerCase()}!`);
       return;
     }
-    this.game.applyCondition(ref, condId, rounds);
+    this.game.applyCondition(ref, condId, rounds, source);
     this.addFx(targetC.x, targetC.y, def.name + '!', def.color);
   }
 
@@ -340,7 +400,7 @@ export class Battle {
       for (const [x, y] of frontier) {
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
           const nx = x + dx, ny = y + dy, k = ny * GRID_W + nx;
-          if (!seen.has(k) && this.open(nx, ny)) {
+          if (!seen.has(k) && this.open(nx, ny) && !this.fearBlock(c.ref, x, y, nx, ny)) {
             seen.add(k); out.add(k); next.push([nx, ny]);
           }
         }
@@ -361,6 +421,21 @@ export class Battle {
       const root = this.movesLeft <= 0 ? this.rootedBy(c.ref) : null;
       if (root) { this.addFx(c.x, c.y, 'rooted', '#9a94a8'); this.game.log(`${c.ref.name} is rooted by ${root.name}.`, 'info'); }
       return;
+    }
+    // Fear: a frightened hero cannot force a step toward whoever scared them.
+    const scare = this.fearBlock(c.ref, c.x, c.y, nx, ny);
+    if (scare) {
+      this.addFx(c.x, c.y, 'cowed!', '#c8b8e8');
+      this.game.log(`${c.ref.name} is frightened — they cannot make themselves approach the ${scare.ref.name}!`, 'info');
+      return;
+    }
+    // A fear aura tests courage at the threshold: stepping ADJACENT to the
+    // bearer from farther away demands the save. Failing refuses the step.
+    for (const mc of this.monsters()) {
+      if (!mc.ref.fear_aura) continue;
+      const wasAdj = Math.abs(c.x - mc.x) + Math.abs(c.y - mc.y) === 1;
+      const nowAdj = Math.abs(nx - mc.x) + Math.abs(ny - mc.y) === 1;
+      if (nowAdj && !wasAdj && !this.fearAuraCheck(c, mc, true)) return;
     }
     c.x = nx; c.y = ny;
     this.movesLeft--;
@@ -481,6 +556,16 @@ export class Battle {
     if (p?.id === 'snap_shot' && ch.weapon.range) parts.push([p.dmg ?? 1, passiveName(p, 'Snap Shot')]);
     for (const part of this.game.condParts(ch, 'dmg')) parts.push(part);
     return parts;
+  }
+
+  // The physical KIND of a wielded weapon, for monsters that resist steel
+  // (resist_physical): blades and axes cut (edged), bows pierce, blunt is
+  // blunt — the counterplay weapon for the animated sword's kin.
+  weaponKind(w) {
+    if (!w?.type) return 'blunt';
+    if (w.type === 'weapon_bow') return 'piercing';
+    if (w.type.endsWith('_blunt')) return 'blunt';
+    return 'edged'; // light/med/heavy blades and axes
   }
 
   sumParts(parts) { return parts.reduce((s, [v]) => s + v, 0); }
@@ -616,6 +701,21 @@ export class Battle {
         label = `-${dmg}!!`;
         this.addFx(foeC.x, foeC.y, ch.weapon.flavor === 'holy' ? 'holy fire!' : 'bane!', '#ffd24a');
       }
+      // Physical resists (the animated sword): edged and piercing steel
+      // glances off some hides — half damage, named. Bring a mace.
+      const kind = this.weaponKind(ch.weapon);
+      let phys = null;
+      if (monster.resist_physical?.includes(kind) && dmg > 1) {
+        const was = dmg;
+        dmg = Math.max(1, Math.floor(dmg / 2));
+        phys = `resists ${kind}: ${was} → ${dmg}`;
+        this.addFx(foeC.x, foeC.y, `resists ${kind}!`, '#9a94a8');
+        label = label.replace(/-\d+/, `-${dmg}`); // keep any crit exclamations
+      }
+      // Regeneration bookkeeping: an elemental rider on the blow sears the
+      // wound so it cannot knit closed next round (troll vs Flame Blade).
+      if (ch.weapon.bonus_damage) this.noteElementHit(foeC, ch.weapon.bonus_damage.element);
+      for (const b of ch.timedBuffs ?? []) if (b.bonus_damage) this.noteElementHit(foeC, b.bonus_damage.element);
       monster.hp -= dmg;
       this.wake(monster);
       if (crit) audio.play('crit_strike'); // silent until the designer maps it
@@ -626,7 +726,7 @@ export class Battle {
       this.addFx(foeC.x, foeC.y, label, crit ? '#ffd24a' : '#ff6a4a');
       // The math, spelled out: every bonus by name, so a +1 FEELS like a +1.
       const toHit = assassinate ? 'auto-hit' : crit ? 'natural 20!' : sure && atkTotal < ac ? `cannot miss — ${sure.name}` : `d20 ${die}${this.fmtParts(atkParts)} = ${atkTotal} vs ${acText}`;
-      const mults = `${lethal ? `, ×${lethal} Lethality` : ''}${bane ? `, ${bane}` : ''}`;
+      const mults = `${lethal ? `, ×${lethal} Lethality` : ''}${bane ? `, ${bane}` : ''}${phys ? `, ½ ${phys}` : ''}`;
       const dmgMath = `${crit ? `max ${maxRoll(ch.weapon.damage)} + ${ch.weapon.damage} → ${critExtra}` : `${ch.weapon.damage} → ${base}`}${this.fmtParts(dmgParts)}${mults ? ` = ${preMult}${mults}` : ''} = ${dmg}`;
       this.game.log(assassinate
         ? `${ch.name} strikes from ${wasHidden ? 'the shadows' : 'nowhere'} — ASSASSINATE! (${dmgMath}) — ${dmg} damage to the ${monster.name}!`
@@ -1983,11 +2083,11 @@ export class Battle {
     for (const t of targets) {
       t.aware = true;
       if (s.auto) {
-        this.game.applyCondition(t.ref, s.condition.id, rounds);
+        this.game.applyCondition(t.ref, s.condition.id, rounds, c.uid);
         const cdef = this.game.conditionDef(s.condition.id);
         if (cdef) this.addFx(t.x, t.y, cdef.name + '!', cdef.color, impact);
       } else {
-        this.tryInflict(t, s.condition.id, rounds, m.dc);
+        this.tryInflict(t, s.condition.id, rounds, m.dc, c.uid);
       }
     }
   }
@@ -2035,6 +2135,7 @@ export class Battle {
     targets = targets.filter(t => !spared.includes(t));
     if (!s.auto && s.save && targets.length) this.game.log(`Save DC ${m.dc} (${m.dcMath}).`, 'info');
     let dealt = 0;
+    const spellElem = ['fire', 'frost', 'lightning', 'poison'].includes(s.fx?.sound) ? s.fx.sound : null;
     for (const t of targets) {
       const ref = t.ref;
       if (t.kind === 'monster' && ref.hp <= 0) continue; // an earlier dart already finished it
@@ -2059,7 +2160,7 @@ export class Battle {
       // Friendly fire meets elemental protection: a hero caught in the blast
       // is guarded by worn resist/immunity (or a warding spell) for the element.
       if (t.kind === 'hero') {
-        const elem = ['fire', 'frost', 'lightning', 'poison'].includes(s.fx?.sound) ? s.fx.sound : null;
+        const elem = spellElem;
         const guard = elem ? this.game.elementGuard(ref, elem) : null;
         if (guard?.kind === 'immune') {
           this.addFx(t.x, t.y, 'immune!', '#7fd4c8', impact);
@@ -2080,12 +2181,13 @@ export class Battle {
       ref.hp -= dmg;
       dealt += dmg;
       this.wake(ref);
+      if (t.kind === 'monster') this.noteElementHit(t, spellElem); // fire sears a troll's regrowth
       this.addFx(t.x, t.y, `-${dmg}`, saved ? '#d8c06a' : '#ffb04a', impact);
       this.game.log(saved
         ? `${ref.name} twists aside — only ${dmg} damage (${math}, halved${saveText}).`
         : `${ref.name} is seared for ${dmg} damage (${math}${saveText})!`);
       if (ref.hp > 0 && s.condition && !saved) {
-        this.game.applyCondition(ref, s.condition.id, s.condition.rounds + m.extraRounds);
+        this.game.applyCondition(ref, s.condition.id, s.condition.rounds + m.extraRounds, c.uid);
         const cdef = this.game.conditionDef(s.condition.id);
         if (cdef) this.addFx(t.x, t.y, cdef.name + '!', cdef.color, impact);
       }
@@ -2155,15 +2257,398 @@ export class Battle {
     this.checkEnd();
   }
 
-  // ---- Monster AI: walk toward the nearest living hero, attack if adjacent ----
+  // ---- Monster AI (special-abilities pass, 2026-09-01) ----
+  // The priority ladder: try the abilities list in order (data-driven,
+  // monsters.json "abilities"); if none is usable, walk toward the nearest
+  // living hero and swing — possibly more than once ("attacks", haste).
+  // Async rule: anything that staggers over time (a traveling bolt, a
+  // second swing) sets this.pendingAction and later calls
+  // finishMonsterAction() — the nextTurn scheduler waits for it, exactly
+  // like the pendingReaction freeze.
   monsterTurn(c) {
     const m = c.ref;
+    const ab = this.pickAbility(c);
+    if (ab) { this.useAbility(c, ab); return; }
     for (let step = 0; step <= monsterMove(m); step++) {
       const target = this.adjacentHero(c);
-      if (target) { this.monsterAttack(m, target.ref); return; }
-      if (step === monsterMove(m)) return;
-      if (!this.stepToward(c)) return; // boxed in
+      if (target) { this.startSwings(c, target); return; }
+      if (step === monsterMove(m)) break;
+      if (!this.stepToward(c)) break; // boxed in — or fear leaves no path
     }
+    // It neither struck nor reached anyone — if fear pinned it, say so
+    // (a Turned mummy visibly cowers instead of silently milling about).
+    const dread = this.fearSources(m)[0];
+    if (dread) {
+      this.fxOn(m, 'cowed', '#c8b8e8');
+      this.game.log(`The ${m.name} cowers — it will not go near ${dread.ref.name}.`, 'info');
+    }
+  }
+
+  // Per-turn upkeep for one monster: regeneration, ability cooldowns, and
+  // the rounds left on a haste laid over it.
+  tickMonsterState(c) {
+    const m = c.ref;
+    for (const k of Object.keys(c.cds ?? {})) if (c.cds[k] > 0) c.cds[k]--;
+    if (c.haste && --c.haste.rounds <= 0) {
+      this.game.log(`${c.haste.name} fades from the ${m.name}.`, 'info');
+      c.haste = null;
+    }
+    // Regeneration (troll): the wound closes at the start of its turn —
+    // unless a blocked_by element seared it since its last one.
+    if (m.regen && m.hp < (m.maxHp ?? m.hp)) {
+      const seared = (m.regen.blocked_by ?? []).find(e => c.seared?.[e]);
+      if (seared) {
+        this.addFx(c.x, c.y, 'no regrowth!', '#e0912f');
+        this.game.log(`The ${seared} sears the ${m.name}'s wounds shut — no regrowth this round.`, 'good');
+      } else {
+        const heal = Math.min(m.regen.amount ?? 5, (m.maxHp ?? m.hp) - m.hp);
+        m.hp += heal;
+        this.addFx(c.x, c.y, `+${heal} regeneration`, '#6ad46a');
+        this.game.log(`The ${m.name}'s wounds knit closed — ${heal} HP regenerates.`);
+      }
+    }
+    c.seared = null; // last round's burns are spent either way
+  }
+
+  // A hero damage source of a named element marks the monster: regeneration
+  // checks the mark at its next turn. strike() and resolveDamage() call this.
+  noteElementHit(mc, element) {
+    if (!element || !mc || mc.kind !== 'monster' || !mc.ref.regen) return;
+    (mc.seared ??= {})[element] = true;
+  }
+
+  // ---- The abilities framework (data-driven, monsters.json "abilities") ----
+  // First usable entry in list order wins: off cooldown, uses left, a legal
+  // target in range and sight, and not redundant (an afflict everyone
+  // already bears, a haste already held).
+  pickAbility(c) {
+    const list = c.ref.abilities ?? [];
+    for (let i = 0; i < list.length; i++) {
+      const ab = list[i];
+      if ((c.cds?.[i] ?? 0) > 0) continue;
+      if (ab.uses !== undefined && (c.uses?.[i] ?? 0) >= ab.uses) continue;
+      if (!this.abilityViable(c, ab)) continue;
+      return { ...ab, index: i };
+    }
+    return null;
+  }
+
+  // Living heroes this monster can see and reach with a ranged ability.
+  heroesInReach(c, range) {
+    return this.heroes().filter(h => h.ref.alive && !h.ref.hidden
+      && this.dist(h.x, h.y, c.x, c.y) <= range && this.losClear(c.x, c.y, h.x, h.y))
+      .sort((a, b) => this.dist(c.x, c.y, a.x, a.y) - this.dist(c.x, c.y, b.x, b.y));
+  }
+
+  abilityTarget(c, ab) {
+    const pool = this.heroesInReach(c, ab.range ?? 6);
+    if (!pool.length) return null;
+    // A taunting knight draws the fire too, if he's in reach.
+    if (this.tauntActive()) {
+      const knight = pool.find(h => h === this.taunt.c);
+      if (knight) return knight;
+    }
+    return pool[0];
+  }
+
+  abilityViable(c, ab) {
+    if (ab.type === 'haste') {
+      const targets = ab.targets === 'self' ? [c]
+        : this.monsters().filter(mc => mc !== c && mc.ref.hp > 0);
+      return targets.some(t => !t.haste);
+    }
+    if (ab.type === 'afflict' && ab.targets === 'party') {
+      return this.heroes().some(h => h.ref.alive
+        && !h.ref.conditions.some(cd => cd.id === ab.condition));
+    }
+    if (ab.type === 'afflict') {
+      return this.heroesInReach(c, ab.range ?? 6)
+        .some(h => !h.ref.conditions.some(cd => cd.id === ab.condition));
+    }
+    if (ab.type === 'spell') {
+      const s = this.game.data.spells.spells[ab.id];
+      if (!s) return false;
+      if (s.type === 'afflict' && !(s.area === 'all')) {
+        return this.heroesInReach(c, s.range ?? 6)
+          .some(h => !h.ref.conditions.some(cd => cd.id === s.condition.id));
+      }
+      if (s.area === 'all') return this.heroes().some(h => h.ref.alive && !h.ref.hidden);
+      return !!this.abilityTarget(c, { range: s.range ?? 6 });
+    }
+    return !!this.abilityTarget(c, ab); // bolt, breath: someone in reach
+  }
+
+  useAbility(c, ab) {
+    (c.cds ??= {})[ab.index] = (ab.cooldown ?? 0) + 1; // +1: it ticks down at ITS next turn
+    if (ab.uses !== undefined) (c.uses ??= {})[ab.index] = (c.uses?.[ab.index] ?? 0) + 1;
+    if (ab.type === 'haste') return this.monsterHaste(c, ab);
+    if (ab.type === 'spell') return this.monsterCastSpell(c, ab);
+    if (ab.type === 'afflict') return this.monsterAfflict(c, ab);
+    return this.monsterBlast(c, ab); // bolt & breath share a resolution
+  }
+
+  // The ability's save: a hero rolls d20 + ability mod + every named save
+  // bonus vs the ability's DC. Returns {saved, text}.
+  abilitySave(hc, save, dc) {
+    const ref = hc.ref;
+    let bonus = abilityMod(ref.abilities[save ?? 'dex']) + this.game.heroSaveBonus(ref);
+    if (this.surgeSave?.target === ref) bonus += this.surgeSave.ac;
+    const die = d20();
+    return {
+      saved: die + bonus >= dc,
+      text: `save d20 ${die}${bonus ? ` ${bonus > 0 ? '+' : '−'}${Math.abs(bonus)}` : ''} = ${die + bonus} vs DC ${dc}`,
+    };
+  }
+
+  // Elemental damage from an ability lands on a hero: worn guards, absorb
+  // pools and warding buffs all drink first, each by name — the same
+  // pipeline a melee blow walks, minus the melee-only pieces.
+  abilityHit(m, hc, dmg, element, bits) {
+    const target = hc.ref;
+    if (element) {
+      const guard = this.game.elementGuard(target, element);
+      if (guard?.kind === 'immune') {
+        this.fxOn(target, 'immune!', '#7fd4c8');
+        this.game.log(`The blast washes over ${target.name} — the ${guard.name} drinks the ${element} whole!`, 'good');
+        return;
+      }
+      if (guard?.kind === 'resist') {
+        dmg = Math.max(1, Math.floor(dmg / 2));
+        bits.push(`${guard.name} turns half the ${element} aside`);
+      }
+    }
+    dmg = this.soakDamage(target, dmg, bits);
+    if (dmg <= 0) {
+      this.fxOn(target, 'blocked', '#9a94a8');
+      this.game.log(`${target.name} — the ward takes it all (${bits.join(' · ')}).`, 'good');
+      return;
+    }
+    target.hp -= dmg;
+    this.wake(target);
+    this.fxOn(target, `-${dmg}`, '#ff6a4a');
+    this.game.log(`${target.name} takes ${dmg} damage (${bits.join(' · ')})!`);
+    if (target.hp <= 0) this.downHero(target); // spellfire, not a blow — Unyielding sleeps
+  }
+
+  // bolt: one hero. breath: every hero within `area` of the chosen one —
+  // clumping is punished exactly like friendly-fire bursts, visibly.
+  monsterBlast(c, ab) {
+    const m = c.ref;
+    const primary = this.abilityTarget(c, ab);
+    if (!primary) return;
+    const targets = ab.type === 'breath'
+      ? this.heroes().filter(h => h.ref.alive && this.dist(h.x, h.y, primary.x, primary.y) <= (ab.area ?? 1))
+      : [primary];
+    const fxSpell = { area: ab.type === 'breath' ? (ab.area ?? 1) : 0, fx: ab.fx, type: 'damage' };
+    const impact = this.emitSpellFx(c, fxSpell, primary.x, primary.y);
+    if (ab.fx?.sound) audio.play(`spell_${ab.fx.sound}`);
+    this.game.log(`The ${m.name} unleashes ${ab.name ?? 'a blast'}${targets.length > 1 ? ` — ${targets.length} heroes are caught!` : ` at ${primary.ref.name}!`}`, 'combat');
+    this.pendingAction = true;
+    setTimeout(() => {
+      if (this.game.battle !== this) return;
+      targets.forEach((hc, i) => {
+        setTimeout(() => {
+          if (this.game.battle !== this || !hc.ref.alive) return;
+          const raw = Math.max(1, roll(ab.dice));
+          const { saved, text } = ab.save ? this.abilitySave(hc, ab.save, ab.dc ?? 13) : { saved: false, text: '' };
+          const dmg = saved ? Math.floor(raw / 2) : raw;
+          const bits = [`${ab.name ?? 'blast'} ${ab.dice} → ${raw}${saved ? `, halved — ${text}` : text ? ` · ${text}` : ''}`];
+          if (saved && dmg <= 0) {
+            this.fxOn(hc.ref, 'resisted', '#9a94a8');
+            this.game.log(`${hc.ref.name} twists clear of the ${(ab.name ?? 'blast').toLowerCase()} (${text}).`);
+          } else {
+            this.abilityHit(m, hc, dmg, ab.element, bits);
+          }
+        }, i * 160);
+      });
+      setTimeout(() => this.finishMonsterAction(), targets.length * 160 + 200);
+    }, impact);
+  }
+
+  // afflict: a condition thrown at range — one hero, or the whole PARTY
+  // (targets: "party"), each saving alone as the wave rolls over the line.
+  monsterAfflict(c, ab) {
+    const m = c.ref;
+    const party = ab.targets === 'party';
+    let targets;
+    if (party) targets = this.heroes().filter(h => h.ref.alive);
+    else {
+      const primary = this.abilityTarget(c, ab);
+      if (!primary) return;
+      targets = (ab.area ?? 0) > 0
+        ? this.heroes().filter(h => h.ref.alive && this.dist(h.x, h.y, primary.x, primary.y) <= ab.area)
+        : [primary];
+    }
+    const cdef = this.game.conditionDef(ab.condition);
+    const impact = party ? 0 : this.emitSpellFx(c, { fx: ab.fx ?? { kind: 'wisp', color: cdef?.color ?? '#8a7ab8' }, type: 'afflict' }, targets[0].x, targets[0].y);
+    if (ab.fx?.sound) audio.play(`spell_${ab.fx.sound}`);
+    this.game.log(`The ${m.name} ${party ? `casts ${ab.name ?? 'a curse'} over the whole party` : `aims ${ab.name ?? 'a curse'} at ${targets[0].ref.name}`}! Save DC ${ab.dc ?? 13}.`, 'combat');
+    this.pendingAction = true;
+    setTimeout(() => {
+      if (this.game.battle !== this) return;
+      targets.forEach((hc, i) => {
+        setTimeout(() => {
+          if (this.game.battle !== this || !hc.ref.alive) return;
+          this.particleFx(hc.x, hc.y, ab.fx?.kind === 'sparkle' ? 'sparkle' : 'wisp', ab.fx?.color ?? cdef?.color ?? '#8a7ab8');
+          this.tryInflict(hc, ab.condition, ab.rounds ?? 2, ab.dc ?? 13, c.uid);
+        }, i * 150);
+      });
+      setTimeout(() => this.finishMonsterAction(), targets.length * 150 + 200);
+    }, impact);
+  }
+
+  // haste: the pack-leader's gift (or its own frenzy) — extra swings for
+  // `rounds` of the target's turns, named in every attack line.
+  monsterHaste(c, ab) {
+    const m = c.ref;
+    const name = ab.name ?? 'Frenzy';
+    const targets = ab.targets === 'self' ? [c]
+      : this.monsters().filter(mc => mc !== c && mc.ref.hp > 0 && !mc.haste);
+    if (!targets.length) return;
+    for (const t of targets) {
+      t.haste = { attacks: ab.extra_attacks ?? 1, rounds: (ab.rounds ?? 2) + 1, name };
+      this.particleFx(t.x, t.y, 'sparkle', ab.fx?.color ?? '#e0483a');
+      this.addFx(t.x, t.y, name + '!', ab.fx?.color ?? '#e0483a');
+    }
+    audio.play('spell_buff');
+    this.game.log(ab.targets === 'self'
+      ? `The ${m.name} whips itself into ${name} — +${ab.extra_attacks ?? 1} attack for ${ab.rounds ?? 2} rounds!`
+      : `The ${m.name} calls ${name} over its pack — +${ab.extra_attacks ?? 1} attack each for ${ab.rounds ?? 2} rounds! Cut the leader down!`, 'death');
+  }
+
+  // type "spell" (the lich): a REAL page from spells.json, cast monster-side
+  // at a fixed caster_level. Damage and afflict spells only (validated).
+  monsterCastSpell(c, ab) {
+    const m = c.ref;
+    const s = { id: ab.id, ...this.game.data.spells.spells[ab.id] };
+    const lvl = ab.caster_level ?? 15;
+    const castMod = ab.cast_mod ?? Math.floor(lvl / 4);
+    const dc = 10 + s.level + castMod;
+    const steps = scaleSteps(s, lvl);
+    const primary = s.area === 'all' ? null : this.abilityTarget(c, { range: s.range ?? 6 });
+    if (!primary && s.area !== 'all') return;
+    const aim = primary ?? this.heroes().find(h => h.ref.alive);
+    const impact = this.emitSpellFx(c, s, aim.x, aim.y);
+    if (s.fx?.sound) audio.play(`spell_${s.fx.sound}`);
+    this.game.log(`The ${m.name} casts ${s.name}!`, 'death');
+    const targets = s.area === 'all' ? this.heroes().filter(h => h.ref.alive)
+      : (typeof s.area === 'number' && s.area > 0)
+        ? this.heroes().filter(h => h.ref.alive && this.dist(h.x, h.y, primary.x, primary.y) <= s.area)
+        : [primary];
+    this.pendingAction = true;
+    setTimeout(() => {
+      if (this.game.battle !== this) return;
+      let dealt = 0;
+      targets.forEach((hc, i) => {
+        setTimeout(() => {
+          if (this.game.battle !== this || !hc.ref.alive) return;
+          if (s.type === 'afflict') {
+            this.particleFx(hc.x, hc.y, 'wisp', s.fx?.color ?? '#8a7ab8');
+            this.tryInflict(hc, s.condition.id, s.condition.rounds + (s.scale?.rounds ? steps * s.scale.rounds : 0), dc, c.uid);
+            return;
+          }
+          // damage: dice + caster-level growth, save for half, guards by name.
+          let raw = Math.max(1, roll(s.dice));
+          let math = `${s.dice} → ${raw}`;
+          if (steps > 0 && s.scale?.dice) {
+            let grown = 0;
+            for (let k = 0; k < steps; k++) grown += roll(s.scale.dice);
+            raw += grown; math += ` +${steps > 1 ? `${steps}×` : ''}${s.scale.dice} → ${grown} caster level`;
+          }
+          if (steps > 0 && s.scale?.flat) { raw += steps * s.scale.flat; math += ` +${steps * s.scale.flat} caster level`; }
+          const { saved, text } = s.auto ? { saved: false, text: '' } : this.abilitySave(hc, s.save ?? 'dex', dc);
+          const dmg = saved ? Math.floor(raw / 2) : raw;
+          if (saved && dmg <= 0) {
+            this.fxOn(hc.ref, 'resisted', '#9a94a8');
+            this.game.log(`${hc.ref.name} shrugs off the ${s.name.toLowerCase()} (${text}).`);
+            return;
+          }
+          const elem = ['fire', 'frost', 'lightning', 'poison'].includes(s.fx?.sound) ? s.fx.sound : null;
+          const bits = [`${s.name} ${math}${saved ? `, halved — ${text}` : text ? ` · ${text}` : ''}`];
+          const before = hc.ref.hp;
+          this.abilityHit(m, hc, dmg, elem, bits);
+          dealt += Math.max(0, before - hc.ref.hp);
+          if (hc.ref.alive && hc.ref.hp > 0 && s.condition && !saved) {
+            this.game.applyCondition(hc.ref, s.condition.id, s.condition.rounds, c.uid);
+            const cdef = this.game.conditionDef(s.condition.id);
+            if (cdef) this.addFx(hc.x, hc.y, cdef.name + '!', cdef.color);
+          }
+        }, i * 160);
+      });
+      setTimeout(() => {
+        if (this.game.battle !== this) return;
+        // Vampiric Touch in undead hands drinks just the same.
+        if (s.drain && dealt > 0 && m.hp > 0) {
+          const heal = Math.min(Math.floor(dealt * s.drain), (m.maxHp ?? m.hp) - m.hp);
+          if (heal > 0) { m.hp += heal; this.fxOn(m, `+${heal}`, '#c03050'); this.game.log(`${s.name} drinks deep — ${heal} HP flows back into the ${m.name}.`, 'death'); }
+        }
+        this.finishMonsterAction();
+      }, targets.length * 160 + 200);
+    }, impact);
+  }
+
+  // ---- Multi-attack ("attacks": N, plus a haste's extras) ----
+  // Swings resolve one at a time, ~300ms apart so the player SEES each
+  // blow; a reaction (Ward Surge, the Stand) freezes the chain and
+  // resumeAfterBlow picks it back up. Each swing re-finds a living
+  // adjacent target — the first may have fallen or been saved elsewhere.
+  monsterSwings(c) { return (c.ref.attacks ?? 1) + (c.haste?.attacks ?? 0); }
+
+  startSwings(c, targetC) {
+    this.swingChain = { c, remaining: this.monsterSwings(c), swung: 0 };
+    this.doSwing(targetC);
+  }
+
+  doSwing(targetC) {
+    const chain = this.swingChain;
+    chain.remaining--;
+    chain.swung++;
+    if (chain.swung > 1) {
+      const h = chain.c.haste;
+      const extraName = h && chain.swung > (chain.c.ref.attacks ?? 1) ? ` — ${h.name}` : '';
+      this.game.log(`The ${chain.c.ref.name} strikes again (attack ${chain.swung}${extraName})!`, 'combat');
+    }
+    this.monsterAttack(chain.c.ref, targetC.ref);
+    if (this.pendingReaction) { this.pendingAction = true; return; } // resolveReaction resumes the chain
+    this.afterSwing();
+  }
+
+  afterSwing() {
+    const chain = this.swingChain;
+    if (!chain || chain.remaining <= 0 || chain.c.ref.hp <= 0) {
+      // Done. If we ever went async (a stagger or a reaction), WE own the
+      // hand-back; a fully synchronous single swing leaves it to the
+      // nextTurn scheduler that called monsterTurn — never both.
+      this.swingChain = null;
+      if (this.pendingAction) this.finishMonsterAction();
+      return;
+    }
+    this.pendingAction = true;
+    setTimeout(() => {
+      if (this.game.battle !== this) return;
+      const next = this.adjacentHero(chain.c);
+      if (!next || chain.c.ref.hp <= 0) { this.swingChain = null; this.finishMonsterAction(); return; }
+      this.doSwing(next);
+    }, 300);
+  }
+
+  // An async monster action (staggered swings, a traveled bolt) is done:
+  // release the lock and hand the round back to the scheduler.
+  finishMonsterAction() {
+    this.pendingAction = false;
+    if (this.pendingReaction) return;
+    if (this.checkEnd()) return;
+    this.nextTurn();
+  }
+
+  // A blow just fully resolved (possibly through a reaction): continue the
+  // swing chain if one is mid-flight, else hand back to the scheduler.
+  resumeAfterBlow() {
+    if (this.pendingReaction) return;
+    if (this.swingChain) { this.afterSwing(); return; }
+    this.pendingAction = false;
+    if (this.checkEnd()) return;
+    this.nextTurn();
   }
 
   // Bulwark's taunt: while it holds, monsters strike the knight if they can.
@@ -2200,6 +2685,7 @@ export class Battle {
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx, ny = y + dy, k = ny * GRID_W + nx;
         if (prev.has(k) || !this.open(nx, ny)) continue;
+        if (this.fearBlock(c.ref, x, y, nx, ny)) continue; // cowed — no path leads toward the terror
         prev.set(k, y * GRID_W + x);
         if (targets.has(k)) { found = k; break; }
         q.push([nx, ny]);
@@ -2233,6 +2719,9 @@ export class Battle {
   // and Bulwark — a knight standing beside you turns blades aside.
   heroAcOf(hc, m = null) {
     let ac = hc.ref.ac + this.game.condStat(hc.ref, 'ac'); // timed buffs arrive by name via acExtras
+    // Incorporeal touch (shadow, spectre): worn armor and shield mean
+    // nothing — the blow reaches through steel. DEX, buffs, rings remain.
+    if (m?.touch) ac -= this.gearAcOf(hc.ref);
     for (const other of this.heroes()) {
       if (other === hc || !other.ref.alive) continue;
       const lane = laneOf(this.game.data, other.ref);
@@ -2243,6 +2732,15 @@ export class Battle {
     }
     for (const [v] of this.acExtras(hc.ref, m)) ac += v;
     return ac;
+  }
+
+  // The AC a hero owes purely to worn armor and shield — the share an
+  // incorporeal touch attack ignores.
+  gearAcOf(ref) {
+    if (!ref.equipment) return 0;
+    return Object.values(ref.equipment).filter(Boolean).map(id => this.game.itemDef(id))
+      .filter(d => d.type?.startsWith('armor_') || d.type === 'shield')
+      .reduce((s, d) => s + (d.ac || 0), 0);
   }
 
   // Named AC parts that depend on WHO is swinging: Ironward (the Stoneshaper's
@@ -2303,7 +2801,8 @@ export class Battle {
     const hitCond = this.game.condStat(m, 'hit'), dmgCond = this.game.condStat(m, 'dmg');
     const condName = hitCond || dmgCond ? this.game.condParts(m, hitCond ? 'hit' : 'dmg').map(([, n]) => n).join(' & ') : '';
     const toHit = m.to_hit + hitCond;
-    const hitText = `d20 ${die} +${m.to_hit}${hitCond ? ` ${hitCond > 0 ? '+' : '−'}${Math.abs(hitCond)} ${condName}` : ''} = ${die + toHit} vs AC ${ac}${extras.length ? ` (${this.fmtParts(extras).trim()})` : ''}`;
+    const touch = tc?.kind === 'hero' && m.touch ? this.gearAcOf(target) : 0;
+    const hitText = `d20 ${die} +${m.to_hit}${hitCond ? ` ${hitCond > 0 ? '+' : '−'}${Math.abs(hitCond)} ${condName}` : ''} = ${die + toHit} vs AC ${ac}${touch ? ' (touch — armor avails nothing)' : ''}${extras.length ? ` (${this.fmtParts(extras).trim()})` : ''}`;
     if (surge && die + toHit < ac && die + toHit >= ac - surge.ac) {
       // The ward alone turned it — the singer's tracked deed.
       surge.singer.counters.wardDeflects++;
@@ -2351,38 +2850,26 @@ export class Battle {
         this.game.log(`The ${guard.name} turns half the ${m.element} aside.`, 'good');
       }
     }
-    // Warding spells (Shield, Spirit Guardian): an absorb pool drinks the
-    // blow first, by name, until it runs dry.
-    const drank = [];
-    for (const b of target.timedBuffs ?? []) {
-      if (!(b.absorb > 0) || dmg <= 0) continue;
-      const sip = Math.min(b.absorb, dmg);
-      b.absorb -= sip; dmg -= sip;
-      drank.push(`${b.name} drinks ${sip}${b.absorb <= 0 ? ' and is spent' : ''}`);
-    }
-    // Braced Stance (Way of the Shield): a shield in hand blunts every hit.
+    const soak = [];
+    // Braced Stance and Granite Skin only blunt BLOWS — abilities skip them,
+    // so they slot between the absorb pools and the hardening buffs here.
     const p = passiveOf(this.game.data, target);
-    const braced = p?.id === 'braced_stance' && this.game.hasShield(target) ? (p.reduce ?? 1) : 0;
-    if (braced) dmg = Math.max(0, dmg - braced);
-    // Granite Skin (Bulwark): every un-elemental blow loses a point.
-    const granite = p?.id === 'granite_skin' && !m.element ? (p.reduce ?? 1) : 0;
-    if (granite) dmg = Math.max(0, dmg - granite);
-    // Heart of Granite and kin: flat reduction; Avatar of Stone / Mountain's
-    // Heart / Warden's Aria: halved; Bedrock (the Rite): never more than 1.
-    const hard = [];
-    for (const b of target.timedBuffs ?? []) {
-      if (b.reduce > 0 && dmg > 0) { const cut = Math.min(b.reduce, dmg); dmg -= cut; hard.push(`${b.name} turns ${cut} aside`); }
-    }
-    const halver = (target.timedBuffs ?? []).find(b => b.halve);
-    if (halver && dmg > 1) { const was = dmg; dmg = Math.ceil(dmg / 2); hard.push(`${halver.name} halves ${was} → ${dmg}`); }
-    if (target.bedrock && dmg > 1) { hard.push(`${target.rite?.abilityName ?? 'Bedrock'}: ${dmg} → 1`); dmg = 1; }
-    const bits = [this.lastMonsterRoll, ...drank, braced ? `shield turns ${braced} aside` : '', granite ? `${passiveName(p, 'Granite Skin')} turns ${granite} aside` : '', ...hard].filter(Boolean);
+    dmg = this.soakDamage(target, dmg, soak, {
+      betweenPools: d => {
+        const braced = p?.id === 'braced_stance' && this.game.hasShield(target) ? (p.reduce ?? 1) : 0;
+        if (braced) { d = Math.max(0, d - braced); soak.push(`shield turns ${braced} aside`); }
+        const granite = p?.id === 'granite_skin' && !m.element ? (p.reduce ?? 1) : 0;
+        if (granite) { d = Math.max(0, d - granite); soak.push(`${passiveName(p, 'Granite Skin')} turns ${granite} aside`); }
+        return d;
+      },
+    });
+    const bits = [this.lastMonsterRoll, ...soak].filter(Boolean);
     const rollText = bits.join(' · ');
     this.lastMonsterRoll = null; // redirected blows (Aegis, the Stand) skip the roll text next time
     audio.play('melee_hit');
     if (dmg <= 0) {
       this.fxOn(target, 'blocked', '#9a94a8');
-      this.game.log(`The ${m.name} strikes ${target.name} — ${drank.length ? 'the ward' : granite || hard.length ? 'the stone' : 'the shield'} takes it all${rollText ? ` (${rollText})` : ''}.`);
+      this.game.log(`The ${m.name} strikes ${target.name} — the guard takes it all${rollText ? ` (${rollText})` : ''}.`);
       this.riposte(m, target);
       return;
     }
@@ -2390,6 +2877,41 @@ export class Battle {
     this.wake(target);
     this.fxOn(target, `-${dmg}`, '#ff6a4a');
     this.game.log(`The ${m.name} strikes ${target.name} for ${dmg} damage${rollText ? ` (${rollText})` : ''}!`);
+    // An elemental rider on the blow (elementals: "bonus_damage" on the
+    // monster) — its own die, its own guard check, its own float.
+    if (m.bonus_damage && target.alive && target.hp > 0) {
+      const bd = m.bonus_damage;
+      const guard = this.game.elementGuard(target, bd.element);
+      if (guard?.kind === 'immune') {
+        this.game.log(`The ${bd.element} crackles over ${target.name} — the ${guard.name} drinks it whole.`, 'good');
+      } else {
+        let extra = Math.max(1, roll(bd.dice));
+        let guardText = '';
+        if (guard?.kind === 'resist') { extra = Math.max(1, Math.floor(extra / 2)); guardText = ` (${guard.name} turns half aside)`; }
+        target.hp -= extra;
+        this.fxOn(target, `-${extra} ${bd.element}`, '#e0912f');
+        this.game.log(`${bd.element} sears ${target.name} for ${extra} more (${bd.dice} ${bd.element} — the ${m.name}'s touch)${guardText}!`);
+        if (target.hp <= 0) { this.downHero(target, { attack: true }); this.riposte(m, target); return; }
+      }
+    }
+    // Splash (the efreet's burning presence): heroes beside the struck one
+    // catch the element too, each with their own float and guard.
+    if (m.splash && target.alive) {
+      const tcS = this.combatants.find(cc => cc.ref === target);
+      const near = tcS ? this.heroes().filter(h => h.ref.alive && h.ref !== target
+        && Math.abs(h.x - tcS.x) + Math.abs(h.y - tcS.y) === 1) : [];
+      for (const h of near) {
+        const guard = this.game.elementGuard(h.ref, m.splash.element);
+        if (guard?.kind === 'immune') { this.game.log(`The ${m.splash.element} washes over ${h.ref.name} — the ${guard.name} drinks it whole.`, 'good'); continue; }
+        let sp = Math.max(1, roll(m.splash.dice));
+        if (guard?.kind === 'resist') sp = Math.max(1, Math.floor(sp / 2));
+        h.ref.hp -= sp;
+        this.particleFx(h.x, h.y, 'wisp', '#ff8c3a');
+        this.fxOn(h.ref, `-${sp} splash`, '#e0912f');
+        this.game.log(`${m.splash.element} splashes onto ${h.ref.name} for ${sp} (${m.splash.dice} — beside the ${m.name})${guard?.kind === 'resist' ? ` — ${guard.name} halves it` : ''}!`);
+        if (h.ref.hp <= 0) this.downHero(h.ref, { attack: true });
+      }
+    }
     // Mirror Ward / Bastion Veil: a share of the wound flies back at its source.
     const mirror = (target.timedBuffs ?? []).filter(b => b.reflect > 0).sort((a, b) => b.reflect - a.reflect)[0];
     if (mirror && m.hp > 0) {
@@ -2403,11 +2925,64 @@ export class Battle {
     }
     if (target.hp <= 0) {
       this.downHero(target, { attack: true });
-    } else if (m.inflicts) {
+    } else {
       const tc = this.combatants.find(cc => cc.ref === target);
-      if (tc) this.tryInflict(tc, m.inflicts.condition, m.inflicts.rounds, m.inflicts.dc);
+      if (tc && m.inflicts) this.tryInflict(tc, m.inflicts.condition, m.inflicts.rounds, m.inflicts.dc, this.combatants.find(cc => cc.ref === m)?.uid);
+      if (tc && m.drains) this.monsterDrain(m, tc, dmg);
     }
     this.riposte(m, target);
+  }
+
+  // Warding buffs drink an incoming wound, by name: absorb pools first,
+  // then (for melee, via betweenPools) the blow-only passives, then flat
+  // reduction, halving, and Bedrock. Shared by melee and abilities.
+  soakDamage(target, dmg, bits, opts = {}) {
+    for (const b of target.timedBuffs ?? []) {
+      if (!(b.absorb > 0) || dmg <= 0) continue;
+      const sip = Math.min(b.absorb, dmg);
+      b.absorb -= sip; dmg -= sip;
+      bits.push(`${b.name} drinks ${sip}${b.absorb <= 0 ? ' and is spent' : ''}`);
+    }
+    if (opts.betweenPools) dmg = opts.betweenPools(dmg);
+    for (const b of target.timedBuffs ?? []) {
+      if (b.reduce > 0 && dmg > 0) { const cut = Math.min(b.reduce, dmg); dmg -= cut; bits.push(`${b.name} turns ${cut} aside`); }
+    }
+    const halver = (target.timedBuffs ?? []).find(b => b.halve);
+    if (halver && dmg > 1) { const was = dmg; dmg = Math.ceil(dmg / 2); bits.push(`${halver.name} halves ${was} → ${dmg}`); }
+    if (target.bedrock && dmg > 1) { bits.push(`${target.rite?.abilityName ?? 'Bedrock'}: ${dmg} → 1`); dmg = 1; }
+    return Math.max(0, dmg);
+  }
+
+  // Life drain (wight, spectre, vampire — the designer's max-HP ruling):
+  // a failed CON save shrinks the hero's MAXIMUM HP until a full rest or
+  // the temple restores it. "level" drains what a level gave (the class
+  // hit die + CON, rolled); "damage" drains what the blow just dealt;
+  // dice roll themselves. heals: true — the monster drinks what it takes.
+  monsterDrain(m, tc, dealt) {
+    const target = tc.ref;
+    const d = m.drains;
+    const { saved, text } = this.abilitySave(tc, 'con', d.dc ?? 14);
+    if (saved) {
+      this.fxOn(target, 'resisted', '#9a94a8');
+      this.game.log(`${target.name}'s life holds fast against the ${m.name}'s drain (${text}).`, 'good');
+      return;
+    }
+    let amount;
+    if (d.amount === 'level') amount = this.game.rollHp(target.cls, abilityMod(target.abilities.con)).gain;
+    else if (d.amount === 'damage') amount = Math.max(1, dealt ?? 1);
+    else amount = Math.max(1, roll(d.amount));
+    amount = Math.min(amount, Math.max(0, target.maxHp - 1)); // drained to the last breath, never past it
+    if (amount <= 0) return;
+    target.maxHp -= amount;
+    target.hp = Math.min(target.hp, target.maxHp);
+    target.drained = (target.drained ?? 0) + amount;
+    audio.play('level_drain');
+    this.fxOn(target, `LIFE DRAINED −${amount}`, '#b03a8e');
+    this.game.log(`The ${m.name} drains the life from ${target.name} — ${amount} maximum HP torn away (${text})! A full rest or the temple restores it.`, 'death');
+    if (d.heals && m.hp > 0) {
+      const heal = Math.min(amount, (m.maxHp ?? m.hp) - m.hp);
+      if (heal > 0) { m.hp += heal; this.fxOn(m, `+${heal}`, '#c03050'); this.game.log(`The ${m.name} drinks what it stole — ${heal} HP.`, 'death'); }
+    }
   }
 
   // Runic Riposte (Bladesong verb): a monster's blow that lands on the
@@ -2463,8 +3038,7 @@ export class Battle {
       this.surgeDone = true;   // no second offer for the same swing
       this.monsterAttack(r.m, r.target);
       if (this.pendingReaction) return; // the Stand asks next — wait again
-      if (this.checkEnd()) return;
-      this.nextTurn();
+      this.resumeAfterBlow(); // a multi-attacker's chain picks back up here
       return;
     }
     if (accept) {
@@ -2483,8 +3057,7 @@ export class Battle {
     } else {
       this.applyMonsterHit(r.m, r.target, r.dmg);
     }
-    if (this.checkEnd()) return;
-    this.nextTurn();
+    this.resumeAfterBlow(); // a multi-attacker's chain picks back up here
   }
 
   // ---- The brink (magic v2): every way a hero can hit 0 HP funnels here.
@@ -2552,6 +3125,12 @@ export class Battle {
     if (c) {
       c.diedAt = performance.now(); // the renderer shows the body falling
       this.addFx(c.x, c.y, 'slain!', '#e0483a');
+      // Death burst (the black slaad): the corpse detonates — don't stand
+      // next to the kill. Heroes in the wash save for half.
+      if (monster.death_burst && !monster.burst) {
+        monster.burst = true; // once, however many code paths reach slay
+        this.deathBurst(monster, c);
+      }
     }
     if (this.game.arena) {
       this.game.log(`The ${monster.name} collapses. (No XP in the training arena.)`, 'good');
@@ -2564,6 +3143,30 @@ export class Battle {
     if (this.game.depth === 'boss' && monster.id === this.game.data.dungeon.boss.monster) {
       this.game.victory = true; // the run is won — the map shows the banner when the fight ends
       this.game.log(`The ${monster.name} is destroyed! The endless dark is broken — the party has conquered the dungeon!`, 'good');
+    }
+  }
+
+  // The corpse detonates (death_burst): every hero within `area` of the
+  // body saves for half of the dice, guards and wards drinking by name.
+  deathBurst(monster, c) {
+    const db = monster.death_burst;
+    const burstSprite = db.element === 'frost' ? 'frost' : db.element === 'lightning' ? 'holy' : 'fire';
+    const color = { fire: '#ff5a2a', frost: '#9fd8ff', lightning: '#e8e07a', poison: '#7ec850' }[db.element] ?? '#ff5a2a';
+    this.emitSpellFx({ x: c.x, y: c.y }, { area: db.area ?? 1, type: 'damage', fx: { kind: 'burst', burst: burstSprite, color } }, c.x, c.y);
+    if (db.element) audio.play(`spell_${db.element === 'frost' ? 'frost' : db.element === 'lightning' ? 'lightning' : 'fire'}`);
+    this.game.log(`The ${monster.name} BURSTS as it dies${db.element ? ` — ${db.element} washes everything within ${db.area ?? 1}` : ''}!`, 'death');
+    for (const h of this.heroes()) {
+      if (!h.ref.alive || this.dist(h.x, h.y, c.x, c.y) > (db.area ?? 1)) continue;
+      const raw = Math.max(1, roll(db.dice));
+      const { saved, text } = db.save ? this.abilitySave(h, db.save, db.dc ?? 14) : { saved: false, text: '' };
+      const dmg = saved ? Math.floor(raw / 2) : raw;
+      if (saved && dmg <= 0) {
+        this.fxOn(h.ref, 'resisted', '#9a94a8');
+        this.game.log(`${h.ref.name} dives clear of the burst (${text}).`);
+        continue;
+      }
+      const bits = [`death burst ${db.dice} → ${raw}${saved ? `, halved — ${text}` : text ? ` · ${text}` : ''}`];
+      this.abilityHit(monster, h, dmg, db.element, bits);
     }
   }
 

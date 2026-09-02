@@ -15,7 +15,7 @@ const HERO_FIELDS = ['name', 'level', 'row', 'xp', 'hp', 'maxHp', 'sp', 'alive',
   'look', 'lane', 'focusType', 'gift', 'bonusAbility', 'favored', 'favoredPicks',
   'timedBuffs', 'counters', 'rite', 'spellbook', 'prepared', 'knownSpells',
   'formerBook', 'studyOwed', 'bonusPicksTaken', 'spentRest', 'prepFresh',
-  'equipment', 'quiver', 'conditions'];
+  'equipment', 'quiver', 'conditions', 'drained'];
 
 function classIdOf(data, ch) {
   return Object.keys(data.classes.classes).find(k => data.classes.classes[k] === ch.cls);

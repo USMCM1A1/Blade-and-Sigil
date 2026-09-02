@@ -1,8 +1,9 @@
 {
-  "_comment": "Conditions (afflictions and lingering effects). 'effect': damage = lose 'dice' HP per tick · skip = lose the turn · stat = while it lasts, the listed modifiers apply (hit / dmg / ac / saves — negative numbers weaken; the combat log names the condition beside the number) · slow = acts on even rounds only, like a speed-2 monster. 'breaks_on_damage': true (Sleep) = any damage shakes it off. In battle a condition ticks at the START of the afflicted creature's own initiative turn. 'lingers': false = it expires when the battle ends; true = it follows you onto the map, ticking every 'map_tick_every' map turns (camp is 50 turns — sleep off a poison at your peril). 'save': which ability resists when something tries to inflict it (monsters use their save bonus). 'color' paints the floating text and status pips. Magic v3 (2026-08-28) added sleep/slowed/weakened/frightened/blinded — monsters' 'inflicts' and gear 'immune' lists may use them too. Edit freely and refresh!",
+  "_comment": "Conditions (afflictions and lingering effects). 'effect': damage = lose 'dice' HP per tick · skip = lose the turn · stat = while it lasts, the listed modifiers apply (hit / dmg / ac / saves — negative numbers weaken; the combat log names the condition beside the number) · slow = acts on even rounds only, like a speed-2 monster. 'breaks_on_damage': true (Sleep) = any damage shakes it off. In battle a condition ticks at the START of the afflicted creature's own initiative turn. 'lingers': false = it expires when the battle ends; true = it follows you onto the map, ticking every 'map_tick_every' map turns (camp is 50 turns — sleep off a poison at your peril). 'save': which ability resists when something tries to inflict it (monsters use their save bonus). 'color' paints the floating text and status pips. Magic v3 (2026-08-28) added sleep/slowed/weakened/frightened/blinded — monsters' 'inflicts' and gear 'immune' lists may use them too. Edit freely and refresh! | 'icon' (2026-09-02): the emoji badge drawn on battle tiles and sidebar cards — swap any glyph freely; no icon falls back to a colored pip. | 'fear': true (2026-09-02) = behavioral fear: the afflicted cannot move toward whoever caused it (the engine remembers the source).",
   "conditions": {
     "burning": {
       "name": "Burning",
+      "icon": "🔥",
       "effect": "damage",
       "dice": "1d4",
       "lingers": false,
@@ -11,6 +12,7 @@
     },
     "poison": {
       "name": "Poisoned",
+      "icon": "🤢",
       "effect": "damage",
       "dice": "1d3",
       "lingers": true,
@@ -21,6 +23,7 @@
     },
     "exhaustion": {
       "name": "Exhausted",
+      "icon": "💫",
       "effect": "skip",
       "lingers": false,
       "save": "con",
@@ -29,6 +32,7 @@
     },
     "paralysis": {
       "name": "Paralyzed",
+      "icon": "⛓",
       "effect": "skip",
       "lingers": false,
       "save": "wis",
@@ -37,6 +41,7 @@
     },
     "sleep": {
       "name": "Asleep",
+      "icon": "💤",
       "effect": "skip",
       "breaks_on_damage": true,
       "lingers": false,
@@ -46,6 +51,7 @@
     },
     "slowed": {
       "name": "Slowed",
+      "icon": "🐌",
       "effect": "slow",
       "lingers": false,
       "save": "dex",
@@ -54,6 +60,7 @@
     },
     "weakened": {
       "name": "Weakened",
+      "icon": "🥀",
       "effect": "stat",
       "hit": -2,
       "dmg": -2,
@@ -64,16 +71,19 @@
     },
     "frightened": {
       "name": "Frightened",
+      "icon": "😱",
       "effect": "stat",
       "hit": -2,
       "saves": -2,
       "lingers": false,
       "save": "wis",
       "color": "#c8b8e8",
-      "description": "Cowed — −2 to hit and −2 on every save"
+      "description": "Cowed — −2 to hit, −2 on every save, and no step may close the distance to the source of the terror",
+      "fear": true
     },
     "blinded": {
       "name": "Blinded",
+      "icon": "✨",
       "effect": "stat",
       "hit": -4,
       "lingers": false,

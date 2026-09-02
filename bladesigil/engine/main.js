@@ -1,7 +1,7 @@
 // Boot: load data files, build the game, wire input, run the render loop.
 
 import { loadJSON, showFatal } from './loader.js';
-import { Game, validateItems } from './game.js';
+import { Game, validateItems, validateMonsters } from './game.js';
 import { Renderer, preloadImages } from './render.js';
 import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding, maybeOpenChoice, choiceOpen, choicePick, togglePlaytest, playtestOpen, levelupOpen, dismissLevelup, toggleSpellbook, spellbookOpen, flipToSheet, flipToBook, toggleMarching, marchingOpen } from './ui.js';
 import { validateProgression } from './progression.js';
@@ -39,6 +39,7 @@ async function boot() {
   validateProgression(data); // friendly errors for progression.json typos
   validateMagic(data);       // …and for spells.json / scroll items
   validateItems(data);       // …and for items.json (tiers, immunities, potion effects)
+  validateMonsters(data);    // …and for monsters.json (families, abilities, danger fields)
   validateDungeon(data);     // …and for every dungeon tier's roster/loot/traps
   const { def: partyDef, run } = await choosePartyDef(data);
   const game = new Game({ ...data, party: { ...party, party: partyDef } });

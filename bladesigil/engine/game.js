@@ -44,13 +44,62 @@ export function validateItems(data) {
       }
     }
   }
+}
+
+// The bestiary's rules (special-abilities pass, 2026-09-01): family/element
+// tags, the passive danger fields (attacks, regen, drains, death_burst,
+// resist_physical, touch, bonus_damage, splash), and the active "abilities"
+// list — every mistake named with its valid options.
+export function validateMonsters(data) {
+  const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
+  const FAMILIES = ['undead', 'outsider', 'beast', 'vermin', 'humanoid', 'construct', 'ooze', 'aberration', 'dragon', 'elemental'];
+  const KINDS = ['edged', 'piercing', 'blunt'];
+  const ABILITY_TYPES = ['bolt', 'breath', 'afflict', 'haste', 'spell'];
+  const SAVES = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
+  const DICE = /^\d+d\d+([+-]\d+)?$/;
+  const conditionIds = Object.keys(data.conditions.conditions).filter(k => !k.startsWith('_'));
+  const err = (id, msg) => { throw new DataError('data/monsters.json', `"${id}" ${msg}`); };
   for (const [id, m] of Object.entries(data.monsters.monsters)) {
-    if (m.family && !FAMILIES.includes(m.family)) {
-      throw new DataError('data/monsters.json', `"${id}" has family "${m.family}". Valid: ${FAMILIES.join(', ')}.`);
+    if (id.startsWith('_')) continue;
+    if (m.family && !FAMILIES.includes(m.family)) err(id, `has family "${m.family}". Valid: ${FAMILIES.join(', ')}.`);
+    if (m.element && !ELEMENTS.includes(m.element)) err(id, `attacks with element "${m.element}". Valid: ${ELEMENTS.join(', ')}.`);
+    if (m.attacks !== undefined && (!Number.isInteger(m.attacks) || m.attacks < 1)) err(id, `has attacks ${JSON.stringify(m.attacks)} — a whole number of swings per turn, 1 or more.`);
+    if (m.inflicts && !conditionIds.includes(m.inflicts.condition)) err(id, `inflicts "${m.inflicts.condition}". Valid conditions: ${conditionIds.join(', ')}.`);
+    for (const k of m.resist_physical ?? []) {
+      if (!KINDS.includes(k)) err(id, `resists physical "${k}". Valid: ${KINDS.join(', ')}.`);
     }
-    if (m.element && !ELEMENTS.includes(m.element)) {
-      throw new DataError('data/monsters.json', `"${id}" attacks with element "${m.element}". Valid: ${ELEMENTS.join(', ')}.`);
+    if (m.regen && (!Number.isInteger(m.regen.amount) || m.regen.amount < 1)) err(id, `regen needs {amount: N} — whole HP per turn.`);
+    for (const e of m.regen?.blocked_by ?? []) {
+      if (!ELEMENTS.includes(e)) err(id, `regen is blocked_by "${e}". Valid elements: ${ELEMENTS.join(', ')}.`);
     }
+    if (m.drains) {
+      const a = m.drains.amount;
+      if (a !== 'level' && a !== 'damage' && !DICE.test(a ?? '')) err(id, `drains amount ${JSON.stringify(a)} — use dice ("1d4"), "level" (a level's worth of HP), or "damage" (what the blow dealt).`);
+    }
+    if (m.bonus_damage && (!DICE.test(m.bonus_damage.dice ?? '') || !ELEMENTS.includes(m.bonus_damage.element))) err(id, `bonus_damage needs {dice, element} — dice like "2d6", element from: ${ELEMENTS.join(', ')}.`);
+    if (m.splash && (!DICE.test(m.splash.dice ?? '') || !ELEMENTS.includes(m.splash.element))) err(id, `splash needs {dice, element} — dice like "1d6", element from: ${ELEMENTS.join(', ')}.`);
+    if (m.death_burst && (!DICE.test(m.death_burst.dice ?? '') || (m.death_burst.element && !ELEMENTS.includes(m.death_burst.element)))) err(id, `death_burst needs {dice, element?, area?, save?, dc?} — dice like "3d6", element from: ${ELEMENTS.join(', ')}.`);
+    if (m.fear_aura && (!Number.isInteger(m.fear_aura.dc) || !Number.isInteger(m.fear_aura.rounds) || m.fear_aura.rounds < 1)) err(id, `fear_aura needs {dc: N, rounds: N} — a WIS save DC to close with or stand beside it, and how long the fright lasts.`);
+    (m.abilities ?? []).forEach((ab, i) => {
+      const where = `ability ${i + 1}${ab.name ? ` (${ab.name})` : ''}`;
+      if (!ABILITY_TYPES.includes(ab.type)) err(id, `${where} has type "${ab.type}". Valid: ${ABILITY_TYPES.join(', ')}.`);
+      if (ab.save && !SAVES.includes(ab.save)) err(id, `${where} saves with "${ab.save}". Valid: ${SAVES.join(', ')}.`);
+      if ((ab.type === 'bolt' || ab.type === 'breath') && !DICE.test(ab.dice ?? '')) err(id, `${where} needs dice like "3d6".`);
+      if (ab.type === 'afflict') {
+        if (!conditionIds.includes(ab.condition)) err(id, `${where} inflicts "${ab.condition}". Valid conditions: ${conditionIds.join(', ')}.`);
+        if (ab.targets && ab.targets !== 'party') err(id, `${where} targets "${ab.targets}" — an afflict aims at one hero unless targets is "party".`);
+      }
+      if (ab.type === 'haste' && ab.targets && !['self', 'allies'].includes(ab.targets)) err(id, `${where} targets "${ab.targets}". A haste targets "self" or "allies".`);
+      if (ab.type === 'spell') {
+        const s = data.spells.spells[ab.id];
+        if (!s) err(id, `${where} casts unknown spell "${ab.id}" — check data/spells.json.`);
+        if (!['damage', 'afflict'].includes(s.type)) err(id, `${where} casts "${ab.id}" (a ${s.type} spell) — monsters cast only damage and afflict spells for now.`);
+      }
+      if (ab.element && !ELEMENTS.includes(ab.element)) err(id, `${where} uses element "${ab.element}". Valid: ${ELEMENTS.join(', ')}.`);
+      for (const [k, v] of Object.entries({ range: ab.range, area: ab.area, cooldown: ab.cooldown, uses: ab.uses, rounds: ab.rounds })) {
+        if (v !== undefined && (!Number.isInteger(v) || v < 0)) err(id, `${where} has ${k} ${JSON.stringify(v)} — a whole number.`);
+      }
+    });
   }
 }
 
@@ -102,6 +151,15 @@ export class Game {
     for (const ch of this.party) {
       if (!ch.alive) continue;
       ch.spentRest = {};
+      // Drained life (the wight's touch) flows back with a full night's
+      // sleep — the designer's ruling: dread in the moment, no permanent
+      // unfixable loss.
+      if (ch.drained > 0) {
+        ch.maxHp += ch.drained;
+        ch.hp = Math.min(ch.hp + ch.drained, ch.maxHp);
+        this.log(`${ch.name}'s drained life returns with the rest — ${ch.drained} maximum HP restored.`, 'good');
+        ch.drained = 0;
+      }
       // A Stance (v1.1) lasts exactly until this moment: the verse fades
       // with the rest, and the hero sings it anew for its flat cost.
       const held = activeStances(ch);
@@ -426,6 +484,7 @@ export class Game {
     if (this.gold < price) { this.log(`The offering is ${price} gold — the party cannot pay.`, 'info'); return false; }
     this.gold -= price;
     ch.alive = true;
+    if (ch.drained > 0) { ch.maxHp += ch.drained; ch.drained = 0; } // the altar restores what the undead drank
     ch.hp = ch.maxHp;
     ch.sp = ch.maxSp;
     ch.conditions = [];
@@ -1867,7 +1926,10 @@ export class Game {
   // Lingering conditions (poison) tick every `map_tick_every` map turns.
   conditionDef(id) { return this.data.conditions.conditions[id]; }
 
-  applyCondition(ref, id, rounds) {
+  // `source` (optional): the battle-local uid of the combatant that caused
+  // it — fear conditions ("fear": true in conditions.json) use it to forbid
+  // approaching whoever scared you. Battle-only; never serialized meaningfully.
+  applyCondition(ref, id, rounds, source) {
     const def = this.conditionDef(id);
     if (!def) return;
     // Protective gear (itemization v2): a worn piece with "immune": ["poison"]
@@ -1889,8 +1951,14 @@ export class Game {
       return;
     }
     const existing = ref.conditions.find(c => c.id === id);
-    if (existing) existing.rounds = Math.max(existing.rounds, rounds); // re-poisoning refreshes, no stacking
-    else ref.conditions.push({ id, rounds, mapCounter: 0 });
+    if (existing) {
+      existing.rounds = Math.max(existing.rounds, rounds); // re-poisoning refreshes, no stacking
+      if (source !== undefined) existing.source = source;  // fresh terror, fresh source
+    } else {
+      const cond = { id, rounds, mapCounter: 0 };
+      if (source !== undefined) cond.source = source;
+      ref.conditions.push(cond);
+    }
     this.log(`${ref.name} is ${def.name.toLowerCase()}!`, 'death');
   }
 

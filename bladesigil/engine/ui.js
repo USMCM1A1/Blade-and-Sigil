@@ -1424,10 +1424,11 @@ export function updateUI(game) {
       u.spFill.style.transform = `scaleX(${Math.max(0, ch.sp / ch.maxSp)})`;
       u.spLabel.textContent = `SP ${ch.sp}/${ch.maxSp}`;
     }
-    // Active conditions, colored per data/conditions.json.
+    // Active conditions, colored per data/conditions.json — each badge leads
+    // with its emoji "icon" (same glyph the battle tiles wear).
     const badges = ch.conditions.map(c => {
       const def = game.conditionDef(c.id);
-      return def ? `<span style="color:${def.color}">${def.name}</span>` : '';
+      return def ? `<span style="color:${def.color}" title="${def.description ?? ''}">${def.icon ? def.icon + ' ' : ''}${def.name}</span>` : '';
     }).concat(activeStances(ch).map(b => `<span style="color:#d4a94e" title="a Stance — held until the next full rest">♪ ${b.name}</span>`)).join(' · ');
     if (u.status.innerHTML !== badges) u.status.innerHTML = badges;
   }

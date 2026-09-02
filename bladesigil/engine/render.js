@@ -456,16 +456,36 @@ export class Renderer {
         ctx.fillText('hidden', px + CELL - 4, py + 2);
         ctx.globalAlpha = 0.4;
       }
-      // Condition pips along the square's top edge (not on corpses).
-      (dying ? [] : c.ref.conditions ?? []).forEach((cond, ci) => {
-        const cdef = this.game.conditionDef(cond.id);
-        if (!cdef) return;
-        ctx.fillStyle = cdef.color;
-        ctx.fillRect(px + 4 + ci * 10, py + 3, 7, 7);
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(px + 4.5 + ci * 10, py + 3.5, 7, 7);
-      });
+      // Condition badges along the square's top-left (not on corpses):
+      // each condition's emoji from conditions.json "icon", outlined like
+      // the 💤 badge so it reads on any ground. A condition without an
+      // icon keeps the old colored pip. (💤 unaware stays top-RIGHT.)
+      {
+        const iconSize = Math.max(12, Math.round(CELL / 4));
+        let ix = px + 3;
+        (dying ? [] : c.ref.conditions ?? []).forEach(cond => {
+          const cdef = this.game.conditionDef(cond.id);
+          if (!cdef) return;
+          if (cdef.icon) {
+            ctx.font = `bold ${iconSize}px Georgia`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#000';
+            ctx.strokeText(cdef.icon, ix, py + 1);
+            ctx.fillStyle = cdef.color;
+            ctx.fillText(cdef.icon, ix, py + 1);
+            ix += ctx.measureText(cdef.icon).width + 2;
+          } else {
+            ctx.fillStyle = cdef.color;
+            ctx.fillRect(ix, py + 3, 7, 7);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(ix + 0.5, py + 3.5, 7, 7);
+            ix += 10;
+          }
+        });
+      }
 
       // Name + HP bar in the square's footer.
       ctx.fillStyle = c.kind === 'hero' ? '#a8c0e8' : '#e8a8a8';
@@ -540,6 +560,7 @@ export class Renderer {
         else if (b.assassinateGuarded(a, foe)) tags.push('💤 unaware but GUARDED — no Assassinate');
         else if (b.isUnaware(foe, a.ref)) tags.push('💤 unaware');
         if (b.isFlanked(foe)) tags.push('flanked');
+        if (foe.ref.resist_physical?.includes(b.weaponKind(a.ref.weapon))) tags.push(`resists ${b.weaponKind(a.ref.weapon)} — half damage`);
         const pct = Math.round(Math.max(5, Math.min(95, (21 + b.attackBonus(a.ref, foe.ref) - (10 + foe.ref.ac)) / 20 * 100)));
         if (foe.ref.magic_to_hit && !a.ref.weapon.enchanted) {
           panelLine(`bump the ${foe.ref.name}: NO EFFECT — it needs magic to hit!`, '13px Georgia', '#e08080', 16);
@@ -565,7 +586,7 @@ export class Renderer {
         if (p.kind === 'shoot') {
           odds = tgt.ref.magic_to_hit && !a.ref.weapon.enchanted
             ? ' · NO EFFECT — it needs magic to hit!'
-            : ` · ${pct((21 + b.attackBonus(a.ref, tgt.ref) - (10 + tgt.ref.ac)) / 20)} to hit`;
+            : ` · ${pct((21 + b.attackBonus(a.ref, tgt.ref) - (10 + tgt.ref.ac)) / 20)} to hit${tgt.ref.resist_physical?.includes(b.weaponKind(a.ref.weapon)) ? ` (resists ${b.weaponKind(a.ref.weapon)} — half damage)` : ''}`;
         } else if (p.kind === 'deathblow') {
           odds = ' · an automatic critical — it cannot miss';
         } else if (p.spell) {
