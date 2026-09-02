@@ -3,7 +3,7 @@
 // toggled with I, E, or C).
 
 import { abilityMod } from './rules.js';
-import { classProg, laneOf, passiveOf, riteTier, favoredPicksOwed, groupOfType, focusGroupOf, focusList, focusName } from './progression.js';
+import { classProg, laneOf, passiveOf, riteTier, favoredPicksOwed, groupOfType, focusGroupOf, focusList, focusName, growthOptions, growthPicks } from './progression.js';
 import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, activeStances, spellSchool, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
 
@@ -294,6 +294,32 @@ function renderChoice(game, choice, after) {
       </div>`;
     for (const b of root.querySelectorAll('[data-ability]')) {
       b.onclick = () => { game.applyChoice(choice, b.dataset.ability); close(); after?.(); };
+    }
+  } else if (choice.type === 'growth') {
+    // Lane growth (2026-09-02): the lane's own list, minus what's taken.
+    // Deliberately more options than picks — what you leave behind is what
+    // makes your hero different from the last one you played.
+    const lane = laneOf(game.data, ch);
+    const opts = growthOptions(game.data, ch);
+    const held = growthPicks(game.data, ch);
+    root.innerHTML = `
+      <div class="cr-panel ch-panel">
+        <div class="cr-step">${lane?.name ?? 'The lane'} deepens</div>
+        <div class="ch-head"><img src="${portrait}" alt="">
+          <div><b>${ch.name}</b> has drilled long enough to add something lasting.${held.length
+        ? ` Already held: ${held.map(o => o.name).join(', ')}.`
+        : ''} This one is permanent.</div></div>
+        <div class="cr-choices">
+          ${opts.map((o, i) => `
+            <button class="cr-choice" data-growth="${o.id}">
+              <b>${i + 1}. ${o.name}</b>
+              ${o.blurb ? `<span>${o.blurb}</span>` : ''}
+            </button>`).join('')}
+        </div>
+        <div class="cr-note">You will not take them all — choose what this hero becomes.</div>
+      </div>`;
+    for (const b of root.querySelectorAll('[data-growth]')) {
+      b.onclick = () => { game.applyChoice(choice, b.dataset.growth); close(); after?.(); };
     }
   }
 }
@@ -1105,6 +1131,10 @@ function renderPath(game, ch) {
       ch.level >= prog.fork_level ? 'awaits!' : `at level ${prog.fork_level}`);
   } else {
     rows += row(true, lane.name, lane.blurb);
+    // Lane growth: what this hero chose to become (Path & Powers panel).
+    for (const o of growthPicks(game.data, ch)) {
+      rows += row(true, o.name, o.blurb ?? '');
+    }
     if (lane.passive) {
       rows += row(true, passiveBlurb(lane.passive).split(':')[0],
         passiveBlurb(lane.passive).split(': ')[1] + (focusList(game.data, ch).length

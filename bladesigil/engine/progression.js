@@ -80,6 +80,64 @@ export function focusPicksOwed(data, ch) {
   return Math.min(Math.max(0, granted - taken), available);
 }
 
+// ---- Lane growth (designer session 2026-09-02) ----
+// A lane may carry a "growth" block in progression.json: {levels, options}.
+// The hero picks ONE option at each level, and every list holds MORE options
+// than picks — so two heroes of the same lane end up genuinely different.
+// Weapon Focus is the same idea with its own older machinery; the Ranger has
+// none because Favored Enemy already IS a growth list.
+export function growthBlock(data, ch) { return laneOf(data, ch)?.growth ?? null; }
+
+// The option ids this hero has taken.
+export function growthTaken(ch) { return ch.growth ?? []; }
+
+// Options still on the table (the taken ones drop out, so the list empties).
+export function growthOptions(data, ch) {
+  const g = growthBlock(data, ch);
+  if (!g) return [];
+  const taken = growthTaken(ch);
+  return (g.options ?? []).filter(o => !taken.includes(o.id));
+}
+
+export function growthPicksOwed(data, ch) {
+  const g = growthBlock(data, ch);
+  if (!g) return 0;
+  const granted = (g.levels ?? []).filter(l => ch.level >= l).length;
+  const owed = Math.max(0, granted - growthTaken(ch).length);
+  return Math.min(owed, growthOptions(data, ch).length); // never owe what cannot be taken
+}
+
+// How many picks this hero should hold at their CURRENT level — the bench
+// uses it to hand growth back when it drops someone below a growth level.
+export function growthPicksAllowed(data, ch) {
+  const g = growthBlock(data, ch);
+  return g ? (g.levels ?? []).filter(l => ch.level >= l).length : 0;
+}
+
+// The taken options themselves, so consumers can read their effect fields.
+export function growthPicks(data, ch) {
+  const g = growthBlock(data, ch);
+  if (!g) return [];
+  return growthTaken(ch).map(id => (g.options ?? []).find(o => o.id === id)).filter(Boolean);
+}
+
+// Does this hero hold a growth pick carrying `field`? Returns the value
+// (summed for numbers, true for flags) — the one call every consumer uses.
+export function growthEffect(data, ch, field) {
+  let out = 0, flag = false;
+  for (const o of growthPicks(data, ch)) {
+    const v = o[field];
+    if (v === undefined) continue;
+    if (typeof v === 'number') out += v; else flag = true;
+  }
+  return out || flag;
+}
+
+// Growth picks whose `field` equals `value` (brace_vs: 'spell', refuse: 'poison').
+export function growthNamed(data, ch, field, value) {
+  return growthPicks(data, ch).find(o => o[field] === value) ?? null;
+}
+
 // ---- The level-10 ability boost (designer ruling 2026-09-02) ----
 // Every class gets +1 to an ability of the player's choice at each level
 // in progression.json → ability_boost.levels. Gear grants no ability
@@ -143,6 +201,53 @@ export function validateProgression(data) {
     }
     if (!Number.isInteger(boost.amount) || boost.amount < 1) {
       throw new DataError('data/progression.json', `"ability_boost" needs "amount": how many points the hero adds, a whole number 1 or more.`);
+    }
+  }
+  // Lane growth blocks: levels, unique option ids, known effect fields, and
+  // the rule that makes builds differ — more options than picks.
+  const GROWTH_FIELDS = ['id', 'name', 'blurb', 'brace_vs', 'brace_bonus', 'brace_no_shield',
+    'brace_allies', 'refuse', 'aura_ac', 'aura_reduce', 'aura_saves', 'aura_party',
+    'aura_refuse', 'vital_when', 'skill', 'find_range', 'search_turns', 'disarm_safe',
+    'chest_safe', 'vault_sense', 'saves'];
+  const VITAL_WHEN = ['poisoned', 'wounded', 'held', 'frightened', 'alone', 'bigger'];
+  const BRACE_VS = ['spell', 'trap', 'ranged'];
+  const condIds = Object.keys(data.conditions.conditions).filter(k => !k.startsWith('_'));
+  for (const [cid, c] of Object.entries(data.progression.classes ?? {})) {
+    for (const lane of c.lanes ?? []) {
+      const g = lane.growth;
+      if (!g) continue;
+      const where = `${cid} / ${lane.name}`;
+      if (!Array.isArray(g.levels) || !g.levels.length || !g.levels.every(l => Number.isInteger(l) && l >= 1 && l <= 20)) {
+        throw new DataError('data/progression.json', `${where}: "growth" needs "levels" — the character levels a pick is offered, e.g. [8, 14, 16].`);
+      }
+      if (!Array.isArray(g.options) || !g.options.length) {
+        throw new DataError('data/progression.json', `${where}: "growth" needs an "options" list — the choices offered at those levels.`);
+      }
+      if (g.options.length <= g.levels.length) {
+        throw new DataError('data/progression.json', `${where}: growth offers ${g.options.length} options for ${g.levels.length} picks. Give it MORE options than picks, or every hero of this lane ends up identical.`);
+      }
+      const ids = new Set();
+      for (const o of g.options) {
+        if (!o.id || !o.name) throw new DataError('data/progression.json', `${where}: every growth option needs an "id" and a "name".`);
+        if (ids.has(o.id)) throw new DataError('data/progression.json', `${where}: two growth options share the id "${o.id}" — ids must be unique.`);
+        ids.add(o.id);
+        for (const k of Object.keys(o)) {
+          if (!GROWTH_FIELDS.includes(k)) {
+            throw new DataError('data/progression.json', `${where}: growth option "${o.id}" has unknown field "${k}". Valid: ${GROWTH_FIELDS.join(', ')}.`);
+          }
+        }
+        if (o.vital_when && !VITAL_WHEN.includes(o.vital_when)) {
+          throw new DataError('data/progression.json', `${where}: growth option "${o.id}" has vital_when "${o.vital_when}". Valid: ${VITAL_WHEN.join(', ')}.`);
+        }
+        if (o.brace_vs && !BRACE_VS.includes(o.brace_vs)) {
+          throw new DataError('data/progression.json', `${where}: growth option "${o.id}" braces against "${o.brace_vs}". Valid: ${BRACE_VS.join(', ')}.`);
+        }
+        for (const f of ['refuse', 'aura_refuse']) {
+          if (o[f] && !condIds.includes(o[f])) {
+            throw new DataError('data/progression.json', `${where}: growth option "${o.id}" names condition "${o[f]}". Valid: ${condIds.join(', ')}.`);
+          }
+        }
+      }
     }
   }
   // Weapon Focus extra_levels, where a hero swears to another family.
@@ -332,6 +437,8 @@ export function pendingChoices(data, ch) {
   for (let i = 0; i < abilityPicksOwed(data, ch); i++) out.push({ type: 'ability', ch });
   // Weapon Focus: one family at the fork, another at each extra_level.
   for (let i = 0; i < focusPicksOwed(data, ch); i++) out.push({ type: 'focus', ch });
+  // Lane growth: the lane's own list widens at its growth levels.
+  for (let i = 0; i < growthPicksOwed(data, ch); i++) out.push({ type: 'growth', ch });
   // The Sorcerer's narrow gift: each unlocked spell level owes its picks,
   // and the blood remembers a wild pick at each bonus level.
   for (const owed of spellPicksOwed(data, ch)) {

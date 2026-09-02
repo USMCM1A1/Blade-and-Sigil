@@ -14,7 +14,7 @@ const SAVE_VERSION = 1;
 // (abilities-with-gear, ac, weapon, maxSp, hitBase…) are recomputed by
 // refreshDerived on load; battle-scoped fields are rebuilt by every fight.
 const HERO_FIELDS = ['name', 'level', 'row', 'xp', 'hp', 'maxHp', 'sp', 'alive',
-  'look', 'lane', 'focusType', 'focusTypes', 'abilityBoosts', 'gift', 'bonusAbility', 'favored', 'favoredPicks',
+  'look', 'lane', 'focusType', 'focusTypes', 'abilityBoosts', 'growth', 'gift', 'bonusAbility', 'favored', 'favoredPicks',
   'timedBuffs', 'counters', 'rite', 'spellbook', 'prepared', 'knownSpells',
   'formerBook', 'studyOwed', 'bonusPicksTaken', 'spentRest', 'prepFresh',
   'equipment', 'quiver', 'conditions', 'drained'];

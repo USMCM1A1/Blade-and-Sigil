@@ -4,7 +4,7 @@
 
 import { roll, d20, maxRoll, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
-import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName, focusMatches, groupOfType, focusName } from './progression.js';
+import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName, focusMatches, groupOfType, focusName, growthEffect, growthNamed, growthPicks } from './progression.js';
 import { spellCost, spellBuff, activeStances, unpreparedSpells, knownSpells, scaleSteps, giftOf } from './magic.js';
 import * as audio from './audio.js';
 
@@ -374,6 +374,15 @@ export class Battle {
   // A buff that plants the hero in place (Mirror Ward, Mountain's Heart).
   rootedBy(ref) { return (ref.timedBuffs ?? []).find(b => b.rooted) ?? null; }
 
+  // Are these two heroes standing next to each other? (game.js asks, for
+  // the Hearthstone aura's refusals; The Wide Hearth drops the requirement.)
+  adjacentAllies(a, b) {
+    if (growthEffect(this.game.data, a, 'aura_party')) return true;
+    const ac = this.combatants.find(cc => cc.ref === a);
+    const bc = this.combatants.find(cc => cc.ref === b);
+    return !!ac && !!bc && Math.abs(ac.x - bc.x) + Math.abs(ac.y - bc.y) === 1;
+  }
+
   // Warding Presence (Hearthstone passive): +saves for allies standing
   // beside the dwarf. game.heroSaveBonus asks here in battle.
   auraSaves(ref) {
@@ -383,7 +392,11 @@ export class Battle {
     for (const other of this.heroes()) {
       if (other === hc || !other.ref.alive) continue;
       const p = passiveOf(this.game.data, other.ref);
-      if (p?.id === 'warding_presence' && Math.abs(other.x - hc.x) + Math.abs(other.y - hc.y) === 1) bonus += p.saves ?? 1;
+      if (p?.id !== 'warding_presence') continue;
+      // The Wide Hearth (growth) drops the arm's-reach requirement.
+      const wide = growthEffect(this.game.data, other.ref, 'aura_party');
+      if (!wide && Math.abs(other.x - hc.x) + Math.abs(other.y - hc.y) !== 1) continue;
+      bonus += (p.saves ?? 1) + growthEffect(this.game.data, other.ref, 'aura_saves');
     }
     return bonus;
   }
@@ -587,6 +600,26 @@ export class Battle {
     return this.heroes().filter(h =>
       h.ref.alive && Math.abs(h.x - foeC.x) + Math.abs(h.y - foeC.y) === 1).length >= 2;
   }
+  // Blade Work growth: the extra openings a thief learns to read. Returns
+  // the name of the first one that fits (it becomes the log's reason), or
+  // null. 'unaware' and 'flanked' are checked before this by the caller.
+  growthVital(ch, foeC) {
+    const picks = growthPicks(this.game.data, ch).filter(o => o.vital_when);
+    if (!picks.length) return null;
+    const m = foeC.ref;
+    const has = id => (m.conditions ?? []).some(c => c.id === id);
+    const fits = {
+      poisoned: () => has('poison'),
+      wounded: () => m.hp * 2 <= (m.maxHp ?? m.hp),
+      held: () => has('paralysis') || has('sleep') || has('slowed'),
+      frightened: () => has('frightened'),
+      alone: () => this.isIsolated(foeC, this.combatants.find(cc => cc.ref === ch)),
+      bigger: () => (m.maxHp ?? m.hp) > ch.maxHp,
+    };
+    const hit = picks.find(o => fits[o.vital_when]?.());
+    return hit ? hit.name.toLowerCase() : null;
+  }
+
   // Lethality's demand: no OTHER party member beside the mark.
   isIsolated(foeC, attackerC) {
     return !this.heroes().some(h =>
@@ -644,7 +677,9 @@ export class Battle {
       this.game.log(`The ${monster.name} is unaware — but an ally stands beside it, and Lethality strikes only the isolated. No Assassinate.`, 'info');
     }
     const wasHidden = !!ch.hidden;
-    const vital = this.isUnaware(foeC, ch) ? 'unaware' : this.isFlanked(foeC) ? 'flanked' : null;
+    const vital = this.isUnaware(foeC, ch) ? 'unaware'
+      : this.isFlanked(foeC) ? 'flanked'
+        : this.growthVital(ch, foeC);
     ch.hidden = false;   // the strike itself steps out of the shadows
     foeC.aware = true;   // one way or another, they know NOW
     const die = d20();
@@ -2420,7 +2455,9 @@ export class Battle {
         bits.push(`${guard.name} turns half the ${element} aside`);
       }
     }
-    dmg = this.soakDamage(target, dmg, bits);
+    dmg = this.soakDamage(target, dmg, bits, {
+      betweenPools: d => this.braceSoak(target, d, bits, 'spell'),
+    });
     if (dmg <= 0) {
       this.fxOn(target, 'blocked', '#9a94a8');
       this.game.log(`${target.name} — the ward takes it all (${bits.join(' · ')}).`, 'good');
@@ -2854,13 +2891,12 @@ export class Battle {
       }
     }
     const soak = [];
-    // Braced Stance and Granite Skin only blunt BLOWS — abilities skip them,
-    // so they slot between the absorb pools and the hardening buffs here.
+    // Braced Stance and Granite Skin blunt BLOWS; growth picks may widen the
+    // stance to spellfire and to the ally beside you (handled in braceSoak).
     const p = passiveOf(this.game.data, target);
     dmg = this.soakDamage(target, dmg, soak, {
       betweenPools: d => {
-        const braced = p?.id === 'braced_stance' && this.game.hasShield(target) ? (p.reduce ?? 1) : 0;
-        if (braced) { d = Math.max(0, d - braced); soak.push(`shield turns ${braced} aside`); }
+        d = this.braceSoak(target, d, soak, 'melee');
         const granite = p?.id === 'granite_skin' && !m.element ? (p.reduce ?? 1) : 0;
         if (granite) { d = Math.max(0, d - granite); soak.push(`${passiveName(p, 'Granite Skin')} turns ${granite} aside`); }
         return d;
@@ -2939,6 +2975,42 @@ export class Battle {
   // Warding buffs drink an incoming wound, by name: absorb pools first,
   // then (for melee, via betweenPools) the blow-only passives, then flat
   // reduction, halving, and Bedrock. Shared by melee and abilities.
+  // Braced Stance and its growth. `source` is 'melee' (a blow) or 'spell'
+  // (a monster ability, breath or spell). The base stance only blunts blows
+  // and wants a shield; Spellguard and Ingrained Guard lift those limits,
+  // Deeper Stance adds to it, and Shieldwall lends it to the hero beside you.
+  braceSoak(target, dmg, bits, source) {
+    if (dmg <= 0) return dmg;
+    const D = this.game.data;
+    const bracer = (ref) => {
+      const p = passiveOf(D, ref);
+      if (p?.id !== 'braced_stance') return 0;
+      if (!this.game.hasShield(ref) && !growthEffect(D, ref, 'brace_no_shield')) return 0;
+      if (source !== 'melee' && !growthNamed(D, ref, 'brace_vs', source)) return 0;
+      return (p.reduce ?? 1) + growthEffect(D, ref, 'brace_bonus');
+    };
+    let cut = bracer(target);
+    let name = null;
+    if (cut) name = source === 'melee' ? 'shield' : growthNamed(D, target, 'brace_vs', source).name;
+    if (!cut) {
+      // Shieldwall: a braced ally standing next to you shares the guard.
+      const tc = this.combatants.find(cc => cc.ref === target);
+      for (const other of this.heroes()) {
+        if (!tc || other.ref === target || !other.ref.alive) continue;
+        if (Math.abs(other.x - tc.x) + Math.abs(other.y - tc.y) !== 1) continue;
+        const wall = growthNamed(D, other.ref, 'brace_allies', true) ?? (growthEffect(D, other.ref, 'brace_allies') ? growthPicks(D, other.ref).find(o => o.brace_allies) : null);
+        if (!wall) continue;
+        const share = bracer(other.ref);
+        if (share) { cut = share; name = `${other.ref.name}'s ${wall.name}`; break; }
+      }
+    }
+    if (!cut) return dmg;
+    const was = dmg;
+    dmg = Math.max(0, dmg - cut);
+    if (was !== dmg) bits.push(`${name} turns ${was - dmg} aside`);
+    return dmg;
+  }
+
   soakDamage(target, dmg, bits, opts = {}) {
     for (const b of target.timedBuffs ?? []) {
       if (!(b.absorb > 0) || dmg <= 0) continue;

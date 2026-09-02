@@ -1,5 +1,5 @@
 {
-  "_comment": "Class Progression (design doc v3): each class here gets a hard FORK at 'fork_level' into two lanes; classes absent from this file simply level along their base tables. Each lane: 'name' + 'archetype' (the name shown from capstone level on), 'blurb' (shown on the choice card), 'offsets' (permanent adds to the class table: hit = to-hit AND damage, ac = armor class, sp = spell points, detect = trap/secret %), 'passive' (always-on, from the passive list below), 'verb' (the signature action gained at its 'level'), 'capstone' (gained at its 'level'; numbers tunable), 'refinement' (upgrades the verb at its 'level'), and 'rite' (the Level 20 Rite, see below). PASSIVES: weapon_focus (+dmg with a chosen weapon category — the player picks which at the fork), braced_stance (-'reduce' damage taken per hit while a shield is worn), vital_strike, keen_senses, prepared_mind (the Wizard lane's spellbook: only prepared spells are castable; slots = 'slots_base' + max spell level; re-pick freely at each rest), overchannel (the Sorcerer lane: every cast costs 'discount' less SP, floor 1; knows only 'known_per_level' spells per spell level, picked on unlock), blessed_hands (+'heal' HP on every heal spell), sacred_weapon (+'dmg' divine damage on weapon hits). VERBS: rampage, guardians_stand, assassinate, vanish, arcane_insight (once per battle, your action: choose +'hit' to-hit, +'dc' save DC, or +'dmg' spell damage for the rest of the fight), overcast (toggle: pay 'cost_mult'x SP to cast a spell one level higher — +'extra_dice' damage/healing, +'dc_bonus' DC), mercy (free reaction: an ally cut to 0 HP immediately rises with 'dice' + WIS HP), zealous_strike (toggle: each landed melee hit spends 'cost' SP for +'dice' divine damage and 'heal' self-healing). CAPSTONES: rage, bulwark, lethality, set_trap, archmage (once per rest: cast ANY spellbook spell, prepared or not, for ALL remaining SP), twin_surge (once per rest: a spell resolves twice, then you are Exhausted a round), miracle (once per rest, ALL remaining SP, 'min_sp' minimum: the living are fully healed, the fallen rise at half), divine_inspiration (ALL remaining SP, 'min_sp' minimum: +'hit'/+'dmg'/+'ac' for 'rounds' rounds). REFINEMENTS: rampage_crits, stand_half_cost, assassinate_low_hp, vanish_free, insight_double (Arcane Insight grants TWO bonus types), overcast_cheap (Overcast costs 1.5x, rounded up), mercy_cures (Mercy also cures one condition), zealous_immunity (a Zealous Strike grants immunity to conditions until your next turn). TESTING TIP: the Playtest Bench (P) banks XP and bumps playstyle counters — the fastest road to any milestone. | NEW (2026-08-29): passives sundered_calm/granite_skin/warding_presence (a passive may carry a 'name' — weapon_focus wears 'Edge Eternal' for the Spellblade); verbs runic_riposte, ward_surge, unyielding, shared_fortitude; capstones whirling_verse, mirror_ward, mountains_heart, deep_roots; refinements riposte_allies, ward_surge_allies, unyielding_allies, fortitude_two; rite verbs crescendo, unbroken_chord, bedrock, hearthfire; counters riposteKills, wardDeflects, unyieldingSaves, alliesFortified. | RANGER (2026-08-29): passives ambidexterity/snap_shot; verbs hunters_surge/volley; capstones storm_of_blades/rain_of_arrows; refinements offhand_free/hawk_on_the_move; rite verbs pack_instinct/true_shot; counters surgeKills/volleyKills.",
+  "_comment": "Class Progression (design doc v3): each class here gets a hard FORK at 'fork_level' into two lanes; classes absent from this file simply level along their base tables. Each lane: 'name' + 'archetype' (the name shown from capstone level on), 'blurb' (shown on the choice card), 'offsets' (permanent adds to the class table: hit = to-hit AND damage, ac = armor class, sp = spell points, detect = trap/secret %), 'passive' (always-on, from the passive list below), 'verb' (the signature action gained at its 'level'), 'capstone' (gained at its 'level'; numbers tunable), 'refinement' (upgrades the verb at its 'level'), and 'rite' (the Level 20 Rite, see below). PASSIVES: weapon_focus (+dmg with a chosen weapon category — the player picks which at the fork), braced_stance (-'reduce' damage taken per hit while a shield is worn), vital_strike, keen_senses, prepared_mind (the Wizard lane's spellbook: only prepared spells are castable; slots = 'slots_base' + max spell level; re-pick freely at each rest), overchannel (the Sorcerer lane: every cast costs 'discount' less SP, floor 1; knows only 'known_per_level' spells per spell level, picked on unlock), blessed_hands (+'heal' HP on every heal spell), sacred_weapon (+'dmg' divine damage on weapon hits). VERBS: rampage, guardians_stand, assassinate, vanish, arcane_insight (once per battle, your action: choose +'hit' to-hit, +'dc' save DC, or +'dmg' spell damage for the rest of the fight), overcast (toggle: pay 'cost_mult'x SP to cast a spell one level higher — +'extra_dice' damage/healing, +'dc_bonus' DC), mercy (free reaction: an ally cut to 0 HP immediately rises with 'dice' + WIS HP), zealous_strike (toggle: each landed melee hit spends 'cost' SP for +'dice' divine damage and 'heal' self-healing). CAPSTONES: rage, bulwark, lethality, set_trap, archmage (once per rest: cast ANY spellbook spell, prepared or not, for ALL remaining SP), twin_surge (once per rest: a spell resolves twice, then you are Exhausted a round), miracle (once per rest, ALL remaining SP, 'min_sp' minimum: the living are fully healed, the fallen rise at half), divine_inspiration (ALL remaining SP, 'min_sp' minimum: +'hit'/+'dmg'/+'ac' for 'rounds' rounds). REFINEMENTS: rampage_crits, stand_half_cost, assassinate_low_hp, vanish_free, insight_double (Arcane Insight grants TWO bonus types), overcast_cheap (Overcast costs 1.5x, rounded up), mercy_cures (Mercy also cures one condition), zealous_immunity (a Zealous Strike grants immunity to conditions until your next turn). TESTING TIP: the Playtest Bench (P) banks XP and bumps playstyle counters — the fastest road to any milestone. | NEW (2026-08-29): passives sundered_calm/granite_skin/warding_presence (a passive may carry a 'name' — weapon_focus wears 'Edge Eternal' for the Spellblade); verbs runic_riposte, ward_surge, unyielding, shared_fortitude; capstones whirling_verse, mirror_ward, mountains_heart, deep_roots; refinements riposte_allies, ward_surge_allies, unyielding_allies, fortitude_two; rite verbs crescendo, unbroken_chord, bedrock, hearthfire; counters riposteKills, wardDeflects, unyieldingSaves, alliesFortified. | RANGER (2026-08-29): passives ambidexterity/snap_shot; verbs hunters_surge/volley; capstones storm_of_blades/rain_of_arrows; refinements offhand_free/hawk_on_the_move; rite verbs pack_instinct/true_shot; counters surgeKills/volleyKills. | LANE GROWTH (designer session 2026-09-02): a lane may carry a \"growth\" block {levels, options} — the hero picks ONE option at each level listed, and every list deliberately holds MORE options than picks so two heroes of the same lane end up different (the designer's goal: \"your level 20 stoneshaper could be super different than a previous one\"). Effect fields, all optional: brace_vs ('spell'|'trap') · brace_bonus N · brace_no_shield · brace_allies (Braced Stance) · refuse <conditionId> (Bulwark: the mountain simply cannot get it) · aura_ac/aura_reduce/aura_saves N, aura_party, aura_refuse <conditionId> (Warding Presence) · vital_when ('poisoned'|'wounded'|'held'|'frightened'|'alone'|'bigger') (Vital Strike triggers) · skill N, find_range N, search_turns N, disarm_safe, chest_safe, vault_sense (the rogue's craft) · saves N (anyone). ALL names, blurbs and numbers are PROPOSALS — rewrite freely. Ranger lanes deliberately have no growth: Favored Enemy already is one.",
   "_xp_comment": "XP CURVE (playtest proposal 2026-08-30, replaces the flat legacy 50 x level): XP to reach the NEXT level = base x growth^(level-1), rounded to the nearest 5. With 50/1.3: level 1->2 costs 50, 5->6 costs 145, 10->11 costs 530, 15->16 costs 1,955, 19->20 costs 5,600 - about 24,000 total to reach 20 (the old rule needed only 9,500, so a full-run party hit 20 on floor 13 and skipped the last third of the dungeon). Tune base/growth freely; delete the block to fall back to 50 x level.",
   "xp_curve": {
     "base": 50,
@@ -207,6 +207,51 @@
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
             ]
+          },
+          "growth": {
+            "levels": [
+              8,
+              14,
+              16
+            ],
+            "options": [
+              {
+                "id": "spellguard",
+                "name": "Spellguard",
+                "blurb": "The shield is raised against fire and thunder too — Braced Stance blunts spells, breath and bursts, not only blows.",
+                "brace_vs": "spell"
+              },
+              {
+                "id": "wary_step",
+                "name": "Wary Step",
+                "blurb": "You test the floor before you trust it — Braced Stance blunts sprung traps.",
+                "brace_vs": "trap"
+              },
+              {
+                "id": "deeper_stance",
+                "name": "Deeper Stance",
+                "blurb": "Set your feet. One more point turned aside by every guarded blow.",
+                "brace_bonus": 1
+              },
+              {
+                "id": "ingrained_guard",
+                "name": "Ingrained Guard",
+                "blurb": "The stance is in the bones now — it holds even with no shield on your arm.",
+                "brace_no_shield": true
+              },
+              {
+                "id": "shieldwall",
+                "name": "Shieldwall",
+                "blurb": "You cover the man beside you: allies standing next to you take one less from every blow.",
+                "brace_allies": true
+              },
+              {
+                "id": "iron_discipline",
+                "name": "Iron Discipline",
+                "blurb": "The line does not flinch. +1 on every saving throw.",
+                "saves": 1
+              }
+            ]
           }
         }
       ]
@@ -271,6 +316,51 @@
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
             ]
+          },
+          "growth": {
+            "levels": [
+              8,
+              14,
+              16
+            ],
+            "options": [
+              {
+                "id": "vital_poisoned",
+                "name": "Blood in the Water",
+                "blurb": "Venom makes a body clumsy. Vital Strike also finds poisoned prey.",
+                "vital_when": "poisoned"
+              },
+              {
+                "id": "vital_wounded",
+                "name": "Finisher",
+                "blurb": "A wounded thing guards badly. Vital Strike also finds prey below half its health.",
+                "vital_when": "wounded"
+              },
+              {
+                "id": "vital_held",
+                "name": "Still Target",
+                "blurb": "Held, slowed or sleeping — it is all the same seam. Vital Strike finds them.",
+                "vital_when": "held"
+              },
+              {
+                "id": "vital_frightened",
+                "name": "Prey in Flight",
+                "blurb": "Terror bares the back. Vital Strike also finds frightened prey.",
+                "vital_when": "frightened"
+              },
+              {
+                "id": "vital_alone",
+                "name": "Cut From the Herd",
+                "blurb": "A thing with no friend beside it dies quietly. Vital Strike finds the isolated — and Lethality already wants them alone.",
+                "vital_when": "alone"
+              },
+              {
+                "id": "vital_bigger",
+                "name": "Giant-Killer",
+                "blurb": "The bigger they are, the more of them there is to hit. Vital Strike finds anything tougher than you.",
+                "vital_when": "bigger"
+              }
+            ]
           }
         },
         {
@@ -328,6 +418,51 @@
                 "title": "the Name Unspoken",
                 "dungeon": "A vault heist thick with locks, wards, and traps",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
+              }
+            ]
+          },
+          "growth": {
+            "levels": [
+              8,
+              14,
+              16
+            ],
+            "options": [
+              {
+                "id": "sharp_eye",
+                "name": "Sharper Eye",
+                "blurb": "Years of looking at walls. +15 to every skill roll — traps, doors, latches, all of it.",
+                "skill": 15
+              },
+              {
+                "id": "far_sight",
+                "name": "Long Look",
+                "blurb": "You do not have to be on top of it to see it: traps and secret doors are spotted from two squares away.",
+                "find_range": 2
+              },
+              {
+                "id": "quick_search",
+                "name": "Quick Hands",
+                "blurb": "A thorough search (Space) takes 2 map turns instead of 5 — far less time for something to find YOU.",
+                "search_turns": 2
+              },
+              {
+                "id": "safe_hands",
+                "name": "Steady Hands",
+                "blurb": "A disarm that slips no longer sets the thing off. You simply try again.",
+                "disarm_safe": true
+              },
+              {
+                "id": "latch_master",
+                "name": "Latchbreaker",
+                "blurb": "Chests never bite you: a rigged latch is picked apart the moment you open the lid.",
+                "chest_safe": true
+              },
+              {
+                "id": "vault_sense",
+                "name": "Vault Sense",
+                "blurb": "You can feel a sealed room through stone. On arriving at a floor you know whether a secret vault waits on it.",
+                "vault_sense": true
               }
             ]
           }
@@ -791,6 +926,51 @@
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
             ]
+          },
+          "growth": {
+            "levels": [
+              8,
+              14,
+              16
+            ],
+            "options": [
+              {
+                "id": "refuse_poison",
+                "name": "The Stone Refuses Venom",
+                "blurb": "Poison finds no blood to spoil. You simply cannot be poisoned.",
+                "refuse": "poison"
+              },
+              {
+                "id": "refuse_fear",
+                "name": "The Stone Refuses Fear",
+                "blurb": "Mountains are not frightened. Nothing can cow you.",
+                "refuse": "frightened"
+              },
+              {
+                "id": "refuse_paralysis",
+                "name": "The Stone Refuses Stillness",
+                "blurb": "No spell holds what is already still. You cannot be paralyzed.",
+                "refuse": "paralysis"
+              },
+              {
+                "id": "refuse_slow",
+                "name": "The Stone Refuses Mire",
+                "blurb": "Slow was always your pace. You cannot be slowed.",
+                "refuse": "slowed"
+              },
+              {
+                "id": "refuse_sleep",
+                "name": "The Stone Refuses Sleep",
+                "blurb": "The mountain does not dream. You cannot be put to sleep.",
+                "refuse": "sleep"
+              },
+              {
+                "id": "refuse_burning",
+                "name": "The Stone Refuses Flame",
+                "blurb": "Fire finds nothing on you that will catch. You cannot be set burning.",
+                "refuse": "burning"
+              }
+            ]
           }
         },
         {
@@ -851,6 +1031,51 @@
                 "title": "the Deep Root",
                 "dungeon": "A dwarven hold under siege — defend a whole camp at once",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
+              }
+            ]
+          },
+          "growth": {
+            "levels": [
+              8,
+              14,
+              16
+            ],
+            "options": [
+              {
+                "id": "hearth_ac",
+                "name": "Sheltering Stone",
+                "blurb": "The hearth turns blades as well as curses: allies beside you gain +1 AC.",
+                "aura_ac": 1
+              },
+              {
+                "id": "hearth_reduce",
+                "name": "Banked Embers",
+                "blurb": "Allies beside you take one less damage from every blow.",
+                "aura_reduce": 1
+              },
+              {
+                "id": "hearth_saves",
+                "name": "Deep Foundation",
+                "blurb": "The warding runs deeper — one more point of saves for those beside you.",
+                "aura_saves": 1
+              },
+              {
+                "id": "hearth_reach",
+                "name": "The Wide Hearth",
+                "blurb": "Your warding no longer needs an arm’s reach: the WHOLE party is covered, wherever they stand.",
+                "aura_party": true
+              },
+              {
+                "id": "hearth_fear",
+                "name": "Hearth-Courage",
+                "blurb": "No one beside a lit hearth is afraid: adjacent allies cannot be frightened.",
+                "aura_refuse": "frightened"
+              },
+              {
+                "id": "hearth_kin",
+                "name": "Kinstone",
+                "blurb": "Your own saving throws rise with theirs: +1 saves for you as well.",
+                "saves": 1
               }
             ]
           }

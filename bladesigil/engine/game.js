@@ -4,7 +4,7 @@ import { roll, d20, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
 import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
-import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement, groupOfType, focusGroupOf, focusList, focusName, abilityPicksAllowed } from './progression.js';
+import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement, groupOfType, focusGroupOf, focusList, focusName, abilityPicksAllowed, growthPicksAllowed, growthEffect, growthNamed, growthPicks } from './progression.js';
 import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances, FAMILIES } from './magic.js';
 import { autosave as autosaveRun } from './save.js';
 import * as audio from './audio.js';
@@ -295,6 +295,12 @@ export class Game {
       this.log(sworn.length === 1
         ? `${ch.name}'s hands know ${focusName(this.data, value).toLowerCase()} now — Weapon Focus (+1 damage with every weapon in the family).`
         : `${ch.name} takes up ${focusName(this.data, value).toLowerCase()} as well — Weapon Focus now covers ${listWords(sworn.map(g => focusName(this.data, g).toLowerCase()))}.`, 'good');
+    } else if (choice.type === 'growth') {
+      const lane = laneOf(this.data, ch);
+      const opt = (lane?.growth?.options ?? []).find(o => o.id === value);
+      (ch.growth ??= []).push(value);
+      this.refreshDerived(ch);
+      this.log(`${ch.name} takes ${opt?.name ?? value} — ${opt?.blurb ?? 'the lane deepens'}`, 'good');
     } else if (choice.type === 'ability') {
       // The level-10 boost: it raises the ROLLED score, so it is permanent
       // and shows as the hero's own, not as something the gear lends.
@@ -655,6 +661,7 @@ export class Game {
       // ('med_blade'), which is read as its family ('blade').
       focusTypes: [def.focus ?? []].flat().map(f => this.data.items.focus_groups?.[f] ? f : groupOfType(this.data, f)).filter(Boolean),
       abilityBoosts: [],
+      growth: [],
       // The creation gift (half-casters, companion doc v1): {id, element?}
       // from classes.json creation_pick — resolved below.
       gift: this.resolveGift(def, cls),
@@ -1064,6 +1071,7 @@ export class Game {
     return base + racial + gear + gift
       + (lane?.offsets?.detect ?? 0)
       + (p?.id === 'keen_senses' ? (p.bonus ?? 10) : 0)
+      + growthEffect(this.data, ch, 'skill') // the rogue's craft (Sharper Eye)
       + 5 * abilityMod(ch.abilities.dex);
   }
 
@@ -1128,6 +1136,25 @@ export class Game {
     return best;
   }
 
+  // How far the party's eye reaches (Shadows growth "Long Look" widens the
+  // adjacent default), and how long a thorough search takes ("Quick Hands").
+  detectReach() {
+    return Math.max(1, ...this.party.filter(ch => ch.alive)
+      .map(ch => growthEffect(this.data, ch, 'find_range') || 1));
+  }
+
+  searchTurns() {
+    const base = this.data.dungeon.search_turns ?? 5;
+    const quick = this.party.filter(ch => ch.alive)
+      .map(ch => growthEffect(this.data, ch, 'search_turns')).filter(n => n > 0);
+    return quick.length ? Math.min(base, ...quick) : base;
+  }
+
+  // The hero whose growth pick applies to a party-wide craft (named in the log).
+  craftHero(field) {
+    return this.party.find(ch => ch.alive && growthEffect(this.data, ch, field)) ?? null;
+  }
+
   // Called after every step: each hidden feature beside the party gets a
   // fresh detection roll (designer ruling 2026-08-27 — walking past gives a
   // few chances, lingering nearby will find it; Space is the sure thing).
@@ -1135,7 +1162,8 @@ export class Game {
     if (this.mode !== 'dungeon') return;
     const chance = this.detectChance();
     if (chance <= 0) return;
-    const near = (x, y) => Math.max(Math.abs(x - this.partyPos.x), Math.abs(y - this.partyPos.y)) <= 1;
+    const reach = this.detectReach();
+    const near = (x, y) => Math.max(Math.abs(x - this.partyPos.x), Math.abs(y - this.partyPos.y)) <= reach;
     for (const t of this.traps) {
       if (t.detected || !near(t.x, t.y)) continue;
       if (Math.random() * 100 < chance) {
@@ -1152,8 +1180,8 @@ export class Game {
         this.log(`${this.bestDetector().name} spots a ${this.data.dungeon.traps[t.id].name.toLowerCase()} rigged to the chest's latch!`, 'good');
       }
     }
-    for (let y = this.partyPos.y - 1; y <= this.partyPos.y + 1; y++) {
-      for (let x = this.partyPos.x - 1; x <= this.partyPos.x + 1; x++) {
+    for (let y = this.partyPos.y - reach; y <= this.partyPos.y + reach; y++) {
+      for (let x = this.partyPos.x - reach; x <= this.partyPos.x + reach; x++) {
         if (this.grid[y]?.[x] !== 'S' || this.revealed.has(`${x},${y}`)) continue;
         if (Math.random() * 100 < chance) {
           this.revealed.add(`${x},${y}`);
@@ -1249,6 +1277,13 @@ export class Game {
   resolveChestTrap(trap) {
     const def = this.data.dungeon.traps[trap.id];
     this.chestTraps = this.chestTraps.filter(t => t !== trap); // spent either way
+    // Latchbreaker (Shadows growth): chests simply never bite this party.
+    const latch = this.craftHero('chest_safe');
+    if (latch) {
+      audio.play('disarm');
+      this.log(`${latch.name} has the lid open and the ${def.name.toLowerCase()} out of its latch before anyone else reaches for it — Latchbreaker.`, 'good');
+      return true;
+    }
     const disarmer = trap.detected
       ? this.party.find(ch => ch.alive && ch.cls.disarms)
       : null;
@@ -1256,6 +1291,10 @@ export class Game {
       if (Math.random() * 100 < this.heroSkill(disarmer)) {
         audio.play('disarm');
         this.log(`${disarmer.name} eases the ${def.name.toLowerCase()} out of the chest's latch — disarmed!`, 'good');
+        return true;
+      }
+      if (growthEffect(this.data, disarmer, 'disarm_safe')) {
+        this.log(`${disarmer.name}'s hand slips — but Steady Hands catch the ${def.name.toLowerCase()} before it can fire.`, 'good');
         return true;
       }
       this.log(`${disarmer.name} slips — the ${def.name.toLowerCase()} in the latch goes off!`, 'death');
@@ -1276,6 +1315,10 @@ export class Game {
       if (Math.random() * 100 < chance) {
         audio.play('disarm'); // its own moment (2026-08-26): discover = spotting, disarm = picking it apart
         this.log(`${disarmer.name} picks the ${def.name.toLowerCase()} apart — disarmed!`, 'good');
+        return true;
+      }
+      if (growthEffect(this.data, disarmer, 'disarm_safe')) {
+        this.log(`${disarmer.name} fumbles the mechanism — but Steady Hands ease it back before it fires.`, 'good');
         return true;
       }
       this.log(`${disarmer.name} fumbles the mechanism — the ${def.name.toLowerCase()} goes off!`, 'death');
@@ -1301,6 +1344,15 @@ export class Game {
     if (guard?.kind === 'resist') {
       dmg = Math.max(1, Math.floor(dmg / 2));
       this.log(`The ${guard.name} turns half the ${def.element} aside.`, 'good');
+    }
+    // Wary Step (Way of the Shield growth): the raised guard blunts traps too.
+    const wary = growthNamed(this.data, ch, 'brace_vs', 'trap');
+    if (wary && dmg > 0) {
+      const p = passiveOf(this.data, ch);
+      const cut = (p?.reduce ?? 1) + growthEffect(this.data, ch, 'brace_bonus');
+      const was = dmg;
+      dmg = Math.max(0, dmg - cut);
+      if (was !== dmg) this.log(`${wary.name} — ${ch.name}'s guard turns ${was - dmg} of it aside.`, 'good');
     }
     ch.hp -= dmg;
     this.log(saved
@@ -1331,8 +1383,9 @@ export class Game {
       this.endPlayerTurn();
       return;
     }
-    const turns = this.data.dungeon.search_turns ?? 5;
-    const near = (x, y) => Math.max(Math.abs(x - this.partyPos.x), Math.abs(y - this.partyPos.y)) <= 1;
+    const turns = this.searchTurns();
+    const reach = this.detectReach();
+    const near = (x, y) => Math.max(Math.abs(x - this.partyPos.x), Math.abs(y - this.partyPos.y)) <= reach;
     let found = 0;
     for (const t of this.traps) {
       if (t.detected || !near(t.x, t.y)) continue;
@@ -1344,8 +1397,8 @@ export class Game {
       t.detected = true; found++;
       this.log(`${this.bestDetector().name}'s search uncovers a ${this.data.dungeon.traps[t.id].name.toLowerCase()} rigged to the chest's latch!`, 'good');
     }
-    for (let y = this.partyPos.y - 1; y <= this.partyPos.y + 1; y++) {
-      for (let x = this.partyPos.x - 1; x <= this.partyPos.x + 1; x++) {
+    for (let y = this.partyPos.y - reach; y <= this.partyPos.y + reach; y++) {
+      for (let x = this.partyPos.x - reach; x <= this.partyPos.x + reach; x++) {
         if (this.grid[y]?.[x] !== 'S' || this.revealed.has(`${x},${y}`)) continue;
         this.revealed.add(`${x},${y}`); found++;
         this.log(`${this.bestDetector().name} finds a seam in the stonework — there is a secret door here!`, 'good');
@@ -1465,7 +1518,7 @@ export class Game {
       ch.xp = 0;
       const prog = classProg(this.data, ch);
       if (prog && n < prog.fork_level) {
-        ch.lane = null; ch.focusType = null; ch.focusTypes = [];
+        ch.lane = null; ch.focusType = null; ch.focusTypes = []; ch.growth = [];
         // Un-walk the caster lanes: the Raw Gift's set-aside book returns.
         if (ch.formerBook) { ch.spellbook = [...ch.formerBook]; ch.formerBook = null; }
         ch.knownSpells = []; ch.bonusPicksTaken = 0;
@@ -1477,6 +1530,9 @@ export class Game {
         ch.focusTypes = ch.focusTypes.slice(0, famAllowed);
         ch.focusType = ch.focusTypes[0] ?? null;
       }
+      // Lane growth taken above this level is given back, newest first.
+      const grAllowed = growthPicksAllowed(this.data, ch);
+      if ((ch.growth ?? []).length > grAllowed) ch.growth = ch.growth.slice(0, grAllowed);
       // …and so are ability points bought above it, so the pick re-tests.
       const abAllowed = abilityPicksAllowed(this.data, ch);
       const amount = this.data.progression.ability_boost?.amount ?? 1;
@@ -1978,6 +2034,22 @@ export class Game {
         .find(d => d.immune?.includes(id) || (ELEMENT_OF[id] && d.immune?.includes(ELEMENT_OF[id])));
       if (guard) {
         this.log(`The ${guard.name} turns the ${def.name.toLowerCase()} aside!`, 'good');
+        return;
+      }
+    }
+    // Lane growth (Bulwark's refusals, 2026-09-02): the mountain simply
+    // cannot take this condition — and the aura may refuse it for allies.
+    const refusal = growthNamed(this.data, ref, 'refuse', id);
+    if (refusal) {
+      this.log(`${refusal.name} — it finds no purchase on ${ref.name}.`, 'good');
+      return;
+    }
+    if (this.battle) {
+      const warden = this.party.find(o => o.alive && o !== ref && growthNamed(this.data, o, 'aura_refuse', id)
+        && this.battle.adjacentAllies?.(o, ref));
+      if (warden) {
+        const w = growthNamed(this.data, warden, 'aura_refuse', id);
+        this.log(`${warden.name}'s ${w.name} shelters ${ref.name} — it takes no hold.`, 'good');
         return;
       }
     }
