@@ -1829,6 +1829,57 @@
       "out": "assets/enemies/gen/dungeon_overlord_dead.png",
       "size": 1024,
       "post": "trim"
+    },
+    {
+      "id": "monster_shadow_thief",
+      "style": "monster_card",
+      "prompt": "a single human thief in dark leathers and a deep hood, crouching low at the edge of torchlight with a curved dagger, only a glint of eyes showing; the rest of him fades into the shadows of the wall behind him. One figure only, no other creature.",
+      "out": "assets/enemies/gen/shadow_thief.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_shadow_thief_dead",
+      "style": "monster_card",
+      "prompt": "the same hooded human thief slain — sprawled face-down on the dungeon floor in his dark leathers, the curved dagger fallen from his hand, the shadows gone still. One figure only.",
+      "reference": "assets/enemies/gen/shadow_thief.png",
+      "out": "assets/enemies/gen/shadow_thief_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_ninja",
+      "style": "monster_card",
+      "prompt": "a black-clad ninja assassin mid-crouch on a dungeon wall, wrapped face, twin short blades, moonlight glinting off a throwing star.",
+      "out": "assets/enemies/gen/ninja.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_ninja_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a black-clad ninja assassin mid-crouch on a dungeon wall, wrapped face, twin short blades, moonlight glinting off a throwing star — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/ninja.png",
+      "out": "assets/enemies/gen/ninja_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_invisible_stalker",
+      "style": "monster_card",
+      "prompt": "an invisible stalker — a faint, translucent humanoid outline of rippling air and dust, only its shape and two pale eyes betraying it against dark stone.",
+      "out": "assets/enemies/gen/invisible_stalker.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_invisible_stalker_dead",
+      "style": "monster_card",
+      "prompt": "the same faint translucent air-spirit now destroyed — its outline collapsed into a dissipating heap of dust and fading mist on the dungeon floor, the two pale eyes dark and gone out, the shape barely there. Clearly slain, lying down, not standing.",
+      "reference": "assets/enemies/gen/invisible_stalker.png",
+      "out": "assets/enemies/gen/invisible_stalker_dead.png",
+      "size": 1024,
+      "post": "trim"
     }
   ]
 }
