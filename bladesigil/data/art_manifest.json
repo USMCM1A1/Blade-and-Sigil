@@ -1812,6 +1812,23 @@
       "reference": "assets/heroes/gen/half_elf_ranger_f2_face.png",
       "out": "assets/heroes/gen/half_elf_ranger_f2.png",
       "size": 1024
+    },
+    {
+      "id": "monster_dungeon_overlord",
+      "style": "monster_card",
+      "prompt": "a gaunt, grinning archmage-king sprawled sideways across a throne of fused skulls and shattered spellbooks, a crown of floating glass shards orbiting his head, violet fire cupped idly in one hand, eyes wide with delighted madness, tattered midnight robes stitched with burning sigils.",
+      "out": "assets/enemies/gen/dungeon_overlord.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_dungeon_overlord_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a gaunt, grinning archmage-king sprawled sideways across a throne of fused skulls and shattered spellbooks, a crown of floating glass shards orbiting his head, violet fire cupped idly in one hand, eyes wide with delighted madness, tattered midnight robes stitched with burning sigils — now lifeless, slumped from the throne onto the dungeon floor, the shards fallen and dark, the violet fire gone out, the scene quiet.",
+      "reference": "assets/enemies/gen/dungeon_overlord.png",
+      "out": "assets/enemies/gen/dungeon_overlord_dead.png",
+      "size": 1024,
+      "post": "trim"
     }
   ]
 }

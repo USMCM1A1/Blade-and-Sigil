@@ -40,6 +40,7 @@
     "equip_jewelry": "assets/BIF-sounds/extracted/SFXSOUND/GAM_23A.m4a",
     "level_drain": "assets/BIF-sounds/extracted/SFXSOUND/REPDOWN.m4a",
     "temple_revive": "assets/New-Spell-Sounds/override/sim_healdead.wav",
-    "trap_springs": "assets/New-Spell-Sounds/override/sim_spike.wav"
+    "trap_springs": "assets/New-Spell-Sounds/override/sim_spike.wav",
+    "summon": "assets/New-Spell-Sounds/override/sff_summevil.wav"
   }
 }

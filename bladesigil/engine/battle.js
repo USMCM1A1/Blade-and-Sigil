@@ -93,6 +93,7 @@ export class Battle {
     }
     this.parseTemplate(template);
     this.placeCombatants(foes);
+    for (const m of foes) if (m.intro) this.speak(m, m.intro); // the Overlord greets his guests
     this.rollInitiative();
     this.turnIdx = -1;
     this.nextTurn(); // also auto-runs leading monster turns
@@ -2456,8 +2457,48 @@ export class Battle {
   // First usable entry in list order wins: off cooldown, uses left, a legal
   // target in range and sight, and not redundant (an afflict everyone
   // already bears, a haste already held).
+  // The ability list in force right now: a boss in a later phase fights
+  // from that phase's list (monsters.json "phases"), everyone else from
+  // their own "abilities".
+  abilityList(c) {
+    const ph = c.ref.phases?.[c.phase ?? -1];
+    return ph?.abilities ?? c.ref.abilities ?? [];
+  }
+
+  // ---- Boss phases (the Overlord, 2026-09-03) ----
+  // monsters.json "phases": [{below: 0.6, name, line, abilities}] — when the
+  // monster's HP first drops to or under `below` of its maximum it ENTERS
+  // that phase at once (not at its next turn): it speaks its line, its
+  // cooldowns clear, and from then on it fights from the phase's own
+  // ability list. checkEnd() runs this after every wound.
+  checkPhases() {
+    for (const c of this.monsters()) {
+      const m = c.ref;
+      if (!m.phases?.length) continue;
+      const frac = m.hp / (m.maxHp ?? m.hp);
+      let idx = -1;
+      m.phases.forEach((ph, i) => { if (frac <= ph.below) idx = i; });
+      const cur = c.phase ?? -1;
+      if (idx <= cur) continue;
+      c.phase = idx;
+      c.cds = {}; c.uses = {}; // a new phase opens with every power ready (its list is its own — indices restart)
+      const ph = m.phases[idx];
+      this.fxOn(m, (ph.name ?? 'a new phase').toUpperCase() + '!', '#d4a94e');
+      this.game.log(`The ${m.name} enters ${ph.name ?? `phase ${idx + 2}`}${ph.name ? '' : ''}!`, 'death');
+      if (ph.line) this.speak(m, ph.line);
+    }
+  }
+
+  // A monster's spoken line (the Overlord's mockery): a gold italic log
+  // entry wearing the speaker's name. Content lives in monsters.json —
+  // "intro" on the monster, "line" on any ability or phase.
+  speak(m, line) {
+    if (!line) return;
+    this.game.log(`${m.name}: “${line}”`, 'boss');
+  }
+
   pickAbility(c) {
-    const list = c.ref.abilities ?? [];
+    const list = this.abilityList(c);
     for (let i = 0; i < list.length; i++) {
       const ab = list[i];
       if ((c.cds?.[i] ?? 0) > 0) continue;
@@ -2487,6 +2528,18 @@ export class Battle {
   }
 
   abilityViable(c, ab) {
+    // A summoner holds its hand while its court is still standing
+    // (max_allies, default 4 living monsters besides itself).
+    if (ab.type === 'summon') {
+      const others = this.monsters().filter(mc => mc !== c).length;
+      return others < (ab.max_allies ?? 4);
+    }
+    // Blinking away only matters with a hero close (when_within, default 1).
+    if (ab.type === 'blink') {
+      const near = this.heroes().some(h => h.ref.alive && !h.ref.hidden
+        && this.dist(h.x, h.y, c.x, c.y) <= (ab.when_within ?? 1));
+      return near && !!this.farthestOpen(c);
+    }
     // Vanishing is pointless if already unseen, and impossible while a
     // Piercing Sight / Light of Truth burns or a seer's eye is on the field.
     if (ab.type === 'vanish') return !c.unseen && !this.seersEye();
@@ -2519,6 +2572,9 @@ export class Battle {
   useAbility(c, ab) {
     (c.cds ??= {})[ab.index] = (ab.cooldown ?? 0) + 1; // +1: it ticks down at ITS next turn
     if (ab.uses !== undefined) (c.uses ??= {})[ab.index] = (c.uses?.[ab.index] ?? 0) + 1;
+    if (ab.line) this.speak(c.ref, ab.line); // the mocking word comes before the deed
+    if (ab.type === 'summon') return this.monsterSummon(c, ab);
+    if (ab.type === 'blink') return this.monsterBlink(c, ab);
     if (ab.type === 'vanish') return this.monsterVanish(c, ab);
     if (ab.type === 'haste') return this.monsterHaste(c, ab);
     if (ab.type === 'spell') return this.monsterCastSpell(c, ab);
@@ -2644,6 +2700,102 @@ export class Battle {
   // monster spends its turn to disappear; it cannot be aimed at, and its
   // next blow lands as though nobody saw it coming — until it strikes,
   // which gives it away exactly as it does for a Thief.
+  // ---- summon (the Overlord, 2026-09-03) ----
+  // {type:'summon', name, monsters:[{id, count}], max_allies?, unbound?, line?}
+  // Real monsters.json creatures step out of nothing beside the caster and
+  // join the fight at the END of the initiative order. They are conjured,
+  // not native: they are not on the map (fleeing leaves nothing behind),
+  // they award NO XP (a caster with a cooldown must not be an XP farm —
+  // the road to 20 stays long), and when the summoner dies the binding
+  // breaks and they dissolve — unless the ability says `unbound: true`.
+  monsterSummon(c, ab) {
+    const m = c.ref;
+    const made = [];
+    let nextUid = Math.max(...this.combatants.map(x => x.uid)) + 1;
+    for (const entry of ab.monsters ?? []) {
+      const def = this.game.data.monsters.monsters[entry.id];
+      if (!def) continue;
+      const n = typeof entry.count === 'number' ? entry.count : Math.max(1, roll(entry.count ?? '1'));
+      for (let i = 0; i < n; i++) {
+        const spot = this.nearestOpen(c.x, c.y);
+        if (!this.open(spot.x, spot.y)) break; // the field is full
+        const ref = { ...def, id: entry.id, x: -1, y: -1, maxHp: def.hp, conditions: [],
+          summoned: ab.unbound ? null : c.uid, xp: 0 };
+        const cc = { kind: 'monster', ref, x: spot.x, y: spot.y, aware: true, unseen: !!def.hidden,
+          alivePos: () => ref.hp > 0, uid: nextUid++, init: -99 };
+        this.combatants.push(cc);
+        made.push(cc);
+      }
+    }
+    if (!made.length) {
+      this.game.log(`The ${m.name} gestures — but there is no room on the field for anything to answer.`, 'info');
+      this.finishMonsterAction();
+      return;
+    }
+    audio.play('summon');
+    this.particleFx(c.x, c.y, ab.fx?.kind ?? 'wisp', ab.fx?.color ?? '#b48cff');
+    this.addFx(c.x, c.y, (ab.name ?? 'SUMMON').toUpperCase() + '!', ab.fx?.color ?? '#b48cff');
+    this.pendingAction = true;
+    made.forEach((cc, i) => setTimeout(() => {
+      if (this.game.battle !== this) return;
+      this.particleFx(cc.x, cc.y, 'wisp', ab.fx?.color ?? '#b48cff');
+      this.addFx(cc.x, cc.y, cc.ref.name + '!', ab.fx?.color ?? '#b48cff');
+    }, 200 + i * 150));
+    const tally = {};
+    for (const cc of made) tally[cc.ref.name] = (tally[cc.ref.name] ?? 0) + 1;
+    const list = Object.entries(tally).map(([n, k]) => (k > 1 ? `${k} ${n}s` : `a ${n}`)).join(', ');
+    this.game.log(`The ${m.name} ${ab.name ? `works ${ab.name} — ` : 'gestures, and '}${list} tear${made.length > 1 ? '' : 's'} into being beside it! (Conjured: no XP, and ${ab.unbound ? 'they stay when it falls' : 'they dissolve when their master falls'}.)`, 'death');
+    this.sweepHidden();
+    setTimeout(() => this.finishMonsterAction(), 400 + made.length * 150);
+  }
+
+  // Summons bound to a fallen master dissolve. Called from slay().
+  breakBindings(masterC) {
+    const bound = this.monsters().filter(mc => mc.ref.summoned === masterC.uid);
+    if (!bound.length) return;
+    for (const mc of bound) {
+      mc.ref.hp = 0;
+      mc.diedAt = performance.now();
+      this.addFx(mc.x, mc.y, 'unmade!', '#b48cff');
+    }
+    this.game.log(`The binding breaks — ${bound.map(mc => mc.ref.name).join(', ')} unravel${bound.length > 1 ? '' : 's'} into nothing without ${masterC.ref.name}'s will to hold them.`, 'good');
+  }
+
+  // The open square farthest from the nearest living hero (a blink's
+  // destination); null if nothing beats where the monster stands.
+  farthestOpen(c) {
+    const heroes = this.heroes().filter(h => h.ref.alive && !h.ref.hidden);
+    const gap = (x, y) => Math.min(...heroes.map(h => this.dist(h.x, h.y, x, y)));
+    let best = null, bestGap = gap(c.x, c.y);
+    for (let y = 0; y < GRID_H; y++) for (let x = 0; x < GRID_W; x++) {
+      if (!this.open(x, y)) continue;
+      const g = gap(x, y);
+      if (g > bestGap || (g === bestGap && best && Math.random() < 0.5)) { best = { x, y }; bestGap = g; }
+    }
+    return best;
+  }
+
+  // ---- blink (the Overlord) ----
+  // {type:'blink', name, when_within?, line?} — the caster vanishes from
+  // under the party's blades and reappears across the field. It costs
+  // the turn; a melee party spends its next one walking.
+  monsterBlink(c, ab) {
+    const to = this.farthestOpen(c);
+    if (!to) { this.finishMonsterAction(); return; }
+    const from = { x: c.x, y: c.y };
+    audio.play('vanish');
+    this.particleFx(from.x, from.y, ab.fx?.kind ?? 'wisp', ab.fx?.color ?? '#b48cff');
+    this.addFx(from.x, from.y, (ab.name ?? 'BLINK').toUpperCase() + '!', ab.fx?.color ?? '#b48cff');
+    c.x = to.x; c.y = to.y;
+    this.pendingAction = true;
+    setTimeout(() => {
+      if (this.game.battle !== this) return;
+      this.particleFx(to.x, to.y, 'sparkle', ab.fx?.color ?? '#b48cff');
+      this.game.log(`The ${c.ref.name} ${ab.name ? `works ${ab.name} and ` : ''}is elsewhere — it reappears ${this.dist(from.x, from.y, to.x, to.y)} squares away, out of reach.`, 'death');
+      this.finishMonsterAction();
+    }, 350);
+  }
+
   monsterVanish(c, ab) {
     c.unseen = true;
     audio.play('vanish');
@@ -3336,9 +3488,14 @@ export class Battle {
         monster.burst = true; // once, however many code paths reach slay
         this.deathBurst(monster, c);
       }
+      this.breakBindings(c); // its conjured court dissolves with it
     }
     if (this.game.arena) {
       this.game.log(`The ${monster.name} collapses. (No XP in the training arena.)`, 'good');
+      return;
+    }
+    if (monster.summoned !== undefined) {
+      this.game.log(`The conjured ${monster.name} is destroyed — it unravels into nothing (no XP for a summoning).`, 'good');
       return;
     }
     this.game.log(`The ${monster.name} is slain! Each hero gains ${monster.xp} XP.`, 'good');
@@ -3385,6 +3542,7 @@ export class Battle {
   checkEnd() {
     const game = this.game;
     if (this.ending) return true;
+    this.checkPhases(); // a wounded boss may change its game before anything else happens
     if (game.arena) {
       // Arena endings never touch the real game: win or wipe, the party is
       // restored from the entry snapshot and steps back onto the map.

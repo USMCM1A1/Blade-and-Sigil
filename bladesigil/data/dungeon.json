@@ -2476,7 +2476,7 @@
   },
   "boss": {
     "name": "The Hollow Throne",
-    "monster": "dread_sovereign",
+    "monster": "dungeon_overlord",
     "chest_gold": "20d20+500",
     "chest_items": [],
     "rest_ambush": 0,
@@ -2484,13 +2484,12 @@
       "room"
     ],
     "legend": {
-      "B": "dread_sovereign",
-      "o": "orc"
+      "B": "dungeon_overlord"
     },
     "map": [
       "#####################",
       "#####...........#####",
-      "####.....o.o.....####",
+      "####.............####",
       "###.......B.......###",
       "####.............####",
       "#####...........#####",

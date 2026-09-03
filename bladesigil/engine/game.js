@@ -59,7 +59,7 @@ export function validateMonsters(data) {
   const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
   const FAMILIES = ['undead', 'outsider', 'beast', 'vermin', 'humanoid', 'construct', 'ooze', 'aberration', 'dragon', 'elemental'];
   const KINDS = ['edged', 'piercing', 'blunt'];
-  const ABILITY_TYPES = ['bolt', 'breath', 'afflict', 'haste', 'spell', 'vanish'];
+  const ABILITY_TYPES = ['bolt', 'breath', 'afflict', 'haste', 'spell', 'vanish', 'summon', 'blink'];
   const SAVES = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
   const DICE = /^\d+d\d+([+-]\d+)?$/;
   const conditionIds = Object.keys(data.conditions.conditions).filter(k => !k.startsWith('_'));
@@ -86,8 +86,20 @@ export function validateMonsters(data) {
     if (m.splash && (!DICE.test(m.splash.dice ?? '') || !ELEMENTS.includes(m.splash.element))) err(id, `splash needs {dice, element} — dice like "1d6", element from: ${ELEMENTS.join(', ')}.`);
     if (m.death_burst && (!DICE.test(m.death_burst.dice ?? '') || (m.death_burst.element && !ELEMENTS.includes(m.death_burst.element)))) err(id, `death_burst needs {dice, element?, area?, save?, dc?} — dice like "3d6", element from: ${ELEMENTS.join(', ')}.`);
     if (m.fear_aura && (!Number.isInteger(m.fear_aura.dc) || !Number.isInteger(m.fear_aura.rounds) || m.fear_aura.rounds < 1)) err(id, `fear_aura needs {dc: N, rounds: N} — a WIS save DC to close with or stand beside it, and how long the fright lasts.`);
-    (m.abilities ?? []).forEach((ab, i) => {
-      const where = `ability ${i + 1}${ab.name ? ` (${ab.name})` : ''}`;
+    const monsterIds = Object.keys(data.monsters.monsters).filter(k => !k.startsWith('_'));
+    const checkAbility = (ab, i, prefix = '') => {
+      const where = `${prefix}ability ${i + 1}${ab.name ? ` (${ab.name})` : ''}`;
+      if (ab.line !== undefined && typeof ab.line !== 'string') err(id, `${where} has a line that is not text — "line" is what the monster says when it uses this.`);
+      if (ab.type === 'summon') {
+        if (!Array.isArray(ab.monsters) || !ab.monsters.length) err(id, `${where} needs monsters: [{id, count}] — what it conjures.`);
+        for (const e of ab.monsters) {
+          if (!monsterIds.includes(e.id)) err(id, `${where} summons unknown monster "${e.id}". Valid: ${monsterIds.join(', ')}.`);
+          if (e.id === id) err(id, `${where} summons itself — that way lies an endless court.`);
+          if (e.count !== undefined && !(Number.isInteger(e.count) && e.count >= 1) && !DICE.test(String(e.count))) err(id, `${where} count ${JSON.stringify(e.count)} — a whole number or dice like "1d2".`);
+        }
+        if (ab.max_allies !== undefined && (!Number.isInteger(ab.max_allies) || ab.max_allies < 1)) err(id, `${where} max_allies ${JSON.stringify(ab.max_allies)} — how many living allies it tolerates before it stops summoning (a whole number, 1+).`);
+      }
+      if (ab.type === 'blink' && ab.when_within !== undefined && (!Number.isInteger(ab.when_within) || ab.when_within < 0)) err(id, `${where} when_within ${JSON.stringify(ab.when_within)} — blink when a hero is this close (a whole number).`);
       if (!ABILITY_TYPES.includes(ab.type)) err(id, `${where} has type "${ab.type}". Valid: ${ABILITY_TYPES.join(', ')}.`);
       if (ab.save && !SAVES.includes(ab.save)) err(id, `${where} saves with "${ab.save}". Valid: ${SAVES.join(', ')}.`);
       if ((ab.type === 'bolt' || ab.type === 'breath') && !DICE.test(ab.dice ?? '')) err(id, `${where} needs dice like "3d6".`);
@@ -105,7 +117,23 @@ export function validateMonsters(data) {
       for (const [k, v] of Object.entries({ range: ab.range, area: ab.area, cooldown: ab.cooldown, uses: ab.uses, rounds: ab.rounds })) {
         if (v !== undefined && (!Number.isInteger(v) || v < 0)) err(id, `${where} has ${k} ${JSON.stringify(v)} — a whole number.`);
       }
-    });
+    };
+    (m.abilities ?? []).forEach((ab, i) => checkAbility(ab, i));
+    if (m.intro !== undefined && typeof m.intro !== 'string') err(id, `has an intro that is not text — "intro" is the line it speaks as the battle begins.`);
+    // Boss phases: ordered by falling HP fraction, each with its own ability list.
+    if (m.phases !== undefined) {
+      if (!Array.isArray(m.phases) || !m.phases.length) err(id, `phases must be a list: [{below: 0.6, name, line, abilities: [...]}].`);
+      let last = 1;
+      m.phases.forEach((ph, i) => {
+        const where = `phase ${i + 1}${ph.name ? ` (${ph.name})` : ''}`;
+        if (typeof ph.below !== 'number' || ph.below <= 0 || ph.below >= 1) err(id, `${where} needs below: a fraction of max HP between 0 and 1 (0.6 = it begins at 60% health).`);
+        if (ph.below >= last) err(id, `${where} has below ${ph.below} — phases must run from high to low (each below smaller than the one before).`);
+        last = ph.below;
+        if (ph.line !== undefined && typeof ph.line !== 'string') err(id, `${where} has a line that is not text.`);
+        if (!Array.isArray(ph.abilities)) err(id, `${where} needs abilities: [...] — what it fights with from then on (an empty list means it only swings).`);
+        ph.abilities.forEach((ab, j) => checkAbility(ab, j, `${where} `));
+      });
+    }
   }
 }
 
@@ -1691,7 +1719,8 @@ export class Game {
       && this.isVisible(m.x, m.y));
     if (!foes.includes(trigger)) foes.push(trigger);
     audio.play('battle_start');
-    const article = /^[aeiou]/i.test(trigger.name) ? 'An' : 'A';
+    // A named terror (monsters.json "unique": true — the Overlord) takes no article.
+    const article = trigger.unique ? '' : /^[aeiou]/i.test(trigger.name) ? 'An ' : 'A ';
     // A named encounter announces itself when the group fights together.
     const packName = trigger.pack && foes.filter(f => f.pack === trigger.pack).length > 1 ? trigger.pack : null;
     this.log(ambush
@@ -1699,7 +1728,7 @@ export class Game {
       : packName
         ? `Battle! ${packName[0].toUpperCase()}${packName.slice(1)}!`
         : foes.length === 1
-          ? `Battle! ${article} ${trigger.name} blocks your path!`
+          ? `Battle! ${article}${trigger.name} blocks your path!`
           : `Battle! ${foes.length} monsters close in!`, 'info');
     const pool = (this.level.tacticsNames || []).filter(n => this.data.tactics[n]);
     const names = pool.length ? pool : Object.keys(this.data.tactics);

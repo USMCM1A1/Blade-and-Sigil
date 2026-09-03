@@ -45,24 +45,210 @@
       "save": 0,
       "family": "undead"
     },
-    "dread_sovereign": {
-      "_comment": "PLACEHOLDER final boss (Phase 5) — designer: rename, restat, and commission art! Reached only when every hero is level 20.",
-      "name": "Dread Sovereign",
-      "sprite": "assets/enemies/orc.jpg",
-      "sprite_dead": "assets/enemies/orc_dead.png",
-      "hp": 250,
-      "ac": 9,
-      "to_hit": 10,
-      "damage": "3d6+5",
-      "speed": 1,
-      "xp": 2000,
-      "save": 8,
-      "inflicts": {
-        "condition": "burning",
-        "rounds": 3,
-        "dc": 16
-      },
-      "family": "undead"
+    "dungeon_overlord": {
+          "_comment": "THE DUNGEON OVERLORD (2026-09-03, designer brief: a mad wizard of unimaginable power who TOYS with those who enter). Reached only when every hero is level 20. Stats, spell picks, summons and every line are PROPOSALS — rename him, retune him, rewrite his mouth. He fights in three phases (see 'phases'): the Game (he laughs and throws playthings at you), No More Games (the court is called), the Unmaking (he stops holding back). 'intro' is spoken as the battle opens; any ability or phase may carry a 'line'.",
+          "name": "Overlord Vaskarion",
+          "unique": true,
+          "sprite": "assets/enemies/gen/mad_wizard.png",
+          "sprite_dead": "assets/enemies/gen/mad_wizard_dead.png",
+          "hp": 360,
+          "ac": 12,
+          "to_hit": 12,
+          "damage": "2d8+4",
+          "speed": 1,
+          "xp": 5000,
+          "save": 12,
+          "family": "humanoid",
+          "intro": "Guests! At last. Twenty floors of my little puzzles and still you come knocking. Do try to last a few rounds — I so rarely get to play.",
+          "abilities": [
+                {
+                      "type": "afflict",
+                      "name": "Warp Time",
+                      "condition": "slowed",
+                      "rounds": 3,
+                      "dc": 18,
+                      "targets": "party",
+                      "uses": 1,
+                      "line": "Slowly now. I want to see every step.",
+                      "fx": {
+                            "kind": "wisp",
+                            "color": "#c8b040"
+                      }
+                },
+                {
+                      "type": "summon",
+                      "name": "Playthings",
+                      "monsters": [
+                            {
+                                  "id": "troll",
+                                  "count": 1
+                            },
+                            {
+                                  "id": "ghoul",
+                                  "count": "1d2"
+                            }
+                      ],
+                      "max_allies": 3,
+                      "cooldown": 4,
+                      "line": "Here — I keep pets for occasions like this. Entertain them.",
+                      "fx": {
+                            "kind": "wisp",
+                            "color": "#b48cff"
+                      }
+                },
+                {
+                      "type": "blink",
+                      "name": "Elsewhere",
+                      "when_within": 1,
+                      "cooldown": 1,
+                      "line": "Tsk. Swinging iron at a wizard. How provincial.",
+                      "fx": {
+                            "kind": "wisp",
+                            "color": "#b48cff"
+                      }
+                },
+                {
+                      "type": "spell",
+                      "id": "fireball",
+                      "caster_level": 20,
+                      "cooldown": 1,
+                      "line": "A little warmth for my guests."
+                },
+                {
+                      "type": "bolt",
+                      "name": "Mocking Spark",
+                      "element": "lightning",
+                      "dice": "4d6",
+                      "range": 7,
+                      "save": "dex",
+                      "dc": 18,
+                      "cooldown": 0,
+                      "fx": {
+                            "kind": "lightning",
+                            "color": "#e8e07a",
+                            "sound": "lightning"
+                      }
+                }
+          ],
+          "phases": [
+                {
+                      "below": 0.6,
+                      "name": "No More Games",
+                      "line": "You DREW BLOOD. Very well. The court will see to you — I have grown bored of watching.",
+                      "abilities": [
+                            {
+                                  "type": "summon",
+                                  "name": "The Court",
+                                  "monsters": [
+                                        {
+                                              "id": "death_knight",
+                                              "count": 1
+                                        },
+                                        {
+                                              "id": "wight",
+                                              "count": "1d2"
+                                        }
+                                  ],
+                                  "max_allies": 4,
+                                  "uses": 1,
+                                  "fx": {
+                                        "kind": "wisp",
+                                        "color": "#8a7ab8"
+                                  }
+                            },
+                            {
+                                  "type": "spell",
+                                  "id": "hold_monsters",
+                                  "caster_level": 20,
+                                  "cooldown": 3,
+                                  "line": "Stand still. STAND STILL."
+                            },
+                            {
+                                  "type": "blink",
+                                  "name": "Elsewhere",
+                                  "when_within": 1,
+                                  "cooldown": 1,
+                                  "fx": {
+                                        "kind": "wisp",
+                                        "color": "#b48cff"
+                                  }
+                            },
+                            {
+                                  "type": "spell",
+                                  "id": "chain_lightning",
+                                  "caster_level": 20,
+                                  "cooldown": 2
+                            },
+                            {
+                                  "type": "bolt",
+                                  "name": "Mocking Spark",
+                                  "element": "lightning",
+                                  "dice": "4d6",
+                                  "range": 7,
+                                  "save": "dex",
+                                  "dc": 18,
+                                  "cooldown": 0,
+                                  "fx": {
+                                        "kind": "lightning",
+                                        "color": "#e8e07a",
+                                        "sound": "lightning"
+                                  }
+                            }
+                      ]
+                },
+                {
+                      "below": 0.25,
+                      "name": "The Unmaking",
+                      "line": "Enough. ENOUGH. I made this pit and everything in it, and I will UNMAKE you the same way.",
+                      "abilities": [
+                            {
+                                  "type": "summon",
+                                  "name": "Gate of Ruin",
+                                  "monsters": [
+                                        {
+                                              "id": "pit_fiend",
+                                              "count": 1
+                                        }
+                                  ],
+                                  "max_allies": 5,
+                                  "uses": 1,
+                                  "line": "Come up. COME UP. Bring the fire with you.",
+                                  "fx": {
+                                        "kind": "wisp",
+                                        "color": "#e0483a"
+                                  }
+                            },
+                            {
+                                  "type": "spell",
+                                  "id": "meteor_swarm",
+                                  "caster_level": 20,
+                                  "cooldown": 2
+                            },
+                            {
+                                  "type": "spell",
+                                  "id": "wail_of_the_banshee",
+                                  "caster_level": 20,
+                                  "cooldown": 4
+                            },
+                            {
+                                  "type": "spell",
+                                  "id": "disintegrate",
+                                  "caster_level": 20,
+                                  "cooldown": 1
+                            },
+                            {
+                                  "type": "blink",
+                                  "name": "Elsewhere",
+                                  "when_within": 1,
+                                  "cooldown": 2,
+                                  "fx": {
+                                        "kind": "wisp",
+                                        "color": "#b48cff"
+                                  }
+                            }
+                      ]
+                }
+          ]
     },
     "orc": {
       "name": "Orc",
