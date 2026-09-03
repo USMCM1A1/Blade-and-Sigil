@@ -244,7 +244,7 @@ export function validateProgression(data) {
   const GROWTH_FIELDS = ['id', 'name', 'blurb', 'brace_vs', 'brace_bonus', 'brace_no_shield',
     'brace_allies', 'refuse', 'aura_ac', 'aura_reduce', 'aura_saves', 'aura_party',
     'aura_refuse', 'vital_when', 'skill', 'find_range', 'search_turns', 'disarm_safe',
-    'chest_safe', 'vault_sense', 'saves', 'snare', 'see_hidden'];
+    'chest_safe', 'find_sure', 'saves', 'snare', 'see_hidden'];
   const VITAL_WHEN = ['poisoned', 'wounded', 'held', 'frightened', 'alone', 'bigger'];
   const BRACE_VS = ['spell', 'trap', 'ranged'];
   const condIds = Object.keys(data.conditions.conditions).filter(k => !k.startsWith('_'));

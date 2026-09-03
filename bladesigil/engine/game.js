@@ -1161,9 +1161,11 @@ export class Game {
   // few chances, lingering nearby will find it; Space is the sure thing).
   searchNearby() {
     if (this.mode !== 'dungeon') return;
-    const chance = this.detectChance();
+    let chance = this.detectChance();
     if (chance <= 0) return;
     const reach = this.detectReach();
+    // Unerring Eye (Shadows growth): within reach, the roll is a formality.
+    if (this.craftHero('find_sure')) chance = 100;
     const near = (x, y) => Math.max(Math.abs(x - this.partyPos.x), Math.abs(y - this.partyPos.y)) <= reach;
     for (const t of this.traps) {
       if (t.detected || !near(t.x, t.y)) continue;
