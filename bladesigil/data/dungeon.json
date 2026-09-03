@@ -708,7 +708,8 @@
         "zombie": 3,
         "hobgoblin": 2,
         "mephit": 2,
-        "ghoul": 1
+        "ghoul": 1,
+        "shadow_thief": 2
       },
       "monster_count": "2d4+3",
       "chest_count": "1d3",
@@ -813,6 +814,15 @@
               "count": "1d2"
             }
           ]
+        },
+        {
+          "weight": 2,
+          "name": "a cutpurse and her muscle",
+          "group": [
+            "shadow_thief",
+            "hobgoblin",
+            "hobgoblin"
+          ]
         }
       ]
     },
@@ -832,7 +842,8 @@
         "wight": 2,
         "monstrous_spider": 2,
         "gelatinous_cube": 1,
-        "black_pudding": 1
+        "black_pudding": 1,
+        "shadow_thief": 2
       },
       "monster_count": "2d4+3",
       "chest_count": "1d3",
@@ -967,7 +978,8 @@
         "bugbear": 2,
         "shadow": 2,
         "monstrous_spider": 1,
-        "animated_armor": 1
+        "animated_armor": 1,
+        "shadow_thief": 2
       },
       "monster_count": "2d4+5",
       "chest_count": "1d3+1",
@@ -1459,7 +1471,8 @@
         "illithid": 3,
         "elemental_medium": 2,
         "vampire": 2,
-        "grey_slaad": 1
+        "grey_slaad": 1,
+        "ninja": 2
       },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
@@ -1556,6 +1569,14 @@
             "grey_slaad",
             "elemental_medium"
           ]
+        },
+        {
+          "weight": 2,
+          "name": "a ninja and the spectre it serves",
+          "group": [
+            "ninja",
+            "spectre"
+          ]
         }
       ]
     },
@@ -1575,7 +1596,8 @@
         "beholder": 2,
         "clay_golem": 2,
         "drider": 1,
-        "dao": 1
+        "dao": 1,
+        "ninja": 2
       },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
@@ -1698,7 +1720,9 @@
         "elemental_large": 2,
         "beholder": 2,
         "death_slaad": 1,
-        "djinn": 1
+        "djinn": 1,
+        "ninja": 2,
+        "invisible_stalker": 2
       },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
@@ -1820,7 +1844,8 @@
         "death_knight": 3,
         "alhoon": 3,
         "iron_golem": 2,
-        "efreet": 1
+        "efreet": 1,
+        "invisible_stalker": 2
       },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
@@ -1919,6 +1944,13 @@
           "group": [
             "iron_golem"
           ]
+        },
+        {
+          "weight": 2,
+          "name": "something that is never seen",
+          "group": [
+            "invisible_stalker"
+          ]
         }
       ]
     },
@@ -1937,7 +1969,8 @@
         "mummy_lord": 3,
         "drow_priestess": 2,
         "drow_blademaster": 2,
-        "white_slaad": 1
+        "white_slaad": 1,
+        "invisible_stalker": 2
       },
       "monster_count": "3d4+8",
       "chest_count": "2d3",

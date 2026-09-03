@@ -383,12 +383,12 @@
             "blurb": "Melt into shadow mid-battle: foes lose you utterly until you strike. Costs your whole action."
           },
           "capstone": {
-            "id": "set_trap",
+            "id": "deadly_webs",
             "level": 15,
-            "name": "Set Trap",
-            "dice": "2d6",
-            "range": 3,
-            "blurb": "Plant a mechanical trap on a nearby square, using your trap-working skill. The first foe to step on it regrets it."
+            "name": "Deadly Webs",
+            "max_traps": 3,
+            "adjacent": true,
+            "blurb": "The room itself becomes the trap: up to three snares live at once, and they spring on anything that steps BESIDE them, not only onto them."
           },
           "refinement": {
             "id": "vanish_free",
@@ -429,10 +429,34 @@
             ],
             "options": [
               {
-                "id": "sharp_eye",
-                "name": "Sharper Eye",
-                "blurb": "Years of looking at walls. +15 to every skill roll — traps, doors, latches, all of it.",
-                "skill": 15
+                "id": "snare_venom",
+                "name": "Venom Snare",
+                "blurb": "A blade smeared with spider-milk. The snare poisons what it catches.",
+                "snare": "venom"
+              },
+              {
+                "id": "snare_bear",
+                "name": "Bear Trap",
+                "blurb": "Iron jaws. What steps in does not step out for a round or two.",
+                "snare": "bear"
+              },
+              {
+                "id": "snare_caltrops",
+                "name": "Caltrops",
+                "blurb": "A scattering of spikes — no wounds worth the name, but nothing crosses it quickly.",
+                "snare": "caltrops"
+              },
+              {
+                "id": "snare_flash",
+                "name": "Flash Powder",
+                "blurb": "It goes off in the eyes. The blinded swing at nothing.",
+                "snare": "flash"
+              },
+              {
+                "id": "see_unseen",
+                "name": "See the Unseen",
+                "blurb": "Nothing hides from you. Invisible and shadow-cloaked things are plain to your eye the moment a fight begins.",
+                "see_hidden": true
               },
               {
                 "id": "far_sight",
@@ -457,14 +481,19 @@
                 "name": "Latchbreaker",
                 "blurb": "Chests never bite you: a rigged latch is picked apart the moment you open the lid.",
                 "chest_safe": true
-              },
-              {
-                "id": "vault_sense",
-                "name": "Vault Sense",
-                "blurb": "You can feel a sealed room through stone. On arriving at a floor you know whether a secret vault waits on it.",
-                "vault_sense": true
               }
             ]
+          },
+          "grant": {
+            "id": "snares",
+            "name": "Snares",
+            "range": 3,
+            "dice": "2d6",
+            "scale": {
+              "per_levels": 4,
+              "dice": "1d6"
+            },
+            "_comment": "SNARES (designer ruling 2026-09-03): granted with the lane at the fork, not held back to the capstone — a rogue should be laying snares long before 15. Aimed like a spell within \"range\"; placing ALWAYS works (the turn is the cost), and thief skill instead sets the save DC of the snare types that carry a rider. Damage is \"dice\" +\"scale.dice\" for every \"scale.per_levels\" levels above the fork."
           }
         }
       ]

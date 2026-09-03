@@ -396,6 +396,7 @@ export function spellBuff(s, extra = {}) {
     bonus_damage: s.bonus_damage ?? null, resist: s.resist ?? null,
     immune_conditions: s.immune_conditions ?? false,
     reduce: s.reduce ?? 0, halve: !!s.halve, reflect: s.reflect ?? 0, lifesteal: s.lifesteal ?? 0, auto_hit: !!s.auto_hit, enchant: !!s.enchant,
+    reveal: !!s.reveal,
   };
 }
 
@@ -613,12 +614,26 @@ export function describeScale(spell) {
 export function scrollReadable(data, ch, spell) {
   if (!ch.alive) return `${ch.name} is beyond reading.`;
   const school = spellSchool(spell);
-  if (ch.cls.caster !== school) return school === 'divine'
+  const gamble = scrollGamble(ch, spell);
+  if (ch.cls.caster !== school && !gamble) return school === 'divine'
     ? `Only a divine caster can voice a prayer-scroll — ${ch.name} is a ${ch.cls.name}.`
     : `Only an arcane caster can read the words off a scroll — ${ch.name} is a ${ch.cls.name}.`;
-  const limit = maxSpellLevel(ch.level) + 1;
-  if (spell.level > limit) return `Too deep to read — a level-${spell.level} spell (${ch.name} can read up to level ${limit}). Copy it and wait, or sell it.`;
+  // A real caster reads one tier deeper than they can cast; a gambler
+  // (the Thief) is held to what a caster of their level could actually cast.
+  const limit = maxSpellLevel(ch.level) + (gamble ? 0 : 1);
+  if (spell.level > limit) return gamble
+    ? `Too deep to puzzle out — a level-${spell.level} spell (${ch.name} can attempt up to level ${limit}).`
+    : `Too deep to read — a level-${spell.level} spell (${ch.name} can read up to level ${limit}). Copy it and wait, or sell it.`;
   return null;
+}
+
+// The Thief's gamble (classes.json 'scroll_gamble', designer ruling
+// 2026-09-03): a non-caster class may TRY a scroll of the named school.
+// Returns {chance, school} when this hero may attempt THIS spell, else null.
+export function scrollGamble(ch, spell) {
+  const g = ch.cls.scroll_gamble;
+  if (!g || ch.cls.caster === spellSchool(spell)) return null; // real casters just read it
+  return spellSchool(spell) === (g.school ?? 'arcane') ? g : null;
 }
 
 // Spells this hero has been OWED as revelations at exactly this level (for

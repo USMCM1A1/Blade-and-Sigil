@@ -59,7 +59,7 @@ export function validateMonsters(data) {
   const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
   const FAMILIES = ['undead', 'outsider', 'beast', 'vermin', 'humanoid', 'construct', 'ooze', 'aberration', 'dragon', 'elemental'];
   const KINDS = ['edged', 'piercing', 'blunt'];
-  const ABILITY_TYPES = ['bolt', 'breath', 'afflict', 'haste', 'spell'];
+  const ABILITY_TYPES = ['bolt', 'breath', 'afflict', 'haste', 'spell', 'vanish'];
   const SAVES = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
   const DICE = /^\d+d\d+([+-]\d+)?$/;
   const conditionIds = Object.keys(data.conditions.conditions).filter(k => !k.startsWith('_'));
@@ -69,6 +69,7 @@ export function validateMonsters(data) {
     if (m.family && !FAMILIES.includes(m.family)) err(id, `has family "${m.family}". Valid: ${FAMILIES.join(', ')}.`);
     if (m.element && !ELEMENTS.includes(m.element)) err(id, `attacks with element "${m.element}". Valid: ${ELEMENTS.join(', ')}.`);
     if (m.attacks !== undefined && (!Number.isInteger(m.attacks) || m.attacks < 1)) err(id, `has attacks ${JSON.stringify(m.attacks)} — a whole number of swings per turn, 1 or more.`);
+    if (m.hidden !== undefined && typeof m.hidden !== 'boolean') err(id, `has hidden ${JSON.stringify(m.hidden)} — use true (it begins every fight unseen) or leave it out.`);
     if (m.inflicts && !conditionIds.includes(m.inflicts.condition)) err(id, `inflicts "${m.inflicts.condition}". Valid conditions: ${conditionIds.join(', ')}.`);
     for (const k of m.resist_physical ?? []) {
       if (!KINDS.includes(k)) err(id, `resists physical "${k}". Valid: ${KINDS.join(', ')}.`);

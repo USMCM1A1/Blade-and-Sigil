@@ -4,8 +4,8 @@
 
 import { roll, d20, maxRoll, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
-import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName, focusMatches, groupOfType, focusName, growthEffect, growthNamed, growthPicks } from './progression.js';
-import { spellCost, spellBuff, activeStances, unpreparedSpells, knownSpells, scaleSteps, giftOf } from './magic.js';
+import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName, focusMatches, groupOfType, focusName, growthEffect, growthNamed, growthPicks, snareGrant, snareKinds, snareDice } from './progression.js';
+import { spellCost, spellBuff, activeStances, unpreparedSpells, knownSpells, scaleSteps, giftOf, scrollGamble } from './magic.js';
 import * as audio from './audio.js';
 
 // Sum of a field across a hero's timed buffs (Rage etc.).
@@ -14,6 +14,21 @@ const timedSum = (ref, key) => (ref.timedBuffs ?? []).reduce((s, b) => s + (b[ke
 export const GRID_W = 13, GRID_H = 8;
 const HERO_MOVE = 4;
 const monsterMove = m => (m.speed > 1 ? 2 : 4); // map-slow monsters are battle-slow too
+
+// Is THIS cast being read off a page? spells.json's "scroll": true only says
+// a scroll of the spell can EXIST; the reading path sets s.scroll to the
+// item's id (a string). Testing the boolean made every scroll-able spell
+// free and mislabelled — fixed 2026-09-03.
+const fromScroll = s => typeof s.scroll === 'string';
+
+// What each kind of snare does beyond the damage (designer session
+// 2026-09-03). The DC is the thief's own skill — craft, not caster level.
+const SNARE_RIDERS = {
+  venom: { condition: 'poison', rounds: 3, verb: 'poisons what it catches' },
+  bear: { condition: 'paralysis', rounds: 2, verb: 'holds it fast' },
+  caltrops: { condition: 'slowed', rounds: 3, verb: 'slows it to a crawl' },
+  flash: { condition: 'blinded', rounds: 2, verb: 'blinds it' },
+};
 
 export class Battle {
   constructor(game, template, foes, opts = {}) {
@@ -138,7 +153,8 @@ export class Battle {
       // Stealth: when the PARTY forces the fight, the enemy is caught flat —
       // every monster starts UNAWARE until its first turn (or first wound).
       // Monsters that caught the party (ambush) were ready all along.
-      this.combatants.push({ kind: 'monster', ref: m, x: spot.x, y: spot.y, aware: this.ambush, alivePos: () => m.hp > 0 });
+      this.combatants.push({ kind: 'monster', ref: m, x: spot.x, y: spot.y, aware: this.ambush,
+        unseen: !!m.hidden, alivePos: () => m.hp > 0 });
     });
     // Dead heroes still hold a square (a fallen body); dead monsters vanish.
     // A stable battle-local id per combatant — fear conditions remember WHO
@@ -158,6 +174,48 @@ export class Battle {
   active() { return this.combatants[this.turnIdx]; }
   heroes() { return this.combatants.filter(c => c.kind === 'hero'); }
   monsters() { return this.combatants.filter(c => c.kind === 'monster' && c.ref.hp > 0); }
+  // Monsters the party can actually SEE (and therefore aim at). A monster
+  // hides two ways: monsters.json "hidden": true (it began the fight
+  // unseen) or the 'vanish' ability used mid-fight. Either way c.unseen
+  // is the live flag, and `seen` is what the rest of the engine asks.
+  visibleMonsters() { return this.monsters().filter(c => !c.unseen); }
+  monsterAtSeen(x, y) { return this.visibleMonsters().find(c => c.x === x && c.y === y); }
+
+  // Is anything on the field hiding right now?
+  anyUnseen() { return this.monsters().some(c => c.unseen); }
+
+  // A hidden thing steps into the light — for any reason (it struck, a
+  // spell found it, a rogue's eye caught it). Returns true if it WAS hidden.
+  revealMonster(c, why) {
+    if (!c.unseen) return false;
+    c.unseen = false;
+    c.revealedRound = this.round;
+    this.addFx(c.x, c.y, 'revealed!', '#ffd24a');
+    if (why) this.game.log(why, 'good');
+    return true;
+  }
+
+  // Does any hero see through hiding outright? (the Shadows growth pick,
+  // or a Piercing Sight / Light of Truth buff still burning)
+  seersEye() {
+    for (const h of this.heroes()) {
+      if (!h.ref.alive) continue;
+      if (growthEffect(this.game.data, h.ref, 'see_hidden')) return { name: `${h.ref.name}'s eye`, ref: h.ref };
+      const buff = (h.ref.timedBuffs ?? []).find(b => b.reveal);
+      if (buff) return { name: buff.name, ref: h.ref };
+    }
+    return null;
+  }
+
+  // Called whenever sight might have changed: anything that can no longer
+  // hide steps into view.
+  sweepHidden() {
+    const eye = this.seersEye();
+    if (!eye) return;
+    for (const c of this.monsters()) {
+      this.revealMonster(c, `${eye.name} picks the ${c.ref.name} out of the dark — it cannot hide from this party.`);
+    }
+  }
   heroAt(x, y) { return this.heroes().find(c => c.ref.alive && c.x === x && c.y === y); }
   monsterAt(x, y) { return this.monsters().find(c => c.x === x && c.y === y); }
   byUid(uid) { return this.combatants.find(cc => cc.uid === uid); }
@@ -429,6 +487,12 @@ export class Battle {
     if (!c || c.kind !== 'hero') return;
     const nx = c.x + dx, ny = c.y + dy;
     const foe = this.monsterAt(nx, ny);
+    if (foe?.unseen) {
+      // Blundering into something unseen: you find it the hard way, and it
+      // costs the step — but at least now everyone can see it.
+      this.revealMonster(foe, `${c.ref.name} walks straight into something unseen — there it is!`);
+      return;
+    }
     if (foe) { this.heroAttack(c, foe); return; }
     if (this.movesLeft <= 0 || !this.open(nx, ny)) {
       const root = this.movesLeft <= 0 ? this.rootedBy(c.ref) : null;
@@ -1118,11 +1182,6 @@ export class Battle {
         out.push({ kind: 'active', id: 'taunt', name: 'Taunt', cost: 0, affordable: true,
           description: `Bellow a challenge — enemies strike at YOU for ${cap.taunt_rounds ?? 2} rounds.` });
       }
-      if (cap.id === 'set_trap') {
-        out.push({ kind: 'active', id: 'set_trap', name: cap.name ?? 'Set Trap', cost: 0, affordable: true,
-          targeted: { kind: 'trap', range: cap.range ?? 3 },
-          description: `Plant a trap on a square within ${cap.range ?? 3} (${Math.max(0, Math.min(95, this.game.heroSkill(ref)))}% skill) — ${cap.dice ?? '2d6'} to the first foe on it.` });
-      }
       if (cap.id === 'twin_surge' && !ref.spentRest?.twin_surge && !ref.twinArmed) {
         out.push({ kind: 'active', id: 'twin_surge', name: cap.name ?? 'Stormsurge', cost: 0, affordable: true,
           description: 'Once per rest, free to arm: your next spell resolves TWICE — then the channeling leaves you Exhausted for a round.' });
@@ -1138,6 +1197,26 @@ export class Battle {
           description: `Once per rest — ALL remaining SP (${ref.sp}; needs ${minSp}+): the living are healed to full, the fallen rise at half.` });
       }
     }
+    // Snares (2026-09-03): granted with the Shadows lane at the fork. One
+    // menu entry per kind known — they aim like a spell and always place.
+    const grant = snareGrant(this.game.data, ref);
+    if (grant) {
+      const { dice, steps } = snareDice(this.game.data, ref);
+      const live = this.battleTraps.filter(t => t.owner === ref).length;
+      const cap = hasCapstone(this.game.data, ref, 'deadly_webs') ? laneOf(this.game.data, ref).capstone : null;
+      const max = cap?.max_traps ?? 1;
+      for (const kind of snareKinds(this.game.data, ref)) {
+        const riderText = SNARE_RIDERS[kind.id]
+          ? ` · ${SNARE_RIDERS[kind.id].verb} (DC ${this.snareDC(ref)})` : '';
+        out.push({ kind: 'active', id: `snare_${kind.id}`, name: kind.name, cost: 0,
+          affordable: live < max,
+          targeted: { kind: 'trap', range: grant.range ?? 3, snare: kind.id },
+          description: live >= max
+            ? `You already have ${live} snare${live > 1 ? 's' : ''} live (limit ${max}).`
+            : `Lay it on a square within ${grant.range ?? 3} — ${dice}${steps ? ' (grown with your level)' : ''} to the first foe that finds it${riderText}.${cap ? ' It springs on anything stepping beside it.' : ''}` });
+      }
+    }
+
     // The Rite's unique power, under the name the player gave it.
     const rite = riteOf(this.game.data, ref);
     if (rite && ref.rite) {
@@ -1231,7 +1310,7 @@ export class Battle {
     if (!s) return;
     if (s.kind === 'active') {
       if (s.targeted) { // trap squares, deathblow marks, shadowstep landings
-        this.pending = { kind: s.targeted.kind, range: s.targeted.range, entry: s };
+        this.pending = { kind: s.targeted.kind, range: s.targeted.range, snare: s.targeted.snare, entry: s };
         this.beginTargeting(s.targeted.kind === 'shadowstep');
         return;
       }
@@ -1601,6 +1680,22 @@ export class Battle {
     if (it.kind === 'scroll') {
       if (!it.usable) { this.game.log(it.reason, 'info'); return; }
       this.mode = 'move';
+      // The Thief's gamble (2026-09-03): a non-caster puzzling at a scroll
+      // gets one roll. Fail and the page burns anyway — that IS the risk.
+      const gamble = scrollGamble(c.ref, it.spell);
+      if (gamble) {
+        const roll = Math.floor(Math.random() * 100) + 1;
+        const chance = gamble.chance ?? 60;
+        if (roll > chance) {
+          this.game.consumeScroll(it.id);
+          audio.play('spellbook');
+          this.addFx(c.x, c.y, 'it burns!', '#e0483a');
+          this.game.log(`${c.ref.name} squints at the ${it.def.name} — the words twist away (rolled ${roll} vs ${chance}%). The page blackens and crumbles, and the moment is lost.`, 'death');
+          this.endHeroTurn();
+          return;
+        }
+        this.game.log(`${c.ref.name} wrestles the ${it.def.name} into sense (rolled ${roll} vs ${chance}%) — it works!`, 'good');
+      }
       // The scroll's spell, cast at no cost — the item id rides along so
       // spendSpell can burn it instead of SP.
       this.startCast(c, { ...it.spell, cost: 0, scroll: it.id, scrollName: it.def.name, affordable: true });
@@ -1671,6 +1766,7 @@ export class Battle {
   // cannot legally hit.
   targetable(x, y) {
     const c = this.active();
+    if (this.monsterAt(x, y)?.unseen) return false; // you cannot aim at what you cannot see
     return x >= 0 && y >= 0 && x < GRID_W && y < GRID_H
       && this.dist(c.x, c.y, x, y) <= this.pending.range
       && this.losClear(c.x, c.y, x, y);
@@ -1695,7 +1791,7 @@ export class Battle {
     // Start the crosshair on the most obvious LEGAL target; if nothing is
     // in reach, fall back to the caster's own square so the player sees
     // the range ring around themselves rather than a phantom lock-on.
-    const candidates = friendly ? this.friendlyCandidates(spell) : this.monsters();
+    const candidates = friendly ? this.friendlyCandidates(spell) : this.visibleMonsters();
     const pick = candidates
       .filter(t => this.targetable(t.x, t.y))
       .sort((a, b) => this.dist(c.x, c.y, a.x, a.y) - this.dist(c.x, c.y, b.x, b.y))[0];
@@ -1734,22 +1830,21 @@ export class Battle {
       return;
     }
 
-    // Burglar's Set Trap: an empty square, a skill roll, a nasty surprise.
+    // Snares (2026-09-03): an empty square and your whole turn. Placing
+    // ALWAYS works — skill instead sets the DC of the rider, so a sharper
+    // rogue's venom is harder to shake. No more wasted turns to a jam.
     if (p.kind === 'trap') {
       if (!this.open(x, y)) return; // needs bare floor
       this.cancelTargeting();
-      const cap = laneOf(this.game.data, c.ref).capstone;
-      const chance = Math.max(0, Math.min(95, this.game.heroSkill(c.ref)));
-      audio.play('melee_hit');
-      if (Math.random() * 100 < chance) {
-        this.battleTraps.push({ x, y, owner: c.ref, dice: cap.dice ?? '2d6' });
-        c.ref.counters.shadowFeats++;
-        this.addFx(x, y, 'trap set', '#d4a94e');
-        this.game.log(`${c.ref.name} plants a trap with a craftsman's touch. Someone will find it the hard way.`, 'good');
-      } else {
-        this.addFx(c.x, c.y, 'jammed!', '#9a94a8');
-        this.game.log(`${c.ref.name}'s trap mechanism jams — the moment is wasted.`, 'info');
-      }
+      const { dice } = snareDice(this.game.data, c.ref);
+      const kind = p.snare ?? 'plain';
+      const rider = SNARE_RIDERS[kind] ?? null;
+      const name = snareKinds(this.game.data, c.ref).find(k => k.id === kind)?.name ?? 'snare';
+      audio.play('disarm');
+      this.battleTraps.push({ x, y, owner: c.ref, dice, kind, name, rider, dc: this.snareDC(c.ref) });
+      c.ref.counters.shadowFeats++;
+      this.addFx(x, y, 'snare set', '#d4a94e');
+      this.game.log(`${c.ref.name} lays ${name === 'Snare' ? 'a snare' : `a ${name.toLowerCase()}`} and steps back. Someone will find it the hard way.`, 'good');
       this.endHeroTurn();
       return;
     }
@@ -1857,14 +1952,14 @@ export class Battle {
       const fallen = this.heroes().find(h => !h.ref.alive && h.x === x && h.y === y);
       if (!fallen) return false;
     } else if (s.type === 'afflict' || s.type === 'damage') {
-      const aimed = s.area === 'all' || (c.ref.maelstromArmed && s.type === 'damage' && !s.scroll);
+      const aimed = s.area === 'all' || (c.ref.maelstromArmed && s.type === 'damage' && !fromScroll(s));
       if (!aimed && !(s.area > 0) && !this.monsterAt(x, y)) return false;
     }
     if (this.mode === 'target') this.cancelTargeting();
     c.ref.hidden = false; // spellwork glows — the shadows can't keep you
     this.spendSpell(c.ref, s);
     audio.play(this.spellSound(s));
-    if (s.scroll) {
+    if (fromScroll(s)) {
       this.game.log(`${c.ref.name} unrolls the ${s.scrollName} and reads ${s.name} — the words burn off the page${this.game.arena ? ' (arena: the scroll survives)' : ''}.`, 'info');
     } else {
       this.game.log(`${c.ref.name} casts ${s.name}${s.overcast ? ' — OVERCAST' : ''}${s.archmage ? ` — ${laneOf(this.game.data, c.ref).capstone.name ?? 'the Archmage\'s reach'}, every point spent` : ''}${s.free ? ` — by ${c.ref.rite?.abilityName ?? 'the Final Word'}, freely` : ''}!`, 'info');
@@ -1872,7 +1967,7 @@ export class Battle {
     this.resolveSpell(c, s, x, y);
     // Stormsurge: the same spell, twice in immediate succession — then the
     // backlash claims the next round. A scroll read is not a cast.
-    if (c.ref.twinArmed && s.type !== 'buff' && !s.scroll) {
+    if (c.ref.twinArmed && s.type !== 'buff' && !fromScroll(s)) {
       c.ref.twinArmed = false;
       c.ref.spentRest.twin_surge = true;
       const capName = laneOf(this.game.data, c.ref).capstone?.name ?? 'Stormsurge';
@@ -1969,7 +2064,7 @@ export class Battle {
 
   // Pay for a cast (and settle the flags & tracked deeds that ride along).
   spendSpell(ref, s) {
-    if (s.scroll) { this.game.consumeScroll(s.scroll); return; } // the page, not the well
+    if (fromScroll(s)) { this.game.consumeScroll(s.scroll); return; } // the page, not the well
     if (s.free) { ref.finalWordArmed = false; this.markSpent(ref, 'final_word'); }
     if (s.overcast) ref.counters.overcasts++; // the Sorcerer's tracked deed
     if (s.once_per_rest) (ref.spentRest ??= {})[s.id] = true; // Circle of Endurance and kin
@@ -2133,7 +2228,7 @@ export class Battle {
   resolveDamage(c, s, x, y, m, impact) {
     const ch = c.ref;
     // Maelstrom (armed): the blast forgets range and area — every foe.
-    const maelstrom = ch.maelstromArmed && !s.scroll;
+    const maelstrom = ch.maelstromArmed && !fromScroll(s);
     let targets;
     if (maelstrom) {
       ch.maelstromArmed = false;
@@ -2261,6 +2356,7 @@ export class Battle {
     if (s.resist) bits.push(s.resist === 'all' ? 'every element halved' : `${s.resist.join('/')} halved`);
     if (s.immune_conditions === true) bits.push('no affliction can land');
     else if (Array.isArray(s.immune_conditions)) bits.push(`immune to ${s.immune_conditions.map(id => this.game.conditionDef(id)?.name?.toLowerCase() ?? id).join('/')}`);
+    if (s.reveal) bits.push('nothing may hide from the party');
     if (s.reduce) bits.push(`every blow loses ${s.reduce}`);
     if (s.halve) bits.push('every wound halved');
     if (s.reflect) bits.push(`${Math.round(s.reflect * 100)}% of melee wounds thrown back`);
@@ -2275,6 +2371,7 @@ export class Battle {
       const absorb = s.absorb ? Math.max(1, roll(s.absorb)) : 0;
       if (absorb) absorbText = ` — drinks ${absorb} (${s.absorb})`;
       ch.timedBuffs.push(spellBuff(s, { ac, rounds, absorb }));
+      if (s.reveal) this.sweepHidden(); // the light goes up — nothing stays hidden
       // A Hearthstone dwarf's tracked deed: every ally sheltered by a verse.
       if (ch !== c.ref && laneOf(this.game.data, c.ref)?.rite?.tracked === 'alliesFortified') c.ref.counters.alliesFortified++;
       if (s.hidden) { ch.hidden = true; audio.play('vanish'); }
@@ -2390,6 +2487,9 @@ export class Battle {
   }
 
   abilityViable(c, ab) {
+    // Vanishing is pointless if already unseen, and impossible while a
+    // Piercing Sight / Light of Truth burns or a seer's eye is on the field.
+    if (ab.type === 'vanish') return !c.unseen && !this.seersEye();
     if (ab.type === 'haste') {
       const targets = ab.targets === 'self' ? [c]
         : this.monsters().filter(mc => mc !== c && mc.ref.hp > 0);
@@ -2419,6 +2519,7 @@ export class Battle {
   useAbility(c, ab) {
     (c.cds ??= {})[ab.index] = (ab.cooldown ?? 0) + 1; // +1: it ticks down at ITS next turn
     if (ab.uses !== undefined) (c.uses ??= {})[ab.index] = (c.uses?.[ab.index] ?? 0) + 1;
+    if (ab.type === 'vanish') return this.monsterVanish(c, ab);
     if (ab.type === 'haste') return this.monsterHaste(c, ab);
     if (ab.type === 'spell') return this.monsterCastSpell(c, ab);
     if (ab.type === 'afflict') return this.monsterAfflict(c, ab);
@@ -2539,6 +2640,19 @@ export class Battle {
 
   // haste: the pack-leader's gift (or its own frenzy) — extra swings for
   // `rounds` of the target's turns, named in every attack line.
+  // 'vanish' (2026-09-03): the player's own trick, turned around. The
+  // monster spends its turn to disappear; it cannot be aimed at, and its
+  // next blow lands as though nobody saw it coming — until it strikes,
+  // which gives it away exactly as it does for a Thief.
+  monsterVanish(c, ab) {
+    c.unseen = true;
+    audio.play('vanish');
+    this.particleFx(c.x, c.y, ab.fx?.kind ?? 'wisp', ab.fx?.color ?? '#8a7ab8');
+    this.addFx(c.x, c.y, (ab.name ?? 'VANISH').toUpperCase(), '#8a7ab8');
+    this.game.log(`The ${c.ref.name} ${ab.name ? `works ${ab.name} and ` : ''}is simply gone — the party's eyes slide off the empty air.`, 'death');
+    this.finishMonsterAction();
+  }
+
   monsterHaste(c, ab) {
     const m = c.ref;
     const name = ab.name ?? 'Frenzy';
@@ -2641,6 +2755,8 @@ export class Battle {
 
   doSwing(targetC) {
     const chain = this.swingChain;
+    // Striking gives you away — the same rule the player's hiding lives by.
+    this.revealMonster(chain.c, `The ${chain.c.ref.name} breaks cover as it strikes!`);
     chain.remaining--;
     chain.swung++;
     if (chain.swung > 1) {
@@ -2739,19 +2855,33 @@ export class Battle {
     return true;
   }
 
-  // The Burglar's handiwork: the first foe to step on a planted trap
-  // springs it — damage, and the trap is spent.
+  // A snare's rider is resisted by the thief's own craft, not caster level:
+  // 10 + a tenth of their skill, so an 80% rogue sets DC 18.
+  snareDC(ref) { return 10 + Math.round(this.game.heroSkill(ref) / 10); }
+
+  // The rogue's handiwork: a monster finds a snare by stepping on it — or,
+  // once Deadly Webs is walked, merely by stepping BESIDE it.
   checkBattleTrap(c) {
-    const trap = this.battleTraps.find(t => t.x === c.x && t.y === c.y);
-    if (!trap) return;
-    this.battleTraps = this.battleTraps.filter(t => t !== trap);
-    const dmg = Math.max(1, roll(trap.dice));
+    const webs = this.battleTraps.find(t => {
+      if (t.x === c.x && t.y === c.y) return true;
+      const cap = hasCapstone(this.game.data, t.owner, 'deadly_webs') ? laneOf(this.game.data, t.owner).capstone : null;
+      return cap?.adjacent && Math.abs(t.x - c.x) + Math.abs(t.y - c.y) === 1;
+    });
+    if (!webs) return;
+    this.battleTraps = this.battleTraps.filter(t => t !== webs);
+    const dmg = Math.max(1, roll(webs.dice));
     c.ref.hp -= dmg;
     this.wake(c.ref);
     c.aware = true;
+    this.revealMonster(c, `The ${c.ref.name} blunders into a snare and gives itself away!`);
     audio.play('trap_springs');
-    this.addFx(c.x, c.y, `TRAP! -${dmg}`, '#e0912f');
-    this.game.log(`The ${c.ref.name} steps on ${trap.owner.name}'s trap — it springs shut for ${dmg} damage!`, 'good');
+    this.addFx(c.x, c.y, `${(webs.name ?? 'TRAP').toUpperCase()}! -${dmg}`, '#e0912f');
+    const near = webs.x === c.x && webs.y === c.y ? 'steps on' : 'brushes';
+    this.game.log(`The ${c.ref.name} ${near} ${webs.owner.name}'s ${(webs.name ?? 'snare').toLowerCase()} — ${dmg} damage!`, 'good');
+    if (c.ref.hp > 0 && webs.rider) {
+      this.tryInflict(c, webs.rider.condition, webs.rider.rounds, webs.dc ?? 13,
+        this.combatants.find(cc => cc.ref === webs.owner)?.uid);
+    }
     if (c.ref.hp <= 0) this.slay(c.ref);
   }
 

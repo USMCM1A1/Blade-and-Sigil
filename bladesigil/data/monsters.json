@@ -1,5 +1,5 @@
 {
-  "_comment": "The bestiary. Stats for the 52 monsters added 2026-08-26 are Claude's PROPOSALS scaled from the original rat/goblin/skeleton/orc curve — retune freely! 'slow' monsters have speed 2 (act on even rounds). 'inflicts' rides a hit: condition id from conditions.json, rounds, save DC. Sprites in assets/enemies/gen/ come from the art pipeline (data/art_manifest.json + tools/genart.py); a missing image just renders empty. SPECIAL ABILITIES (2026-09-01, the designer's danger pass — all numbers PROPOSALS, retune freely): 'attacks': N = swings per turn (elites). 'abilities': [ordered list = AI priority; first usable fires] with types 'bolt' (one hero: name, element?, dice, range, save, dc, cooldown/uses, fx like spells.json), 'breath' (adds 'area' — every hero within it of the target), 'afflict' (condition id + rounds + dc at range; 'area' for a blast; targets:'party' = every hero saves alone; uses:1 for once-a-battle), 'haste' (targets 'self'|'allies': extra_attacks for rounds — kill the pack leader!), 'spell' (id + caster_level: casts a REAL spells.json damage/afflict spell — the lich). 'regen': {amount, blocked_by:[elements]} — fire sears a troll shut. 'drains': {amount: dice|'level'|'damage', dc, heals?} — failed CON save tears away MAX HP until a full rest or the temple ('level' = a class hit die, 'damage' = what the blow dealt, heals = the vampire drinks it). 'death_burst': {dice, element?, area, save, dc} — the corpse detonates. 'resist_physical': ['edged'|'piercing'|'blunt'] — half damage from those weapons (bring a mace). 'touch': true — the blow ignores worn armor and shield AC (incorporeal). | 'magic_to_hit': true — mundane weapons pass straight through; only 'enchanted' weapons (tier 2+) or spells can harm it. Designer ruling 2026-08-27: incorporeal undead + outsiders (fiends, genies, slaadi, elementals). The exact list is a Claude PROPOSAL — add/remove freely. | 'family' (tier abilities 2026-08-27): every monster's kind — undead/outsider/beast/vermin/humanoid/construct/ooze/aberration/dragon/elemental; Ancient weapons double vs undead, Bane vs outsider. 'element' on a monster types its ATTACK (fire/frost/lightning/poison) so worn resist halves it and immunity drinks it. All tags are Claude PROPOSALS — retag freely. | 'fear_aura': {dc, rounds} (2026-09-02, designer) — stepping next to the bearer, or starting a turn beside it, demands a WIS save vs dc; failing = frightened (and fear is behavioral: no approach). One passed save steels that hero against that monster for the battle.",
+  "_comment": "The bestiary. Stats for the 52 monsters added 2026-08-26 are Claude's PROPOSALS scaled from the original rat/goblin/skeleton/orc curve — retune freely! 'slow' monsters have speed 2 (act on even rounds). 'inflicts' rides a hit: condition id from conditions.json, rounds, save DC. Sprites in assets/enemies/gen/ come from the art pipeline (data/art_manifest.json + tools/genart.py); a missing image just renders empty. SPECIAL ABILITIES (2026-09-01, the designer's danger pass — all numbers PROPOSALS, retune freely): 'attacks': N = swings per turn (elites). 'abilities': [ordered list = AI priority; first usable fires] with types 'bolt' (one hero: name, element?, dice, range, save, dc, cooldown/uses, fx like spells.json), 'breath' (adds 'area' — every hero within it of the target), 'afflict' (condition id + rounds + dc at range; 'area' for a blast; targets:'party' = every hero saves alone; uses:1 for once-a-battle), 'haste' (targets 'self'|'allies': extra_attacks for rounds — kill the pack leader!), 'spell' (id + caster_level: casts a REAL spells.json damage/afflict spell — the lich). 'regen': {amount, blocked_by:[elements]} — fire sears a troll shut. 'drains': {amount: dice|'level'|'damage', dc, heals?} — failed CON save tears away MAX HP until a full rest or the temple ('level' = a class hit die, 'damage' = what the blow dealt, heals = the vampire drinks it). 'death_burst': {dice, element?, area, save, dc} — the corpse detonates. 'resist_physical': ['edged'|'piercing'|'blunt'] — half damage from those weapons (bring a mace). 'touch': true — the blow ignores worn armor and shield AC (incorporeal). | 'magic_to_hit': true — mundane weapons pass straight through; only 'enchanted' weapons (tier 2+) or spells can harm it. Designer ruling 2026-08-27: incorporeal undead + outsiders (fiends, genies, slaadi, elementals). The exact list is a Claude PROPOSAL — add/remove freely. | 'family' (tier abilities 2026-08-27): every monster's kind — undead/outsider/beast/vermin/humanoid/construct/ooze/aberration/dragon/elemental; Ancient weapons double vs undead, Bane vs outsider. 'element' on a monster types its ATTACK (fire/frost/lightning/poison) so worn resist halves it and immunity drinks it. All tags are Claude PROPOSALS — retag freely. | 'fear_aura': {dc, rounds} (2026-09-02, designer) — stepping next to the bearer, or starting a turn beside it, demands a WIS save vs dc; failing = frightened (and fear is behavioral: no approach). One passed save steels that hero against that monster for the battle. | HIDING (2026-09-03, designer session — the player's own tricks turned back on them): 'hidden': true = the monster BEGINS the fight unseen (shadow_thief, ninja, invisible_stalker). It cannot be targeted and its blows land as though the hero never saw them coming. Four answers: a Shadows thief with the See the Unseen growth pick spots them outright; the level-2 spells Piercing Sight (arcane) and Light of Truth (divine) reveal everything for a few rounds AND stop anything re-vanishing while they hold; area spells never needed to see anything; and ANY monster that attacks gives itself away for that round. The ability type 'vanish' is the magical version — the monster spends its turn to disappear mid-fight, exactly like the Thief's verb (drow_blademaster, succubus, incubus). All stats are PROPOSALS.",
   "monsters": {
     "giant_rat": {
       "name": "Giant Rat",
@@ -404,6 +404,16 @@
             "kind": "wisp",
             "color": "#e08fb8"
           }
+        },
+        {
+          "type": "vanish",
+          "name": "Fade From Sight",
+          "cooldown": 4,
+          "fx": {
+            "kind": "wisp",
+            "color": "#8a7ab8",
+            "sound": "arcane"
+          }
         }
       ]
     },
@@ -574,6 +584,16 @@
           "fx": {
             "kind": "wisp",
             "color": "#b03a8e"
+          }
+        },
+        {
+          "type": "vanish",
+          "name": "Fade From Sight",
+          "cooldown": 4,
+          "fx": {
+            "kind": "wisp",
+            "color": "#8a7ab8",
+            "sound": "arcane"
           }
         }
       ]
@@ -1053,7 +1073,19 @@
       "xp": 440,
       "save": 8,
       "family": "humanoid",
-      "attacks": 2
+      "attacks": 2,
+      "abilities": [
+        {
+          "type": "vanish",
+          "name": "Shroud of Lolth",
+          "cooldown": 3,
+          "fx": {
+            "kind": "wisp",
+            "color": "#8a7ab8",
+            "sound": "arcane"
+          }
+        }
+      ]
     },
     "white_slaad": {
       "name": "White Slaad",
@@ -1502,6 +1534,56 @@
           }
         }
       ]
+    },
+    "shadow_thief": {
+      "name": "Shadow Thief",
+      "sprite": "assets/enemies/gen/shadow_thief.png",
+      "sprite_dead": "assets/enemies/gen/shadow_thief_dead.png",
+      "hp": 38,
+      "ac": 7,
+      "to_hit": 6,
+      "damage": "2d6+1",
+      "speed": 1,
+      "xp": 120,
+      "save": 4,
+      "family": "humanoid",
+      "hidden": true
+    },
+    "ninja": {
+      "name": "Ninja",
+      "sprite": "assets/enemies/gen/ninja.png",
+      "sprite_dead": "assets/enemies/gen/ninja_dead.png",
+      "hp": 72,
+      "ac": 10,
+      "to_hit": 10,
+      "damage": "2d8+2",
+      "speed": 1,
+      "xp": 380,
+      "save": 7,
+      "family": "humanoid",
+      "hidden": true,
+      "attacks": 2,
+      "inflicts": {
+        "condition": "poison",
+        "rounds": 3,
+        "dc": 15
+      }
+    },
+    "invisible_stalker": {
+      "name": "Invisible Stalker",
+      "sprite": "assets/enemies/gen/invisible_stalker.png",
+      "sprite_dead": "assets/enemies/gen/invisible_stalker_dead.png",
+      "hp": 95,
+      "ac": 11,
+      "to_hit": 11,
+      "damage": "3d6+3",
+      "speed": 1,
+      "xp": 520,
+      "save": 8,
+      "family": "elemental",
+      "hidden": true,
+      "attacks": 2,
+      "magic_to_hit": true
     }
   }
 }

@@ -17,7 +17,7 @@ const PASSIVES = ['weapon_focus', 'braced_stance', 'vital_strike', 'keen_senses'
 const VERBS = ['rampage', 'guardians_stand', 'assassinate', 'vanish',
   'arcane_insight', 'overcast', 'mercy', 'zealous_strike',
   'runic_riposte', 'ward_surge', 'unyielding', 'shared_fortitude', 'hunters_surge', 'volley'];
-const CAPSTONES = ['rage', 'bulwark', 'lethality', 'set_trap',
+const CAPSTONES = ['rage', 'bulwark', 'lethality', 'set_trap', 'deadly_webs',
   'archmage', 'twin_surge', 'miracle', 'divine_inspiration',
   'whirling_verse', 'mirror_ward', 'mountains_heart', 'deep_roots', 'storm_of_blades', 'rain_of_arrows'];
 const REFINEMENTS = ['rampage_crits', 'stand_half_cost', 'assassinate_low_hp', 'vanish_free',
@@ -78,6 +78,42 @@ export function focusPicksOwed(data, ch) {
   const taken = focusList(data, ch).length;
   const available = focusOptions(data, ch).length; // options already exclude taken
   return Math.min(Math.max(0, granted - taken), available);
+}
+
+// ---- Snares (designer ruling 2026-09-03) ----
+// The Shadows lane's toy, granted WITH the lane (lane.grant) instead of
+// held back to the capstone. Damage grows with the levels since the fork.
+export function snareGrant(data, ch) {
+  const lane = laneOf(data, ch);
+  const g = lane?.grant;
+  return g?.id === 'snares' && ch.level >= (classProg(data, ch)?.fork_level ?? 99) ? g : null;
+}
+
+// The kinds of snare this hero can lay: the plain one, plus any taken as
+// growth picks ('snare' field). Each returns {id, name, blurb, rider}.
+export function snareKinds(data, ch) {
+  const g = snareGrant(data, ch);
+  if (!g) return [];
+  const out = [{ id: 'plain', name: g.name ?? 'Snare', blurb: 'A simple mechanism — it hurts whatever finds it.' }];
+  for (const o of growthPicks(data, ch)) {
+    if (o.snare) out.push({ id: o.snare, name: o.name, blurb: o.blurb });
+  }
+  return out;
+}
+
+// A snare's damage dice at this level: the grant's dice, plus one more of
+// scale.dice for every scale.per_levels above the fork.
+export function snareDice(data, ch) {
+  const g = snareGrant(data, ch);
+  if (!g) return null;
+  const fork = classProg(data, ch)?.fork_level ?? 5;
+  const per = g.scale?.per_levels ?? 4;
+  const steps = Math.max(0, Math.floor((ch.level - fork) / per));
+  const base = g.dice ?? '2d6';
+  if (!steps || !g.scale?.dice) return { dice: base, steps: 0 };
+  const m = /^(\d+)d(\d+)$/.exec(base), e = /^(\d+)d(\d+)$/.exec(g.scale.dice);
+  if (!m || !e || m[2] !== e[2]) return { dice: base, steps };
+  return { dice: `${Number(m[1]) + steps * Number(e[1])}d${m[2]}`, steps };
 }
 
 // ---- Lane growth (designer session 2026-09-02) ----
@@ -208,7 +244,7 @@ export function validateProgression(data) {
   const GROWTH_FIELDS = ['id', 'name', 'blurb', 'brace_vs', 'brace_bonus', 'brace_no_shield',
     'brace_allies', 'refuse', 'aura_ac', 'aura_reduce', 'aura_saves', 'aura_party',
     'aura_refuse', 'vital_when', 'skill', 'find_range', 'search_turns', 'disarm_safe',
-    'chest_safe', 'vault_sense', 'saves'];
+    'chest_safe', 'vault_sense', 'saves', 'snare', 'see_hidden'];
   const VITAL_WHEN = ['poisoned', 'wounded', 'held', 'frightened', 'alone', 'bigger'];
   const BRACE_VS = ['spell', 'trap', 'ranged'];
   const condIds = Object.keys(data.conditions.conditions).filter(k => !k.startsWith('_'));
@@ -238,6 +274,9 @@ export function validateProgression(data) {
         }
         if (o.vital_when && !VITAL_WHEN.includes(o.vital_when)) {
           throw new DataError('data/progression.json', `${where}: growth option "${o.id}" has vital_when "${o.vital_when}". Valid: ${VITAL_WHEN.join(', ')}.`);
+        }
+        if (o.snare && !['venom', 'bear', 'caltrops', 'flash'].includes(o.snare)) {
+          throw new DataError('data/progression.json', `${where}: growth option "${o.id}" lays a "${o.snare}" snare. Valid: venom (poisons), bear (holds), caltrops (slows), flash (blinds).`);
         }
         if (o.brace_vs && !BRACE_VS.includes(o.brace_vs)) {
           throw new DataError('data/progression.json', `${where}: growth option "${o.id}" braces against "${o.brace_vs}". Valid: ${BRACE_VS.join(', ')}.`);

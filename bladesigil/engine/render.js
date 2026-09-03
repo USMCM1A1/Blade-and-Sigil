@@ -407,6 +407,9 @@ export class Renderer {
       if (dying && !c.diedAt) continue;
       const px = ox + c.x * CELL, py = oy + c.y * CELL;
       const dead = c.kind === 'hero' && !c.ref.alive;
+      // A monster that hides is simply NOT DRAWN — the player sees empty
+      // floor, exactly as the party does (2026-09-03).
+      if (c.kind === 'monster' && c.unseen && !dying) continue;
       const hidden = c.kind === 'hero' && c.ref.hidden;
       ctx.save();
       if (dead) ctx.globalAlpha = 0.5;
