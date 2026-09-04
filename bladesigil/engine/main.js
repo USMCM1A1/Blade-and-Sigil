@@ -10,6 +10,7 @@ import { validateMagic, deriveScrollItems } from './magic.js';
 import { choosePartyDef } from './creation.js';
 import { loadRun } from './save.js';
 import * as audio from './audio.js';
+import { registerPanel, togglePanel, closePanel, isOpen } from './panel.js';
 
 async function boot() {
   const [classes, races, monsters, party, level, spells, conditions, items, town, dungeon, progression, sounds] = await Promise.all([
@@ -96,20 +97,95 @@ async function boot() {
     W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0],
   };
 
-  const help = document.getElementById('help');
-  const guide = document.getElementById('guide');
-  const toggleHelp = show => {
-    help.style.display = (show ?? help.style.display !== 'block') ? 'block' : 'none';
-    if (help.style.display === 'block') guide.style.display = 'none';
-  };
-  const toggleGuide = show => {
-    guide.style.display = (show ?? guide.style.display !== 'block') ? 'block' : 'none';
-    if (guide.style.display === 'block') help.style.display = 'none';
-  };
+  // Help (H) and the guide (G) are panels too — mutually exclusive.
+  registerPanel('help', { onOpen: () => closePanel('guide') });
+  registerPanel('guide', { onOpen: () => closePanel('help') });
+  const toggleHelp = show => togglePanel('help', show);
+  const toggleGuide = show => togglePanel('guide', show);
   if (!localStorage.getItem('bs_seen_help')) {
     toggleHelp(true); // first visit: open with the controls on screen
     localStorage.setItem('bs_seen_help', '1');
   }
+
+  // ---- The keymap (refactor step 6a, 2026-09-04) ----
+  // Each context is a table: the battle's modes, the map's modal panels
+  // (in priority order — the first open one takes the key), and the map
+  // itself. A handler returns nothing; keys nobody claims fall through.
+  const digit = e => (/^[1-9]$/.test(e.key) ? Number(e.key) : 0);
+  const is = (e, chars) => chars.includes(e.key);
+  const isEsc = e => e.key === 'Escape';
+  const isGo = e => e.key === ' ' || e.key === 'Enter';
+  const stop = e => e.preventDefault();
+  const mute = () => { const muted = audio.toggleMute(); game.log(muted ? 'Sound muted.' : 'Sound on.', 'info'); };
+  const reload = () => location.reload();
+  const playing = () => !game.over && !game.victory;
+
+  // Battle: one table per mode. Arrows move the active hero (walk into a
+  // monster to attack), C casts, F shoots, Space/Enter ends the turn, Esc flees.
+  const BATTLE_MODES = {
+    menu: (e, b) => {
+      if (digit(e)) b.chooseSpell(digit(e));
+      else if (MOVES[e.key] && MOVES[e.key][1]) { stop(e); b.menuMove(MOVES[e.key][1]); }
+      else if (isGo(e)) { stop(e); b.chooseSpell((b.menuSel ?? 0) + 1); }
+      else if (isEsc(e) || is(e, 'cC')) b.mode = 'move';
+    },
+    items: (e, b) => {
+      if (digit(e)) b.chooseItem(digit(e));
+      else if (isEsc(e) || is(e, 'iI')) b.mode = 'move';
+    },
+    swap: (e, b) => {
+      if (digit(e)) b.chooseSwap(digit(e));
+      else if (isEsc(e) || is(e, 'wW')) b.mode = 'move';
+    },
+    target: (e, b) => {
+      if (MOVES[e.key]) { stop(e); b.moveCursor(...MOVES[e.key]); }
+      else if (isGo(e)) { stop(e); b.confirm(); }
+      else if (isEsc(e)) b.cancelTargeting();
+    },
+    move: (e, b) => {
+      if (MOVES[e.key]) { stop(e); b.heroMove(...MOVES[e.key]); }
+      else if (isGo(e)) { stop(e); b.endHeroTurn(); }
+      else if (is(e, 'cC')) b.openMenu();
+      else if (is(e, 'fF')) b.beginShoot();
+      else if (is(e, 'iI')) b.openItems();
+      else if (is(e, 'wW')) b.openSwap();
+      else if (isEsc(e)) b.flee();
+      else if (is(e, 'mM')) mute();
+      else if (is(e, 'rR')) reload();
+    },
+  };
+
+  // Map-side modals, highest priority first: the first one open owns the key.
+  const MODALS = [
+    // A fork in the road: number keys (or clicks) decide. No backing out.
+    [choiceOpen, e => { if (digit(e)) choicePick(digit(e)); }],
+    [buildingOpen, e => { if (isEsc(e)) closeBuilding(); }],
+    // The level-up summary (or a milestone card) sits on top of the
+    // character sheet — dismissing it advances the level-up chain.
+    [levelupOpen, e => { if (isGo(e) || isEsc(e)) { stop(e); dismissLevelup(game); } }],
+    // The character sheet is modal on the map: I, E, C, or Esc puts it away;
+    // B flips straight to the Spellbook screen.
+    [equipmentOpen, e => { if (is(e, 'iIeEcC') || isEsc(e)) toggleEquipment(game, false); else if (is(e, 'bB')) flipToBook(game); }],
+    // The Spellbook screen: B or Esc closes; C flips to the character sheet.
+    [spellbookOpen, e => { if (is(e, 'bB') || isEsc(e)) toggleSpellbook(game, false); else if (is(e, 'iIeEcC')) flipToSheet(game); }],
+    [playtestOpen, e => { if (is(e, 'pP') || isEsc(e)) togglePlaytest(game, false); }],
+    [marchingOpen, e => { if (is(e, 'oO') || isEsc(e)) toggleMarching(game, false); }],
+  ];
+
+  // The map itself.
+  const MAP_KEYS = {
+    ' ': e => { stop(e); game.wait(); },
+    t: () => game.rest(), T: () => game.rest(),
+    i: () => playing() && toggleEquipment(game), I: () => playing() && toggleEquipment(game),
+    e: () => playing() && toggleEquipment(game), E: () => playing() && toggleEquipment(game),
+    c: () => playing() && toggleEquipment(game), C: () => playing() && toggleEquipment(game),
+    b: () => playing() && toggleSpellbook(game), B: () => playing() && toggleSpellbook(game),
+    '`': () => game.startArena(), '~': () => game.startArena(),
+    o: () => playing() && toggleMarching(game), O: () => playing() && toggleMarching(game),
+    p: () => playing() && togglePlaytest(game), P: () => playing() && togglePlaytest(game),
+    m: mute, M: mute,
+    r: reload, R: reload,
+  };
 
   document.addEventListener('keydown', e => {
     // Typing is typing: while a text field has focus (the Rite's naming and
@@ -117,18 +193,9 @@ async function boot() {
     // "the" must never summon the help screen. The fields' own Enter
     // handlers still work; they listen on the input itself.
     if (e.target.matches?.('input, textarea, select')) return;
-    if (e.key === 'h' || e.key === 'H' || e.key === '?') {
-      e.preventDefault();
-      toggleHelp();
-      return;
-    }
-    if (e.key === 'g' || e.key === 'G') {
-      e.preventDefault();
-      toggleGuide();
-      return;
-    }
-    if ((help.style.display === 'block' || guide.style.display === 'block')
-        && (e.key === 'Escape' || MOVES[e.key])) {
+    if (is(e, 'hH?')) { stop(e); toggleHelp(); return; }
+    if (is(e, 'gG')) { stop(e); toggleGuide(); return; }
+    if ((isOpen('help') || isOpen('guide')) && (isEsc(e) || MOVES[e.key])) {
       toggleHelp(false); // any move or Esc dismisses them, then the move happens
       toggleGuide(false);
     }
@@ -136,123 +203,19 @@ async function boot() {
       const b = game.battle;
       // Guardian's Stand: the world waits on a single question.
       if (b.pendingReaction) {
-        if (e.key === 'y' || e.key === 'Y') b.resolveReaction(true);
-        else if (e.key === 'n' || e.key === 'N' || e.key === 'Escape') b.resolveReaction(false);
+        if (is(e, 'yY')) b.resolveReaction(true);
+        else if (is(e, 'nN') || isEsc(e)) b.resolveReaction(false);
         return;
       }
       if (b.busy) return; // a monster is taking its turn — watch it play out
-      // Battle mode: arrows move the active hero (walk into a monster to
-      // attack), C casts, F shoots, Space/Enter ends the turn, Esc flees.
-      if (b.mode === 'menu') {
-        if (/^[1-9]$/.test(e.key)) b.chooseSpell(Number(e.key));
-        else if (MOVES[e.key] && MOVES[e.key][1]) { e.preventDefault(); b.menuMove(MOVES[e.key][1]); }
-        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); b.chooseSpell((b.menuSel ?? 0) + 1); }
-        else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') b.mode = 'move';
-        return;
-      }
-      if (b.mode === 'items') {
-        if (/^[1-9]$/.test(e.key)) b.chooseItem(Number(e.key));
-        else if (e.key === 'Escape' || e.key === 'i' || e.key === 'I') b.mode = 'move';
-        return;
-      }
-      if (b.mode === 'swap') {
-        if (/^[1-9]$/.test(e.key)) b.chooseSwap(Number(e.key));
-        else if (e.key === 'Escape' || e.key === 'w' || e.key === 'W') b.mode = 'move';
-        return;
-      }
-      if (b.mode === 'target') {
-        if (MOVES[e.key]) { e.preventDefault(); b.moveCursor(...MOVES[e.key]); }
-        else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); b.confirm(); }
-        else if (e.key === 'Escape') b.cancelTargeting();
-        return;
-      }
-      if (MOVES[e.key]) {
-        e.preventDefault();
-        b.heroMove(...MOVES[e.key]);
-      } else if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        b.endHeroTurn();
-      } else if (e.key === 'c' || e.key === 'C') {
-        b.openMenu();
-      } else if (e.key === 'f' || e.key === 'F') {
-        b.beginShoot();
-      } else if (e.key === 'i' || e.key === 'I') {
-        b.openItems();
-      } else if (e.key === 'w' || e.key === 'W') {
-        b.openSwap();
-      } else if (e.key === 'Escape') {
-        b.flee();
-      } else if (e.key === 'm' || e.key === 'M') {
-        const muted = audio.toggleMute();
-        game.log(muted ? 'Sound muted.' : 'Sound on.', 'info');
-      } else if (e.key === 'r' || e.key === 'R') {
-        location.reload();
-      }
+      (BATTLE_MODES[b.mode] ?? BATTLE_MODES.move)(e, b);
       return;
     }
-    if (choiceOpen()) {
-      // A fork in the road: number keys (or clicks) decide. No backing out.
-      if (/^[1-9]$/.test(e.key)) choicePick(Number(e.key));
-      return;
+    for (const [open, handle] of MODALS) {
+      if (open()) { handle(e); return; }
     }
-    if (buildingOpen()) {
-      if (e.key === 'Escape') closeBuilding();
-      return;
-    }
-    if (levelupOpen()) {
-      // The level-up summary (or a milestone card) sits on top of the
-      // character sheet — dismissing it advances the level-up chain.
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
-        e.preventDefault();
-        dismissLevelup(game);
-      }
-      return;
-    }
-    if (equipmentOpen()) {
-      // The character sheet is modal on the map: I, E, C, or Esc puts it away;
-      // B flips straight to the Spellbook screen.
-      if ('iIeEcC'.includes(e.key) || e.key === 'Escape') toggleEquipment(game, false);
-      else if (e.key === 'b' || e.key === 'B') flipToBook(game);
-      return;
-    }
-    if (spellbookOpen()) {
-      // The Spellbook screen: B or Esc closes; C flips to the character sheet.
-      if (e.key === 'b' || e.key === 'B' || e.key === 'Escape') toggleSpellbook(game, false);
-      else if ('iIeEcC'.includes(e.key)) flipToSheet(game);
-      return;
-    }
-    if (playtestOpen()) {
-      if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') togglePlaytest(game, false);
-      return;
-    }
-    if (marchingOpen()) {
-      if (e.key === 'o' || e.key === 'O' || e.key === 'Escape') toggleMarching(game, false);
-      return;
-    }
-    if (MOVES[e.key]) {
-      e.preventDefault();
-      game.tryMove(...MOVES[e.key]);
-    } else if (e.key === ' ') {
-      e.preventDefault();
-      game.wait();
-    } else if (e.key === 't' || e.key === 'T') {
-      game.rest();
-    } else if ('iIeEcC'.includes(e.key)) {
-      if (!game.over && !game.victory) toggleEquipment(game);
-    } else if (e.key === 'b' || e.key === 'B') {
-      if (!game.over && !game.victory) toggleSpellbook(game);
-    } else if (e.key === '`' || e.key === '~') {
-      game.startArena();
-    } else if (e.key === 'o' || e.key === 'O') {
-      if (!game.over && !game.victory) toggleMarching(game);
-    } else if (e.key === 'p' || e.key === 'P') {
-      if (!game.over && !game.victory) togglePlaytest(game);
-    } else if (e.key === 'm' || e.key === 'M') {
-      const muted = audio.toggleMute();
-      game.log(muted ? 'Sound muted.' : 'Sound on.', 'info');
-    } else if (e.key === 'r' || e.key === 'R') {
-      location.reload();
-    }
+    if (MOVES[e.key]) { stop(e); game.tryMove(...MOVES[e.key]); return; }
+    MAP_KEYS[e.key]?.(e);
   });
 
   let wasBattle = false;

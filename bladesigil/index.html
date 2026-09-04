@@ -531,10 +531,7 @@
   .cr-grid .cr-choice { text-align: center; padding: 8px 6px !important; }
   .cr-choice { padding: 6px 12px !important; }
   #cr-races, #cr-classes { gap: 4px; }
-  .cr-preview { margin-top: 10px; padding: 8px 10px; }
-  .cr-preview img { width: 56px; height: 56px; }
   .cr-none { color: var(--dim); font-style: italic; font-size: 13px; margin-top: 8px; }
-  .cr-columns { display: flex; gap: 28px; }
   .cr-col { flex: 1; min-width: 0; }
   .cr-label { display: block; color: var(--gold); font-variant: small-caps; letter-spacing: 1px; margin: 14px 0 6px; }
   .cr-dim { color: var(--dim); font-variant: normal; letter-spacing: 0; font-size: 12px; }
@@ -600,6 +597,16 @@
     font-size: 14px; line-height: 1.6;
   }
   #fatal h2 { color: var(--blood); margin-bottom: 20px; font-family: Georgia, serif; }
+  /* Utility classes (refactor step 6e, 2026-09-04): the inline styles ui.js used to write. */
+  .mt10 { margin-top: 10px; } .mt12 { margin-top: 12px; } .mt14 { margin-top: 14px; } .mt16 { margin-top: 16px; }
+  .pt-note.tight { margin: 2px 0 4px; }
+  .pt-btnrow.centered { align-items: center; }
+  .pt-input { font-family: Georgia, serif; background: #1d1d28; color: var(--parchment); border: 1px solid var(--panel-edge); border-radius: 4px; padding: 5px 8px; font-size: 13px; flex: 1; min-width: 160px; }
+  .chest-summary { cursor: pointer; margin-top: 10px; }
+  .boosted { color: #e8c860; }
+  .boost-src { display: block; font-size: 9.5px; color: #e8c860; }
+  .dismiss-note { text-align: center; color: var(--dim); font-style: italic; }
+  .stance-badge { color: #d4a94e; }
 </style>
 </head>
 <body>

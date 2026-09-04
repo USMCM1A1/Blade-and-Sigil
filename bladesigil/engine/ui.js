@@ -6,6 +6,20 @@ import { abilityMod } from './rules.js';
 import { classProg, laneOf, passiveOf, riteTier, passiveBlurb, powerHow, trackedLabel, trackedDeed, favoredPicksOwed, groupOfType, focusGroupOf, focusList, focusName, growthOptions, growthPicks } from './progression.js';
 import { unlockLevel, magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, activeStances, spellSchool, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
+import { registerPanel, isOpen, openPanel, closePanel, togglePanel } from './panel.js';
+
+// The panels this module owns (engine/panel.js): how each shows, what
+// renders when it opens, what clears when it closes.
+registerPanel('choice', { display: 'flex', onClose: el => { el.innerHTML = ''; } });
+registerPanel('levelup', { display: 'flex', onClose: el => { el.innerHTML = ''; } });
+registerPanel('playtest', { onOpen: game => renderPlaytest(game) });
+registerPanel('building', { onOpen: (game, kind) => {
+  if (kind === 'shop') audio.play('shop'); // the bell rings as you ENTER (2026-08-26); buying plays 'purchase'
+  renderBuilding(game, kind);
+} });
+registerPanel('equipment', { onOpen: game => renderEquipment(game) });
+registerPanel('spellbook', { onOpen: game => renderSpellbook(game) });
+registerPanel('marching', { onOpen: game => renderMarching(game) });
 
 // Every UI button clicks (designer's pick 2026-08-26: GAM_09) — except where
 // the moment already has its own voice (one sound means one thing): the
@@ -47,9 +61,7 @@ function itemStats(def) {
 }
 
 // ---- Progression choices: the lane fork & weapon focus (v2) ----
-export function choiceOpen() {
-  return document.getElementById('choice').style.display === 'flex';
-}
+export function choiceOpen() { return isOpen('choice'); }
 
 // Called every frame: opens the next owed choice whenever the party is on
 // the map (never mid-battle) and nothing else is being decided.
@@ -232,9 +244,9 @@ const CHOICE_TYPES = {
 function renderChoice(game, choice, after) {
   const root = document.getElementById('choice');
   const ch = choice.ch;
-  root.style.display = 'flex';
+  openPanel('choice');
   const portrait = game.heroPortrait(ch);
-  const close = () => { root.style.display = 'none'; root.innerHTML = ''; };
+  const close = () => closePanel('choice');
 
   if (choice.type === 'rite') {
     renderRite(game, choice, after);
@@ -324,7 +336,7 @@ function renderRite(game, choice, after) {
   const vocab = game.data.progression.sigil;
   const root = document.getElementById('choice');
   const portrait = game.heroPortrait(ch);
-  root.style.display = 'flex';
+  openPanel('choice');
   const state = { name: rite.ability.name, sigil: null };
   const rand = list => list[Math.floor(Math.random() * list.length)];
 
@@ -425,7 +437,7 @@ function renderRite(game, choice, after) {
     const input = root.querySelector('#rt-title');
     const complete = () => {
       const title = input.value.trim() || tierDef.title;
-      root.style.display = 'none';
+      closePanel('choice');
       root.innerHTML = '';
       game.applyRite(ch, { abilityName: state.name, sigil: state.sigil, title });
       after?.();
@@ -438,16 +450,8 @@ function renderRite(game, choice, after) {
 }
 
 // ---- Playtest bench (P): the designer's test tools ----
-export function playtestOpen() {
-  return document.getElementById('playtest').style.display === 'block';
-}
-
-export function togglePlaytest(game, show) {
-  const panel = document.getElementById('playtest');
-  const opening = show ?? !playtestOpen();
-  panel.style.display = opening ? 'block' : 'none';
-  if (opening) renderPlaytest(game);
-}
+export function playtestOpen() { return isOpen('playtest'); }
+export function togglePlaytest(game, show) { togglePanel('playtest', show, game); }
 
 // Where this monster lives in the endless dungeon, in designer terms.
 // The bench's item chest: every item in items.json, by category, with
@@ -492,10 +496,10 @@ function renderItemChest(game) {
     </div>`;
   };
   body.innerHTML = `
-    <div class="pt-btnrow" style="align-items:center">
+    <div class="pt-btnrow centered">
       <button data-back>← Back to the bench</button>
       <input id="pt-chest-filter" type="text" placeholder="filter by name…" value="${chestFilter.replace(/"/g, '&quot;')}"
-        style="font-family:Georgia,serif;background:#1d1d28;color:var(--parchment);border:1px solid var(--panel-edge);border-radius:4px;padding:5px 8px;font-size:13px;flex:1;min-width:160px">
+        class="pt-input">
       <button data-unfold="1">Unfold all</button><button data-unfold="0">Fold all</button>
     </div>
     <p class="pt-note">${items.length} items in items.json. Click a category to open it; +1 drops one into the party pouch
@@ -505,7 +509,7 @@ function renderItemChest(game) {
       if (q && !shown.length) return '';
       const open = q ? shown.length > 0 : chestOpen.has(name);
       return `<details data-group="${name}"${open ? ' open' : ''}>
-        <summary class="eq-sec" style="cursor:pointer;margin-top:10px">${name} <span class="inv-stats">${shown.length}${q ? ` of ${list.length}` : ''}</span></summary>
+        <summary class="eq-sec chest-summary">${name} <span class="inv-stats">${shown.length}${q ? ` of ${list.length}` : ''}</span></summary>
         ${shown.map(row).join('')}
       </details>`;
     }).join('')}`;
@@ -556,7 +560,7 @@ function renderPlaytest(game) {
       <button data-grantxp="3">×3</button>
       <button data-grantxp="5">×5</button>
     </div>
-    <div class="eq-sec" style="margin-top:16px">Jump straight to a level — now ${game.party.map(c => c.level).join(' / ')}</div>
+    <div class="eq-sec mt16">Jump straight to a level — now ${game.party.map(c => c.level).join(' / ')}</div>
     <div class="pt-stats">
       ${game.party.map(c => `<div class="pt-stat"><b>${c.name}</b> L${c.level} · HP ${c.hp}/${c.maxHp} · hit +${c.hitBase} · ${c.attacks}atk · AC ${c.ac}${c.maxSp ? ` · SP ${c.sp}/${c.maxSp}` : ''}${game.canLevel(c) ? ' · <i>✚ ready</i>' : ''}</div>`).join('')}
     </div>
@@ -569,7 +573,7 @@ function renderPlaytest(game) {
       <button data-dlevel="-1">−1</button>
       <button data-dlevel="1">+1</button>
     </div>
-    <div class="eq-sec" style="margin-top:16px">Party care</div>
+    <div class="eq-sec mt16">Party care</div>
     <div class="pt-btnrow">
       <button data-heal>Heal &amp; revive everyone</button>
       <button data-gold>+1000 gold</button>
@@ -577,14 +581,14 @@ function renderPlaytest(game) {
     </div>
     <p class="pt-note">The item chest lists every item in items.json by category — drop any of them
     into the party pouch, then equip or drink from the character sheet (C).</p>
-    <div class="eq-sec" style="margin-top:16px">Playstyle counters — ${game.party.map(c => Object.values(c.counters).join('·')).join(' / ')}</div>
+    <div class="eq-sec mt16">Playstyle counters — ${game.party.map(c => Object.values(c.counters).join('·')).join(' / ')}</div>
     <p class="pt-note">The deeds that weigh the Rite's Title at level 20 (tiers at 0 / 5 / 15).
     Bump them here to test all three tiers; drop below level 20 to re-run a Rite.</p>
     <div class="pt-btnrow">
       <button data-counters="5">+5 to every counter</button>
       <button data-counters="15">+15</button>
     </div>
-    <div class="eq-sec" style="margin-top:16px">Summon a fight${inDungeon ? '' : ' <span class="pt-warn">— dungeon only (you are in town)</span>'}</div>
+    <div class="eq-sec mt16">Summon a fight${inDungeon ? '' : ' <span class="pt-warn">— dungeon only (you are in town)</span>'}</div>
     <p class="pt-note">Real monsters with real stakes: they grant XP, and if you flee they
     stay on the map. Summons count as a fight YOU started — the monsters begin
     <b>unaware</b> (💤), so stealth and Assassinate are testable here.</p>
@@ -623,19 +627,9 @@ function renderPlaytest(game) {
 }
 
 // ---- Town buildings: shop, inn, temple (Phase 4) ----
-export function buildingOpen() {
-  return document.getElementById('building').style.display === 'block';
-}
-
-export function closeBuilding() {
-  document.getElementById('building').style.display = 'none';
-}
-
-export function openBuilding(game, kind) {
-  document.getElementById('building').style.display = 'block';
-  if (kind === 'shop') audio.play('shop'); // the bell rings as you ENTER (2026-08-26); buying plays 'purchase'
-  renderBuilding(game, kind);
-}
+export function buildingOpen() { return isOpen('building'); }
+export function closeBuilding() { closePanel('building'); }
+export function openBuilding(game, kind) { openPanel('building', game, kind); }
 
 const KEEPERS = { inn: 'assets/town/innkeep.png', shop: 'assets/town/shopkeep.jpg' };
 const B_TITLES = { inn: 'The Inn', shop: 'The Shop', temple: 'The Temple', gate: 'The Dungeon Gate', stairs: 'The Stairs Up' };
@@ -741,16 +735,8 @@ const DOLL_SLOTS = [
 ];
 let eqHeroIdx = 0;
 
-export function equipmentOpen() {
-  return document.getElementById('equipment').style.display === 'block';
-}
-
-export function toggleEquipment(game, show) {
-  const panel = document.getElementById('equipment');
-  const opening = show ?? !equipmentOpen();
-  panel.style.display = opening ? 'block' : 'none';
-  if (opening) renderEquipment(game);
-}
+export function equipmentOpen() { return isOpen('equipment'); }
+export function toggleEquipment(game, show) { togglePanel('equipment', show, game); }
 
 function renderEquipment(game) {
   const ch = game.party[eqHeroIdx];
@@ -791,9 +777,9 @@ function renderEquipment(game) {
             .filter(d => d.abilities?.[k]).map(d => `+${d.abilities[k]} ${d.name}`).join(', ')
         : '';
       return `<div class="eq-ab"${sources ? ` title="${ch.baseAbilities[k]} rolled, ${sources}"` : ''}>` +
-        `<b>${k.toUpperCase()}</b><span${boosted ? ' style="color:#e8c860"' : ''}>${v}</span>` +
+        `<b>${k.toUpperCase()}</b><span${boosted ? ' class="boosted"' : ''}>${v}</span>` +
         `<i>${mod >= 0 ? '+' : ''}${mod}</i>` +
-        `${sources ? `<small style="display:block;font-size:9.5px;color:#e8c860">${sources}</small>` : ''}</div>`;
+        `${sources ? `<small class="boost-src">${sources}</small>` : ''}</div>`;
     }).join('');
 
   renderPath(game, ch);
@@ -899,15 +885,8 @@ function renderEquipment(game) {
 // card for each automatic milestone (signature move, capstone, refinement).
 let lvFlow = null; // {game, s, choicesDone, cards, idx}
 
-export function levelupOpen() {
-  return document.getElementById('levelup').style.display === 'flex';
-}
-
-function hideLevelPanel() {
-  const root = document.getElementById('levelup');
-  root.style.display = 'none';
-  root.innerHTML = '';
-}
+export function levelupOpen() { return isOpen('levelup'); }
+function hideLevelPanel() { closePanel('levelup'); }
 
 // Called from main.js (Enter/Space/Esc) and the Onward buttons alike.
 export function dismissLevelup(game) {
@@ -954,7 +933,7 @@ function openLevelSummary(game, s) {
   if (ch.ac !== s.before.ac) rows.push(['Armor class', `${s.before.ac} → ${ch.ac}`, 'harder to hit']);
   if (ch.maxSp !== s.before.maxSp) rows.push(['Spell points', `${s.before.maxSp} → ${ch.maxSp}`, 'more magic to spend']);
   lvFlow = { game, s, choicesDone: false };
-  root.style.display = 'flex';
+  openPanel('levelup');
   root.innerHTML = `
     <div class="cr-panel lv-panel">
       <div class="cr-step">Level ${ch.level}!</div>
@@ -1012,7 +991,7 @@ function renderMilestoneCard(game, ch, m) {
     power = { name: lane.refinement.name ?? `${lane.verb?.name ?? 'Refinement'}, perfected`, blurb: lane.refinement.blurb };
     how = '';
   }
-  root.style.display = 'flex';
+  openPanel('levelup');
   root.innerHTML = `
     <div class="cr-panel lv-panel">
       <div class="cr-step">${step}</div>
@@ -1119,7 +1098,7 @@ function renderMagic(game, ch) {
     line = `${known.length} prayer${known.length === 1 ? '' : 's'} of ${ch.name}'s training`;
   }
   if (scrolls) line += `${line ? ' · ' : ''}${scrolls} scroll${scrolls === 1 ? '' : 's'} in the pouch`;
-  panel.innerHTML = `<div class="eq-sec">Magic</div><p class="pt-note" style="margin:2px 0 4px">${line}</p>
+  panel.innerHTML = `<div class="eq-sec">Magic</div><p class="pt-note tight">${line}</p>
     <button class="sb-open" data-open-book>Open the spellbook (B)</button>`;
   panel.querySelector('[data-open-book]').onclick = () => flipToBook(game);
 }
@@ -1131,9 +1110,7 @@ function renderMagic(game, ch) {
 // powers, and what is still owed (study, picks).
 let sbHeroIdx = 0;
 
-export function spellbookOpen() {
-  return document.getElementById('spellbook').style.display === 'block';
-}
+export function spellbookOpen() { return isOpen('spellbook'); }
 
 function isCaster(game, ch) {
   return ch.maxSp > 0 || knownSpells(game.data, ch).length > 0 || !!ch.cls.spellbook;
@@ -1144,14 +1121,12 @@ export function flipToSheet(game) { eqHeroIdx = sbHeroIdx; toggleSpellbook(game,
 export function flipToBook(game) { sbHeroIdx = eqHeroIdx; toggleEquipment(game, false); toggleSpellbook(game, true); }
 
 export function toggleSpellbook(game, show) {
-  const panel = document.getElementById('spellbook');
   const opening = show ?? !spellbookOpen();
   if (opening && !game.party.some(ch => isCaster(game, ch))) {
     game.log('Nobody in the party works magic — no spellbook to open.', 'info');
     return;
   }
-  panel.style.display = opening ? 'block' : 'none';
-  if (opening) renderSpellbook(game);
+  togglePanel('spellbook', opening, game);
 }
 
 function renderSpellbook(game) {
@@ -1249,7 +1224,7 @@ function renderSpellbook(game) {
     side += `<div class="eq-sec">The verses</div><p class="pt-note">${lane
       ? `${lane.name}'s verses open on their own as each spell level does — no book, no study, no picks.`
       : `Before the fork ${ch.name} knows ${giftOf(ch)?.spell ? 'only the creation gift' : 'the first verse'}; at level ${prog?.fork_level ?? 5} the lane decides the rest (a Stance the lane does not sing is swapped free).`}</p>
-      <div class="eq-sec" style="margin-top:12px">Stance &amp; Surge</div><p class="pt-note">The level-1 verse is a <b>Stance</b>: a flat 1 SP, sung here on the map or in battle, and held through every fight until the next full rest (camp or inn). Every deeper verse is a <b>Surge</b> at the usual cost (level × 2 + 1) for one fight or a few rounds — hoard the points for the battle that needs them.${held.length ? ` <b>Held now: ${held.join(' & ')}.</b>` : ''}</p>`;
+      <div class="eq-sec mt12">Stance &amp; Surge</div><p class="pt-note">The level-1 verse is a <b>Stance</b>: a flat 1 SP, sung here on the map or in battle, and held through every fight until the next full rest (camp or inn). Every deeper verse is a <b>Surge</b> at the usual cost (level × 2 + 1) for one fight or a few rounds — hoard the points for the battle that needs them.${held.length ? ` <b>Held now: ${held.join(' & ')}.</b>` : ''}</p>`;
   } else {
     const rl = ch.cls.revelation_levels ?? {};
     const next = Object.entries(rl).map(([l, at]) => [Number(l), at]).filter(([, at]) => at > ch.level).sort((a, b) => a[1] - b[1])[0];
@@ -1260,7 +1235,7 @@ function renderSpellbook(game) {
   const scrolls = Object.entries(game.inventory)
     .filter(([id, n]) => n > 0 && game.itemDef(id)?.type === 'scroll')
     .map(([id, n]) => ({ id, def: game.itemDef(id), count: n }));
-  side += `<div class="eq-sec" style="margin-top:12px">Scrolls in the pouch</div>`;
+  side += `<div class="eq-sec mt12">Scrolls in the pouch</div>`;
   if (!scrolls.length) side += `<p class="pt-note">None. Scrolls turn up in chests and vaults, and Novamagus sells the simplest.</p>`;
   for (const sc of scrolls) {
     const spell = game.data.spells.spells[sc.def.spell];
@@ -1281,9 +1256,9 @@ function renderSpellbook(game) {
   const lane = laneOf(game.data, ch);
   if (lane?.capstone && ch.level >= lane.capstone.level && ['archmage', 'twin_surge', 'miracle'].includes(lane.capstone.id)) {
     const key = lane.capstone.id;
-    side += `<div class="eq-sec" style="margin-top:12px">Once per rest</div><p class="pt-note">${lane.capstone.name ?? key}: ${ch.spentRest?.[key] ? 'spent — it returns with a night\'s rest' : 'ready'}.</p>`;
+    side += `<div class="eq-sec mt12">Once per rest</div><p class="pt-note">${lane.capstone.name ?? key}: ${ch.spentRest?.[key] ? 'spent — it returns with a night\'s rest' : 'ready'}.</p>`;
   }
-  side += `<p style="margin-top:14px"><button class="sb-open" data-open-sheet>Character sheet (C)</button></p>`;
+  side += `<p class="mt14"><button class="sb-open" data-open-sheet>Character sheet (C)</button></p>`;
   const sideEl = document.getElementById('sb-side');
   sideEl.innerHTML = side;
   // The footer speaks to the hero on screen — a priest is never told to prepare pages.
@@ -1314,14 +1289,11 @@ function renderSpellbook(game) {
 }
 
 // ---- Marching order (O) ----
-export function marchingOpen() { return document.getElementById('marching').style.display === 'block'; }
-
+export function marchingOpen() { return isOpen('marching'); }
 export function toggleMarching(game, show) {
-  const panel = document.getElementById('marching');
   const opening = show ?? !marchingOpen();
   if (opening && game.battle) { game.log('The line is already drawn — no reordering mid-battle.', 'info'); return; }
-  panel.style.display = opening ? 'block' : 'none';
-  if (opening) renderMarching(game);
+  togglePanel('marching', opening, game);
 }
 
 function renderMarching(game) {
@@ -1339,8 +1311,8 @@ function renderMarching(game) {
         <button data-move="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>
         <button data-move="1" data-i="${i}" ${i === n - 1 ? 'disabled' : ''} title="Move down">▼</button>
       </div>`).join('')}
-    <p class="pt-note" style="margin-top:10px">${game.party.filter(c => c.row === 'front').length ? '' : 'Nobody in the front row — the enemy will reach the back line at once. '}${localStorage.getItem('bs_party') ? 'Saved with your party.' : 'The premade party keeps this order for the run.'}</p>
-    <div class="dismiss" style="text-align:center;color:var(--dim);font-style:italic">O or Esc closes</div>`;
+    <p class="pt-note mt10">${game.party.filter(c => c.row === 'front').length ? '' : 'Nobody in the front row — the enemy will reach the back line at once. '}${localStorage.getItem('bs_party') ? 'Saved with your party.' : 'The premade party keeps this order for the run.'}</p>
+    <div class="dismiss dismiss-note">O or Esc closes</div>`;
   for (const b of panel.querySelectorAll('[data-move]')) {
     b.onclick = () => { if (game.moveHero(Number(b.dataset.i), Number(b.dataset.move))) { buildPartyPanel(game); renderMarching(game); } };
   }
@@ -1404,7 +1376,7 @@ export function updateUI(game) {
     const badges = ch.conditions.map(c => {
       const def = game.conditionDef(c.id);
       return def ? `<span style="color:${def.color}" title="${def.description ?? ''}">${def.icon ? def.icon + ' ' : ''}${def.name}</span>` : '';
-    }).concat(activeStances(ch).map(b => `<span style="color:#d4a94e" title="a Stance — held until the next full rest">♪ ${b.name}</span>`)).join(' · ');
+    }).concat(activeStances(ch).map(b => `<span class="stance-badge" title="a Stance — held until the next full rest">♪ ${b.name}</span>`)).join(' · ');
     if (u.status.innerHTML !== badges) u.status.innerHTML = badges;
   }
 
