@@ -2907,6 +2907,7 @@ export class Battle {
 
   doSwing(targetC) {
     const chain = this.swingChain;
+    if (!chain) return; // a stale timer from a chain that already ended (seen 2026-09-03: two overlapping chains crashed the bot)
     // Striking gives you away — the same rule the player's hiding lives by.
     this.revealMonster(chain.c, `The ${chain.c.ref.name} breaks cover as it strikes!`);
     chain.remaining--;
@@ -2933,7 +2934,7 @@ export class Battle {
     }
     this.pendingAction = true;
     setTimeout(() => {
-      if (this.game.battle !== this) return;
+      if (this.game.battle !== this || this.swingChain !== chain) return; // battle over, or another chain replaced this one
       const next = this.adjacentHero(chain.c);
       if (!next || chain.c.ref.hp <= 0) { this.swingChain = null; this.finishMonsterAction(); return; }
       this.doSwing(next);
