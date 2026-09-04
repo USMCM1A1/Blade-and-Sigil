@@ -137,6 +137,115 @@ function openChoicesFor(game, ch, onDone) {
   renderChoice(game, choice, () => openChoicesFor(game, ch, onDone));
 }
 
+// ---- Choice cards (refactor step 5c, 2026-09-04) ----
+// Every choice a hero is owed (the fork, a spell pick, a study page, a
+// favored enemy, a weapon family, the level-10 ability point, lane growth)
+// is the SAME card: a step label, the portrait beside an intro, numbered
+// option buttons, an optional warning. CHOICE_TYPES says what each kind
+// puts in those slots; renderChoice draws it and wires the click. The
+// option's `id` is what game.applyChoice receives.
+const ABILITY_BUYS = {
+  str: 'melee to-hit and damage',
+  dex: 'bow to-hit and damage, AC, initiative',
+  con: 'the HP you roll from here on',
+  int: 'wizard spell damage and save DCs',
+  wis: 'priest spell power, and saves against fear',
+  cha: 'presence — few rules lean on it yet',
+};
+
+const CHOICE_TYPES = {
+  lane: {
+    step: () => 'A crossroads',
+    intro: (game, ch) => `<b>${ch.name}</b> stands at level ${ch.level} — and the ${ch.cls.name}'s road forks here.`,
+    options: (game, ch, choice) => choice.prog.lanes.map(l => ({ id: l.id, name: l.name,
+      lines: [l.blurb ?? '', `${fmtOffsets(l.offsets)}${l.passive ? ` · ${passiveBlurb(l.passive)}` : ''}`, laneMilestones(l)] })),
+    warn: () => 'This choice is forever — the path not walked stays closed.',
+  },
+  spell: {
+    // The Sorcerer's pick: one spell of this level, in the blood forever —
+    // or a wild pick (any castable level) at a bonus level.
+    closeIfEmpty: true, // nothing left to pick (data changed?)
+    step: (game, ch, choice) => choice.level === 'any' ? 'The blood remembers — a spell of any level' : `The Raw Gift — a level-${choice.level} spell`,
+    intro: (game, ch, choice) => {
+      const wild = choice.level === 'any';
+      const owed = wild ? bonusPicksOwed(game.data, ch) : spellPicksOwed(game.data, ch).find(o => o.level === choice.level);
+      return `<b>${ch.name}</b>'s magic is blood, not books: few spells, never dry.
+          ${wild ? 'The gift deepens: choose ONE more spell of any level you can reach' : `Choose a level-${choice.level} spell`} to keep forever${owed.remaining > 1 ? ` (${owed.remaining} picks${wild ? '' : ' at this level'})` : ''}.`;
+    },
+    options: (game, ch, choice) => {
+      const owed = choice.level === 'any' ? bonusPicksOwed(game.data, ch) : spellPicksOwed(game.data, ch).find(o => o.level === choice.level);
+      return (owed?.options ?? []).map(s => ({ id: s.id, name: s.name, lines: [s.description, `${spellMetaLine(game, ch, s)}${s.rare ? ' · from the old book' : ''}`] }));
+    },
+    warn: () => 'Chosen is chosen — a Sorcerer never swaps spells.',
+  },
+  study: {
+    // Study (magic v3): a free page for the spellbook — any common spell of
+    // a level the hero can reach.
+    closeIfEmpty: true,
+    step: () => 'Study — a new page',
+    intro: (game, ch) => {
+      const owed = studiesOwed(game.data, ch);
+      return `Candle-light and quiet hours: <b>${ch.name}</b> may ink one more spell into the spellbook${owed.remaining > 1 ? ` (${owed.remaining} pages owed)` : ''}. Rarer lore is found only on scrolls.`;
+    },
+    options: (game, ch) => studiesOwed(game.data, ch).options.map(s => ({ id: s.id, name: s.name, lines: [s.description, spellMetaLine(game, ch, s)] })),
+    warn: () => 'A page inked is a page kept — prepare it at any rest.',
+  },
+  favored: {
+    // Favored Enemy (the Ranger): a new family, or a known one deepened.
+    step: () => 'Favored enemy',
+    intro: (game, ch) => `<b>${ch.name}</b> has learned a prey's habits. Take up a new family (+1 to hit and damage against it) or deepen a known one (up to +${ch.cls.favored_enemy?.cap ?? 3}).`,
+    options: (game, ch) => {
+      const cap = ch.cls.favored_enemy?.cap ?? 3;
+      const have = ch.favored ?? {};
+      return FAMILIES.filter(f => (have[f] ?? 0) < cap).map(f => ({ id: f, name: f, lines: [have[f] ? `known: +${have[f]} → +${have[f] + 1}` : 'new: +1'] }));
+    },
+    warn: () => 'The hunter never forgets a quarry.',
+  },
+  focus: {
+    step: () => 'Weapon Focus',
+    intro: (game, ch) => {
+      const fg = game.data.items.focus_groups ?? {};
+      const held = focusList(game.data, ch);
+      return held.length
+        ? `<b>${ch.name}</b> already fights by ${held.map(g => (fg[g]?.name ?? g).toLowerCase()).join(' and ')}. Training adds another family — +1 damage with those weapons too.`
+        : `<b>${ch.name}</b> hones one family of weapons — +1 damage with every weapon in it, forever. Which?`;
+    },
+    options: (game, ch) => {
+      const current = groupOfType(game.data, ch.weapon?.type);
+      const fg = game.data.items.focus_groups ?? {};
+      return game.focusOptions(ch).map(t => ({ id: t, name: fg[t]?.name ?? t,
+        lines: [fg[t]?.blurb || null, t === current ? '(in hand right now)' : null] }));
+    },
+  },
+  ability: {
+    // The level-10 boost (2026-09-02): +1 to one ability, the hero's own
+    // and permanent. Each row shows what the point actually buys.
+    step: () => 'A hero grows',
+    intro: (game, ch) => `<b>${ch.name}</b> has come far enough to change in the bone. Add +${game.data.progression.ability_boost?.amount ?? 1} to one ability — it is permanent, and no item in the world can do this for you.`,
+    options: (game, ch) => {
+      const amount = game.data.progression.ability_boost?.amount ?? 1;
+      return ['str', 'dex', 'con', 'int', 'wis', 'cha'].map(k => {
+        const now = ch.baseAbilities[k], next = now + amount;
+        const m1 = abilityMod(now), m2 = abilityMod(next);
+        const gain = m2 > m1 ? ` — modifier ${m1 >= 0 ? '+' : ''}${m1} rises to ${m2 >= 0 ? '+' : ''}${m2}` : ` — modifier stays ${m1 >= 0 ? '+' : ''}${m1}`;
+        return { id: k, name: `${k.toUpperCase()} ${now} → ${next}`, lines: [`${ABILITY_BUYS[k]}${gain}`] };
+      });
+    },
+  },
+  growth: {
+    // Lane growth (2026-09-02): the lane's own list, minus what's taken.
+    // Deliberately more options than picks — what you leave behind is what
+    // makes your hero different from the last one you played.
+    step: (game, ch) => `${laneOf(game.data, ch)?.name ?? 'The lane'} deepens`,
+    intro: (game, ch) => {
+      const held = growthPicks(game.data, ch);
+      return `<b>${ch.name}</b> has drilled long enough to add something lasting.${held.length ? ` Already held: ${held.map(o => o.name).join(', ')}.` : ''} This one is permanent.`;
+    },
+    options: (game, ch) => growthOptions(game.data, ch).map(o => ({ id: o.id, name: o.name, lines: [o.blurb || null] })),
+    note: () => 'You will not take them all — choose what this hero becomes.',
+  },
+};
+
 function renderChoice(game, choice, after) {
   const root = document.getElementById('choice');
   const ch = choice.ch;
@@ -148,180 +257,27 @@ function renderChoice(game, choice, after) {
     renderRite(game, choice, after);
     return;
   }
-  if (choice.type === 'lane') {
-    root.innerHTML = `
+  const kind = CHOICE_TYPES[choice.type];
+  if (!kind) return;
+  const opts = kind.options(game, ch, choice);
+  if (kind.closeIfEmpty && !opts.length) { close(); after?.(); return; }
+  root.innerHTML = `
       <div class="cr-panel ch-panel">
-        <div class="cr-step">A crossroads</div>
+        <div class="cr-step">${kind.step(game, ch, choice)}</div>
         <div class="ch-head"><img src="${portrait}" alt="">
-          <div><b>${ch.name}</b> stands at level ${ch.level} — and the ${ch.cls.name}'s road forks here.</div></div>
-        <div class="cr-choices">
-          ${choice.prog.lanes.map((l, i) => `
-            <button class="cr-choice" data-lane="${l.id}">
-              <b>${i + 1}. ${l.name}</b>
-              <span>${l.blurb ?? ''}</span>
-              <span>${fmtOffsets(l.offsets)}${l.passive ? ` · ${passiveBlurb(l.passive)}` : ''}</span>
-              <span>${laneMilestones(l)}</span>
-            </button>`).join('')}
-        </div>
-        <p class="ch-warn">This choice is forever — the path not walked stays closed.</p>
-      </div>`;
-    for (const b of root.querySelectorAll('[data-lane]')) {
-      b.onclick = () => { game.applyChoice(choice, b.dataset.lane); close(); after?.(); };
-    }
-  } else if (choice.type === 'spell') {
-    // The Sorcerer's pick: one spell of this level, in the blood forever —
-    // or a wild pick (any castable level) at a bonus level.
-    const wild = choice.level === 'any';
-    const owed = wild ? bonusPicksOwed(game.data, ch) : spellPicksOwed(game.data, ch).find(o => o.level === choice.level);
-    const opts = owed?.options ?? [];
-    if (!opts.length) { close(); after?.(); return; } // nothing left to pick (data changed?)
-    root.innerHTML = `
-      <div class="cr-panel ch-panel">
-        <div class="cr-step">${wild ? 'The blood remembers — a spell of any level' : `The Raw Gift — a level-${choice.level} spell`}</div>
-        <div class="ch-head"><img src="${portrait}" alt="">
-          <div><b>${ch.name}</b>'s magic is blood, not books: few spells, never dry.
-          ${wild ? 'The gift deepens: choose ONE more spell of any level you can reach' : `Choose a level-${choice.level} spell`} to keep forever${owed.remaining > 1 ? ` (${owed.remaining} picks${wild ? '' : ' at this level'})` : ''}.</div></div>
-        <div class="cr-choices">
-          ${opts.map((s, i) => `
-            <button class="cr-choice" data-spell="${s.id}">
-              <b>${i + 1}. ${s.name}</b>
-              <span>${s.description}</span>
-              <span>${spellMetaLine(game, ch, s)}${s.rare ? ' · from the old book' : ''}</span>
-            </button>`).join('')}
-        </div>
-        <p class="ch-warn">Chosen is chosen — a Sorcerer never swaps spells.</p>
-      </div>`;
-    for (const b of root.querySelectorAll('[data-spell]')) {
-      b.onclick = () => { game.applyChoice(choice, b.dataset.spell); close(); after?.(); };
-    }
-  } else if (choice.type === 'study') {
-    // Study (magic v3): a free page for the spellbook — any common spell of
-    // a level the hero can reach.
-    const owed = studiesOwed(game.data, ch);
-    const opts = owed.options;
-    if (!opts.length) { close(); after?.(); return; }
-    root.innerHTML = `
-      <div class="cr-panel ch-panel">
-        <div class="cr-step">Study — a new page</div>
-        <div class="ch-head"><img src="${portrait}" alt="">
-          <div>Candle-light and quiet hours: <b>${ch.name}</b> may ink one more spell into the spellbook${owed.remaining > 1 ? ` (${owed.remaining} pages owed)` : ''}. Rarer lore is found only on scrolls.</div></div>
-        <div class="cr-choices">
-          ${opts.map((s, i) => `
-            <button class="cr-choice" data-study="${s.id}">
-              <b>${i + 1}. ${s.name}</b>
-              <span>${s.description}</span>
-              <span>${spellMetaLine(game, ch, s)}</span>
-            </button>`).join('')}
-        </div>
-        <p class="ch-warn">A page inked is a page kept — prepare it at any rest.</p>
-      </div>`;
-    for (const b of root.querySelectorAll('[data-study]')) {
-      b.onclick = () => { game.applyChoice(choice, b.dataset.study); close(); after?.(); };
-    }
-  } else if (choice.type === 'favored') {
-    // Favored Enemy (the Ranger): a new family, or a known one deepened.
-    const cap = ch.cls.favored_enemy?.cap ?? 3;
-    const have = ch.favored ?? {};
-    const opts = FAMILIES.filter(f => (have[f] ?? 0) < cap);
-    root.innerHTML = `
-      <div class="cr-panel ch-panel">
-        <div class="cr-step">Favored enemy</div>
-        <div class="ch-head"><img src="${portrait}" alt="">
-          <div><b>${ch.name}</b> has learned a prey's habits. Take up a new family (+1 to hit and damage against it) or deepen a known one (up to +${cap}).</div></div>
-        <div class="cr-choices">
-          ${opts.map((f, i) => `
-            <button class="cr-choice" data-favored="${f}">
-              <b>${i + 1}. ${f}</b>
-              <span>${have[f] ? `known: +${have[f]} → +${have[f] + 1}` : 'new: +1'}</span>
-            </button>`).join('')}
-        </div>
-        <p class="ch-warn">The hunter never forgets a quarry.</p>
-      </div>`;
-    for (const b of root.querySelectorAll('[data-favored]')) {
-      b.onclick = () => { game.applyChoice(choice, b.dataset.favored); close(); after?.(); };
-    }
-  } else if (choice.type === 'focus') {
-    const current = groupOfType(game.data, ch.weapon?.type);
-    const opts = game.focusOptions(ch);
-    const fg = game.data.items.focus_groups ?? {};
-    const held = focusList(game.data, ch);
-    root.innerHTML = `
-      <div class="cr-panel ch-panel">
-        <div class="cr-step">Weapon Focus</div>
-        <div class="ch-head"><img src="${portrait}" alt="">
-          <div>${held.length
-            ? `<b>${ch.name}</b> already fights by ${held.map(g => (fg[g]?.name ?? g).toLowerCase()).join(' and ')}. Training adds another family — +1 damage with those weapons too.`
-            : `<b>${ch.name}</b> hones one family of weapons — +1 damage with every weapon in it, forever. Which?`}</div></div>
-        <div class="cr-choices">
-          ${opts.map((t, i) => `
-            <button class="cr-choice" data-focus="${t}">
-              <b>${i + 1}. ${fg[t]?.name ?? t}</b>
-              ${fg[t]?.blurb ? `<span>${fg[t].blurb}</span>` : ''}
-              ${t === current ? '<span>(in hand right now)</span>' : ''}
-            </button>`).join('')}
-        </div>
-      </div>`;
-    for (const b of root.querySelectorAll('[data-focus]')) {
-      b.onclick = () => { game.applyChoice(choice, b.dataset.focus); close(); after?.(); };
-    }
-  } else if (choice.type === 'ability') {
-    // The level-10 boost (2026-09-02): +1 to one ability, the hero's own
-    // and permanent. Each row shows what the point actually buys.
-    const amount = game.data.progression.ability_boost?.amount ?? 1;
-    const WHAT = {
-      str: 'melee to-hit and damage',
-      dex: 'bow to-hit and damage, AC, initiative',
-      con: 'the HP you roll from here on',
-      int: 'wizard spell damage and save DCs',
-      wis: 'priest spell power, and saves against fear',
-      cha: 'presence — few rules lean on it yet',
-    };
-    root.innerHTML = `
-      <div class="cr-panel ch-panel">
-        <div class="cr-step">A hero grows</div>
-        <div class="ch-head"><img src="${portrait}" alt="">
-          <div><b>${ch.name}</b> has come far enough to change in the bone. Add +${amount} to one ability — it is permanent, and no item in the world can do this for you.</div></div>
-        <div class="cr-choices">
-          ${['str', 'dex', 'con', 'int', 'wis', 'cha'].map((k, i) => {
-      const now = ch.baseAbilities[k], next = now + amount;
-      const m1 = abilityMod(now), m2 = abilityMod(next);
-      const gain = m2 > m1 ? ` — modifier ${m1 >= 0 ? '+' : ''}${m1} rises to ${m2 >= 0 ? '+' : ''}${m2}` : ` — modifier stays ${m1 >= 0 ? '+' : ''}${m1}`;
-      return `<button class="cr-choice" data-ability="${k}">
-              <b>${i + 1}. ${k.toUpperCase()} ${now} → ${next}</b>
-              <span>${WHAT[k]}${gain}</span>
-            </button>`;
-    }).join('')}
-        </div>
-      </div>`;
-    for (const b of root.querySelectorAll('[data-ability]')) {
-      b.onclick = () => { game.applyChoice(choice, b.dataset.ability); close(); after?.(); };
-    }
-  } else if (choice.type === 'growth') {
-    // Lane growth (2026-09-02): the lane's own list, minus what's taken.
-    // Deliberately more options than picks — what you leave behind is what
-    // makes your hero different from the last one you played.
-    const lane = laneOf(game.data, ch);
-    const opts = growthOptions(game.data, ch);
-    const held = growthPicks(game.data, ch);
-    root.innerHTML = `
-      <div class="cr-panel ch-panel">
-        <div class="cr-step">${lane?.name ?? 'The lane'} deepens</div>
-        <div class="ch-head"><img src="${portrait}" alt="">
-          <div><b>${ch.name}</b> has drilled long enough to add something lasting.${held.length
-        ? ` Already held: ${held.map(o => o.name).join(', ')}.`
-        : ''} This one is permanent.</div></div>
+          <div>${kind.intro(game, ch, choice)}</div></div>
         <div class="cr-choices">
           ${opts.map((o, i) => `
-            <button class="cr-choice" data-growth="${o.id}">
+            <button class="cr-choice" data-pick="${o.id}">
               <b>${i + 1}. ${o.name}</b>
-              ${o.blurb ? `<span>${o.blurb}</span>` : ''}
+              ${o.lines.filter(l => l != null).map(l => `<span>${l}</span>`).join('')}
             </button>`).join('')}
         </div>
-        <div class="cr-note">You will not take them all — choose what this hero becomes.</div>
+        ${kind.warn ? `<p class="ch-warn">${kind.warn(game, ch, choice)}</p>` : ''}
+        ${kind.note ? `<div class="cr-note">${kind.note(game, ch, choice)}</div>` : ''}
       </div>`;
-    for (const b of root.querySelectorAll('[data-growth]')) {
-      b.onclick = () => { game.applyChoice(choice, b.dataset.growth); close(); after?.(); };
-    }
+  for (const b of root.querySelectorAll('[data-pick]')) {
+    b.onclick = () => { game.applyChoice(choice, b.dataset.pick); close(); after?.(); };
   }
 }
 
