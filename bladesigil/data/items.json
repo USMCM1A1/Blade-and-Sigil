@@ -1691,6 +1691,42 @@
       "value": 150,
       "tier": 3,
       "description": "A hawk's eye set in silver. +1 to hit — the shot was always going to land."
+    },
+    "lesser_portal": {
+      "name": "Lesser Portal",
+      "type": "consumable",
+      "tier": 1,
+      "effect": "portal",
+      "portal_depth": 5,
+      "value": 120,
+      "description": "A chalk sigil and a word. Read on the map to step home to Novamagus from any floor down to depth 5 — the way back stays open at the gate."
+    },
+    "magic_portal": {
+      "name": "Magic Portal",
+      "type": "consumable",
+      "tier": 1,
+      "effect": "portal",
+      "portal_depth": 10,
+      "value": 600,
+      "description": "Silver ink on vellum. Read on the map to step home from any floor down to depth 10 — the way back stays open at the gate."
+    },
+    "deep_portal": {
+      "name": "Deep Portal",
+      "type": "consumable",
+      "tier": 1,
+      "effect": "portal",
+      "portal_depth": 15,
+      "value": 2500,
+      "description": "The sigil is cut into a lead plate. Read on the map to step home from any floor down to depth 15 — the way back stays open at the gate."
+    },
+    "darkest_portal": {
+      "name": "Darkest Portal",
+      "type": "consumable",
+      "tier": 1,
+      "effect": "portal",
+      "portal_depth": 20,
+      "value": 8000,
+      "description": "The words are not in any living tongue. Read on the map to step home from any depth — the way back stays open at the gate."
     }
   }
 }

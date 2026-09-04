@@ -30,6 +30,19 @@
       "antidote_potion",
       "mana_potion",
       "scroll_cure_light_wounds",
+      {
+        "id": "darkest_portal",
+        "at_depth": 14
+      },
+      {
+        "id": "deep_portal",
+        "at_depth": 9
+      },
+      {
+        "id": "magic_portal",
+        "at_depth": 4
+      },
+      "lesser_portal",
       "dagger",
       "hunting_knife",
       {
@@ -148,5 +161,15 @@
       }
     ],
     "_comment": "Economy pass (designer philosophy 2026-08-31): the store SCALES WITH THE PARTY'S ACHIEVEMENTS and complements adventuring — it never outruns the dungeon. A stock entry may be {'id', 'at_depth': N}: it appears only once the party has REACHED dungeon depth N this run (game.deepest; plain string = always stocked). Locked rows show greyed with the depth needed — aspiration, not absence. Bands (all proposals): start = survival basics + simple arms; depth 2 = the full basic arsenal + light/ring armor; depth 5 = heavy steel (scale/chain/tower, big two-handers); depth 7 = the Mastersmith's work + plate. ARCANE SPELL SCROLLS ARE GONE FROM THE SHELF (designer ruling: a new spell is a prize from adventuring, never a transaction — scrolls still DROP per dungeon.json scroll_drops). The one scroll sold is Cure Light Wounds — a divine prayer-scroll, cheaper than a Health Potion, readable only by a divine caster: the cleric's edge. DESPERATION SHELF (designer rulings 2026-08-31, revised after playtest run 3's all-staves party): FIVE class-flavored +1 pieces at depth 8, ALL 600g — staff, mace, short sword, dagger, short bow — so every class has one honest (pricey) route to a spirit-biting weapon; bigger +1 arms stay drop-only."
+  },
+  "travel": {
+    "_comment": "Express travel (designer ruling 2026-09-03: retracing 14 floors is not fun). turns_per_floor = map turns that pass per floor skipped when climbing straight to town from any up-stairs or descending straight to the deepest floor reached from the gate — poison ticks, no fights.",
+    "turns_per_floor": 10
+  },
+  "gate": {
+    "welcome": "The gate stands open. Cold air breathes up from below."
+  },
+  "stairs": {
+    "welcome": "The stairs climb into the dark above. Every floor between here and the daylight is one you have already bled for."
   }
 }

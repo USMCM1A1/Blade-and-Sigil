@@ -17,7 +17,7 @@ function listWords(words) {
 // Itemization v2: friendly boot-time validation for the new item fields.
 export function validateItems(data) {
   const ABILITIES = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
-  const EFFECTS = ['heal', 'cure', 'mana', 'invisibility'];
+  const EFFECTS = ['heal', 'cure', 'mana', 'invisibility', 'portal'];
   const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
   const FAMILIES = ['undead', 'outsider', 'beast', 'vermin', 'humanoid', 'construct', 'ooze', 'aberration', 'dragon', 'elemental'];
   for (const [id, d] of Object.entries(data.items.items)) {
@@ -26,6 +26,9 @@ export function validateItems(data) {
     }
     if (d.effect && d.type === 'consumable' && !EFFECTS.includes(d.effect)) {
       throw new DataError('data/items.json', `"${id}" has effect "${d.effect}". Valid potion effects: ${EFFECTS.join(', ')}.`);
+    }
+    if (d.effect === 'portal' && !(Number.isInteger(d.portal_depth) && d.portal_depth >= 1)) {
+      throw new DataError('data/items.json', `"${id}" is a portal scroll and needs portal_depth: N — the deepest floor it can carry the party home from.`);
     }
     for (const c of d.immune ?? []) {
       if (!data.conditions.conditions[c] && !ELEMENTS.includes(c)) {
@@ -446,6 +449,47 @@ export class Game {
     this.enterFloor(1, 'down');
   }
 
+  // ---- Express travel (designer ruling 2026-09-03) ----
+  // Cleared floors are cached, so the walk between town and the depths is
+  // pure tedium: the stairs offer the whole climb at once, the gate offers
+  // the whole descent. Time still passes (poison ticks, the day wears on)
+  // at town.json travel.turns_per_floor per floor skipped — but no fights.
+  travelTurns(floors) { return Math.max(0, floors) * (this.data.town.travel?.turns_per_floor ?? 10); }
+
+  climbToTown() {
+    if (this.mode !== 'dungeon' || typeof this.depth !== 'number') return false;
+    const floors = this.depth - 1;
+    const turns = this.travelTurns(floors);
+    this.saveFloor();
+    this.advanceTime(turns);
+    if (this.over) return false;
+    this.enterTown();
+    this.log(`The long climb: ${floors} floor${floors === 1 ? '' : 's'} of empty halls, ${turns} turns.`, 'info');
+    return true;
+  }
+
+  gateDescend(target) {
+    if (this.mode !== 'town') return false;
+    const depth = Math.max(1, Math.min(target, this.deepest ?? 1));
+    const turns = this.travelTurns(depth - 1);
+    this.advanceTime(turns);
+    if (this.over) return false;
+    this.enterFloor(depth, 'down');
+    if (depth > 1) this.log(`The party retraces ${depth - 1} cleared floor${depth === 2 ? '' : 's'} without incident (${turns} turns).`, 'info');
+    return true;
+  }
+
+  // Step back through the portal a scroll left open (see useItem 'portal').
+  gatePortal() {
+    if (this.mode !== 'town' || !this.portal) return false;
+    const { depth, pos } = this.portal;
+    this.portal = null;
+    this.enterFloor(depth, 'down');
+    if (pos && this.grid[pos.y]?.[pos.x] && this.grid[pos.y][pos.x] !== '#') { this.partyPos = { x: pos.x, y: pos.y }; this.updateVision(); }
+    this.log('The portal closes behind the party. You stand exactly where you left.', 'good');
+    return true;
+  }
+
   // ---- Multi-floor dungeon (Phase 5) ----
   // Floor 1 is the hand-made level; everything deeper is generated from
   // data/dungeon.json's tier tables. Visited floors are cached for the whole
@@ -509,7 +553,7 @@ export class Game {
     const nx = this.partyPos.x + dx, ny = this.partyPos.y + dy;
     const cell = this.grid[ny]?.[nx];
     if (cell === undefined || cell === 'v') return; // hedges block the way
-    if (cell === 'd') { this.enterDungeon(); return; }
+    if (cell === 'd') { this.onBuilding?.('gate'); return; } // the gate panel: floor 1, the deepest floor, or an open portal
     const building = { i: 'inn', s: 'shop', t: 'temple' }[cell];
     if (building) { this.onBuilding?.(building); return; }
     this.partyPos = { x: nx, y: ny }; // town time stands still — no turns pass
@@ -1069,7 +1113,7 @@ export class Game {
     } else if (cell === '<') {
       if (this.depth === 'boss') this.enterFloor(this.preBossDepth || 20, 'up');
       else if (this.depth === 1) { this.saveFloor(); this.enterTown(); }
-      else this.enterFloor(this.depth - 1, 'up');
+      else this.onBuilding?.('stairs'); // one floor, or straight to the daylight (express travel)
       return;
     } else {
       const trap = this.trapAt(nx, ny);
@@ -2000,6 +2044,13 @@ export class Game {
       if (!this.battle) return 'There is no one here to hide from — save it for battle.';
       if (ch.hidden) return `${ch.name} is already unseen.`;
     }
+    if (def.effect === 'portal') {
+      if (this.battle) return 'The sigil takes a quiet moment to draw — not in the middle of a fight.';
+      if (this.mode === 'town') return 'You are already home. A portal opened below stays open at the gate.';
+      if (this.arena) return 'The arena has no outside.';
+      if (this.depth === 'boss') return 'Nothing leaves the Hollow Throne but its master or its victors.';
+      if (typeof this.depth === 'number' && this.depth > def.portal_depth) return `The ${def.name} reaches only to depth ${def.portal_depth} — this is depth ${this.depth}. A stronger scroll is needed.`;
+    }
     return null;
   }
 
@@ -2012,6 +2063,15 @@ export class Game {
     if (reason) { this.log(reason, 'info'); return { ok: false }; }
     if (!this.arena) this.inventory[id]--;
     audio.play('potion_drink');
+    if (def.effect === 'portal') {
+      // Home in a breath; the way back waits at the gate (one portal at a time).
+      this.portal = { depth: this.depth, pos: { ...this.partyPos } };
+      audio.play('spell_arcane');
+      this.log(`${ch.name} reads the ${def.name} — the sigil flares and Novamagus is under your feet. The portal back to depth ${this.depth} stays open at the gate.`, 'good');
+      this.saveFloor();
+      this.enterTown();
+      return { ok: true, portal: true, fxText: 'portal!', fxColor: '#b48cff' };
+    }
     if (def.effect === 'heal') {
       const healed = Math.min(roll(def.dice), ch.maxHp - ch.hp);
       ch.hp += healed;
@@ -2043,7 +2103,7 @@ export class Game {
   useItemOnMap(id, ch) {
     if (this.over || this.victory || this.battle) return false;
     const res = this.useItem(id, ch);
-    if (res.ok) this.endPlayerTurn();
+    if (res.ok && !res.portal) this.endPlayerTurn(); // a portal read ends in town — no dungeon turn to pass
     return res.ok;
   }
 

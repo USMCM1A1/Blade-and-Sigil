@@ -707,10 +707,10 @@ export function openBuilding(game, kind) {
 }
 
 const KEEPERS = { inn: 'assets/town/innkeep.png', shop: 'assets/town/shopkeep.jpg' };
-const B_TITLES = { inn: 'The Inn', shop: 'The Shop', temple: 'The Temple' };
+const B_TITLES = { inn: 'The Inn', shop: 'The Shop', temple: 'The Temple', gate: 'The Dungeon Gate', stairs: 'The Stairs Up' };
 
 function renderBuilding(game, kind) {
-  const conf = game.data.town[kind];
+  const conf = game.data.town[kind] ?? {};
   document.getElementById('b-title').textContent = B_TITLES[kind];
   const keeper = document.getElementById('b-keeper');
   if (KEEPERS[kind]) { keeper.src = KEEPERS[kind]; keeper.style.display = 'block'; }
@@ -728,7 +728,7 @@ function renderBuilding(game, kind) {
     const btn = document.createElement('button');
     btn.textContent = btnText;
     if (disabledReason) { btn.disabled = true; btn.title = disabledReason; }
-    btn.addEventListener('click', () => { act(); again(); });
+    btn.addEventListener('click', () => { if (act() === 'close') { closeBuilding(); return; } again(); });
     div.appendChild(btn);
     body.appendChild(div);
     return div;
@@ -737,6 +737,25 @@ function renderBuilding(game, kind) {
   if (kind === 'inn') {
     row('A night for the whole party', 'full HP & spell points for the living', `Rest — ${conf.price} gold`,
       game.gold < conf.price ? 'Not enough gold.' : null, () => game.innRest());
+  }
+
+  // Express travel (designer ruling 2026-09-03): the gate and the stairs
+  // offer the whole trip at once — time passes, nothing attacks.
+  if (kind === 'gate') {
+    const per = game.data.town.travel?.turns_per_floor ?? 10;
+    row('Enter the dungeon', 'floor 1 — The Vermin Warrens', 'Descend', null, () => { game.gateDescend(1); return 'close'; });
+    if ((game.deepest ?? 1) > 1) {
+      row(`Straight down to depth ${game.deepest}`, `the deepest floor reached — ${(game.deepest - 1) * per} turns pass on the cleared stairs`, 'Descend', null, () => { game.gateDescend(game.deepest); return 'close'; });
+    }
+    if (game.portal) {
+      row(`Through your portal — depth ${game.portal.depth}`, 'the scroll\'s sigil still burns: you arrive exactly where you left it', 'Step through', null, () => { game.gatePortal(); return 'close'; });
+    }
+  }
+  if (kind === 'stairs') {
+    const per = game.data.town.travel?.turns_per_floor ?? 10;
+    const above = game.depth - 1;
+    row('Climb one floor', `depth ${above}`, 'Climb', null, () => { game.enterFloor(above, 'up'); return 'close'; });
+    row('Straight up to Novamagus', `${above} cleared floor${above === 1 ? '' : 's'} — ${above * per} turns pass, no fights`, 'Climb', null, () => { game.climbToTown(); return 'close'; });
   }
 
   if (kind === 'temple') {
