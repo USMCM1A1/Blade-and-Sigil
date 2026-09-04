@@ -65,7 +65,15 @@ export function choiceOpen() { return isOpen('choice'); }
 
 // Called every frame: opens the next owed choice whenever the party is on
 // the map (never mid-battle) and nothing else is being decided.
+let shownChoice = null; // the choice the open modal is showing, if any
+const stillOwed = (game, c) => game.choiceQueue.some(q => q.ch === c.ch && q.type === c.type && q.level === c.level);
 export function maybeOpenChoice(game) {
+  // A card that is no longer owed — the bench dropped the hero below the
+  // level that granted it — or one caught by a battle starting underneath
+  // it, closes itself; the queue re-offers anything still due afterwards.
+  if (choiceOpen() && shownChoice && (game.battle || !stillOwed(game, shownChoice))) {
+    closePanel('choice'); shownChoice = null; return;
+  }
   if (game.battle || game.over || !game.choiceQueue.length || choiceOpen() || buildingOpen() || equipmentOpen() || spellbookOpen() || playtestOpen() || marchingOpen()) return;
   renderChoice(game, game.choiceQueue[0]);
 }
@@ -245,6 +253,7 @@ function renderChoice(game, choice, after) {
   const root = document.getElementById('choice');
   const ch = choice.ch;
   openPanel('choice');
+  shownChoice = choice;
   const portrait = game.heroPortrait(ch);
   const close = () => closePanel('choice');
 
