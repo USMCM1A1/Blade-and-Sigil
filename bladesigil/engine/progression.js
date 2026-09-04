@@ -328,6 +328,12 @@ export function validateProgression(data) {
       if (lane.passive && !PASSIVES.includes(lane.passive.id)) {
         throw new DataError(laneWhere, `Unknown passive "${lane.passive.id}". The engine knows: ${PASSIVES.join(', ')}`);
       }
+      // The text fields that moved out of the engine (2026-09-04): plain strings.
+      for (const [obj, field, what] of [[lane.passive, 'blurb', 'the passive'], [lane.verb, 'how', 'the verb'], [lane.capstone, 'how', 'the capstone'], [lane.rite, 'tracked_label', 'the rite'], [lane.rite, 'tracked_deed', 'the rite']]) {
+        if (obj && obj[field] !== undefined && typeof obj[field] !== 'string') {
+          throw new DataError(laneWhere, `${what}'s "${field}" must be text.`);
+        }
+      }
       for (const l of lane.passive?.bonus_pick_levels ?? []) {
         if (typeof l !== 'number' || l < 1 || l > 20) throw new DataError(laneWhere, `overchannel "bonus_pick_levels" must list character levels 1-20.`);
       }
@@ -494,4 +500,24 @@ export function pendingChoices(data, ch) {
   const lane = laneOf(data, ch);
   if (lane?.rite && ch.level >= 20 && !ch.rite) out.push({ type: 'rite', ch, lane });
   return out;
+}
+
+// ---- Designer text (progression.json), resolved for the UI ----
+// A passive's crossroads-card line: its "blurb", with {field} quoting the
+// passive's own numbers ("+{dmg} damage" → "+1 damage"). No blurb: the id.
+export function passiveBlurb(p) {
+  if (!p) return '';
+  return (p.blurb ?? p.id).replace(/\{(\w+)\}/g, (_, k) => (p[k] !== undefined ? String(p[k]) : `{${k}}`));
+}
+// A verb's or capstone's "how to use it" line on the milestone card.
+export function powerHow(power) { return power?.how ?? ''; }
+// The rite's tracked deed: the tally row's label, and the sentence fragment
+// the Rite's title step weighs. A missing deed borrows the label.
+export function trackedLabel(lane) { return lane?.rite?.tracked_label ?? lane?.rite?.tracked ?? ''; }
+export function trackedDeed(lane) {
+  const r = lane?.rite;
+  if (!r) return '';
+  if (r.tracked_deed) return r.tracked_deed;
+  const l = r.tracked_label;
+  return l ? l.charAt(0).toLowerCase() + l.slice(1) : r.tracked;
 }

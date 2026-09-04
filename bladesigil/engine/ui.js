@@ -3,7 +3,7 @@
 // toggled with I, E, or C).
 
 import { abilityMod } from './rules.js';
-import { classProg, laneOf, passiveOf, riteTier, favoredPicksOwed, groupOfType, focusGroupOf, focusList, focusName, growthOptions, growthPicks } from './progression.js';
+import { classProg, laneOf, passiveOf, riteTier, passiveBlurb, powerHow, trackedLabel, trackedDeed, favoredPicksOwed, groupOfType, focusGroupOf, focusList, focusName, growthOptions, growthPicks } from './progression.js';
 import { unlockLevel, magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, activeStances, spellSchool, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
 
@@ -103,22 +103,6 @@ function fmtOffsets(off = {}) {
   return parts.join(', ');
 }
 
-function passiveBlurb(p) {
-  if (p.id === 'weapon_focus') return `${p.name ?? 'Weapon Focus'}: +${p.dmg ?? 1} damage with a weapon type you choose`;
-  if (p.id === 'braced_stance') return `Braced Stance: −${p.reduce ?? 1} damage from every hit while a shield is worn`;
-  if (p.id === 'vital_strike') return `Vital Strike: +${p.dmg ?? 2} damage against unaware or flanked foes`;
-  if (p.id === 'keen_senses') return `Keen Senses: +${p.bonus ?? 10}% to detect traps, secret doors, and trap work`;
-  if (p.id === 'prepared_mind') return `Prepared Mind: keep the spellbook — study on, copy every scroll you find, and prepare ${p.slots_bonus ? `${p.slots_bonus} more spell${p.slots_bonus > 1 ? 's' : ''}` : 'your pages'} at a time, re-picked freely at every rest`;
-  if (p.id === 'overchannel') return `Overchannel: every cast costs ${p.discount ?? 1} less spell point (never below 1) — the book is set aside: you know only ${p.known_per_level ?? 2} spells per spell level (chosen forever, from the catalog or your old pages)${p.bonus_pick_levels?.length ? `, plus one wild pick at levels ${p.bonus_pick_levels.join('/')}` : ''}`;
-  if (p.id === 'blessed_hands') return `Blessed Hands: +${p.heal ?? 2} HP on every healing spell you cast`;
-  if (p.id === 'sacred_weapon') return `Sacred Weapon: +${p.dmg ?? 1} divine damage on every weapon hit`;
-  if (p.id === 'sundered_calm') return `${p.name ?? 'Sundered Calm'}: +${p.saves ?? 1} on every saving throw`;
-  if (p.id === 'granite_skin') return `${p.name ?? 'Granite Skin'}: every un-elemental blow loses ${p.reduce ?? 1} damage`;
-  if (p.id === 'warding_presence') return `${p.name ?? 'Warding Presence'}: allies standing beside you gain +${p.saves ?? 1} on every save`;
-  if (p.id === 'ambidexterity') return `${p.name ?? 'Ambidexterity'}: the off-hand blade swings at only −${p.penalty ?? 2}, and one-handed melee weapons hit +${p.dmg ?? 1} harder`;
-  if (p.id === 'snap_shot') return `${p.name ?? 'Snap Shot'}: no point-blank penalty${p.point_blank ? ` (only −${p.point_blank})` : ''}, and bows hit +${p.dmg ?? 1} harder`;
-  return p.id;
-}
 
 function laneMilestones(l) {
   const bits = [];
@@ -425,16 +409,7 @@ function renderRite(game, choice, after) {
     const tier = riteTier(game.data, ch);
     const tierDef = rite.tiers[tier];
     const stat = ch.counters?.[rite.tracked] ?? 0;
-    const statLabel = {
-      rampageKills: 'foes felled in Rampage',
-      standSaves: "blows taken for allies at Guardian's Stand",
-      assassinateKills: 'marks slain by Assassinate',
-      shadowFeats: 'vanishings and traps sprung from the shadows',
-      bookCasts: 'spells cast from the book outside the day\'s preparation',
-      overcasts: 'spells overcast beyond their level',
-      mercySaves: 'allies caught by Mercy at the brink',
-      zealousStrikes: 'blows landed burning with Zealous Strike',
-    }[rite.tracked] ?? rite.tracked;
+    const statLabel = trackedDeed(laneOf(game.data, ch));
     const rewards = [
       tierDef.trinket ? `the Rite leaves a gift: ${game.itemDef(tierDef.trinket)?.name ?? tierDef.trinket}` : null,
       tierDef.dungeon ? `and word of a place only such a legend may enter: ${tierDef.dungeon.toLowerCase()}` : null,
@@ -997,36 +972,6 @@ function openLevelSummary(game, s) {
 
 // What each engine power actually feels like at the table — shown on the
 // milestone cards so the player knows HOW to use what they just gained.
-const POWER_HOW = {
-  rampage: 'It happens in the thick of battle: fell a foe with a melee swing and you strike again, free, at another foe in reach — and kills chain onward.',
-  guardians_stand: "It's a reaction: when a blow is about to land on an ally, the battle pauses and asks. Y takes the hit yourself; N lets it fall.",
-  rage: 'Open the C menu in battle and choose it — trade your guard for fury.',
-  bulwark: 'Always on: allies standing beside you gain armor. And Taunt joins the C menu — bellow, and enemies come for YOU.',
-  assassinate: 'It happens on its own: strike a foe marked "unaware" (start fights yourself, or Vanish first) and the blow is an automatic critical.',
-  vanish: 'Open the C menu in battle and choose it — you disappear, monsters lose you entirely, and your next strike lands as an Assassinate.',
-  lethality: 'Automatic, but demanding: Assassinate now doubles its damage, and only triggers when no other party member stands beside the mark.',
-  set_trap: 'Joins the C menu: aim at a nearby empty square and roll your trap skill. The first monster to step there springs it.',
-  arcane_insight: 'Joins the C menu, once per battle: spend your action to read the fight and pick an edge — to-hit, save DC, or spell damage — that lasts the whole encounter.',
-  overcast: "A stance in the C menu, free to flip: while it burns, damage and healing spells cost extra SP and strike one level harder. Watch the menu's costs change.",
-  mercy: 'It happens on its own: the instant an ally is cut to 0 HP, they rise again with 1d8 + your WIS. Every single time, free.',
-  zealous_strike: 'A stance in the C menu, free to flip: while it burns, every melee hit you land spends SP for bonus divine damage — and heals you a little.',
-  archmage: 'In battle, the C menu now lists your UNPREPARED spells too — casting one spends every spell point you have. Once per rest.',
-  twin_surge: 'Joins the C menu, once per rest: arm it, then cast — the spell resolves twice, and the backlash costs you your next turn.',
-  miracle: 'Joins the C menu, once per rest: every remaining spell point at once — the living are healed to full, the fallen rise at half.',
-  divine_inspiration: 'Joins the C menu: every remaining spell point at once (5 minimum) buys +3 hit, +3 damage, +3 AC for 3 rounds.',
-  runic_riposte: "It happens on its own: whenever a monster's melee blow lands on you (even one your wards soak), you strike straight back — free, every time. Stand beside your foes.",
-  ward_surge: "It's a reaction: as a foe swings at you, the battle pauses and asks. Y spends the SP for +4 AC and saves against that one blow; N lets the die roll as it will.",
-  unyielding: 'It happens on its own: any blow that would drop you to 0 HP leaves you at 1 instead. Poison and spellfire are not blows — mind them.',
-  shared_fortitude: 'Joins the C menu: aim at an ally and spend the SP — they gain a pool of absorbed damage that drinks blows first, all battle long.',
-  whirling_verse: "Open the C menu and choose it — it takes EVERY spell point you have left and ends your Stance, and for 3 rounds every landed hit strikes again. An all-in gamble: when it ends you have nothing.",
-  mirror_ward: 'Open the C menu and choose it — for 3 rounds half of every wound flies back at the attacker, but you cannot move. Plant yourself where they must come.',
-  mountains_heart: 'Open the C menu and choose it — for 3 rounds wounds are halved, but your hit/damage bonus is nothing and you cannot move. Hold a doorway; let others swing.',
-  deep_roots: 'Joins the C menu, once per rest: raise your wards FIRST, then spend every spell point to spread them across the whole party for 3 rounds.',
-  hunters_surge: "A stance in the C menu, free to flip: while it burns, each attack action spends SP and your off-hand blade swings as many times as your main hand. Needs two one-handed weapons in hand (E).",
-  volley: 'It happens on its own: drop a foe with a bow shot and another arrow flies free at the nearest foe in range — kills chain while the quiver holds.',
-  storm_of_blades: 'Open the C menu and choose it — every spell point at once buys 3 rounds where every main-hand hit earns a free off-hand strike with no penalty, +2 damage on everything.',
-  rain_of_arrows: 'Open the C menu with a bow in hand — for 3 rounds every shot also strikes each foe beside its target (one arrow each), but you cannot move. Find a line and hold it.',
-};
 
 function renderMilestoneCard(game, ch, m) {
   const lane = laneOf(game.data, ch);
@@ -1036,12 +981,12 @@ function renderMilestoneCard(game, ch, m) {
     step = `Level ${lane.verb.level} — a signature move`;
     headline = `The ${lane.name} bares its teeth. <b>${ch.name}</b> learns <b>${lane.verb.name}</b>.`;
     power = lane.verb;
-    how = POWER_HOW[lane.verb.id] ?? '';
+    how = powerHow(lane.verb);
   } else if (m.kind === 'capstone') {
     step = `Level ${lane.capstone.level} — a name earned`;
     headline = `The road has remade the walker. From this day, <b>${ch.name}</b> is a <b>${lane.archetype ?? lane.capstone.name}</b> — and gains <b>${lane.capstone.name}</b>.`;
     power = lane.capstone;
-    how = POWER_HOW[lane.capstone.id] ?? '';
+    how = powerHow(lane.capstone);
   } else if (m.kind === 'spelltier') {
     step = `Level ${ch.level} — deeper magic`;
     headline = `The veil thins. <b>${ch.name}</b> can now reach <b>level-${m.tier} spells</b>.`;
@@ -1139,22 +1084,7 @@ function renderPath(game, ch) {
       }
       // The tracked deed that will one day weigh the Title.
       if (lane.verb && ch.level >= lane.verb.level) {
-        const label = {
-          rampageKills: 'Foes felled in Rampage',
-          standSaves: 'Blows taken for allies',
-          assassinateKills: 'Marks slain by Assassinate',
-          shadowFeats: 'Vanishes & traps set',
-          bookCasts: 'Book-casts outside preparation',
-          overcasts: 'Overcasts landed',
-          mercySaves: 'Allies caught by Mercy',
-          zealousStrikes: 'Zealous Strikes landed',
-          riposteKills: 'Foes felled by Runic Riposte',
-          wardDeflects: 'Blows turned or reflected',
-          unyieldingSaves: 'Falls refused by Unyielding',
-          alliesFortified: 'Allies fortified & sheltered',
-          surgeKills: "Kills under Hunter's Surge / the Storm",
-          volleyKills: 'Foes felled by Volley',
-        }[lane.rite.tracked] ?? lane.rite.tracked;
+        const label = trackedLabel(lane);
         rows += `<div class="eq-power tally"><b>${label}</b><span>${ch.counters?.[lane.rite.tracked] ?? 0}${ch.rite ? '' : ' — deeds weigh the Title at level 20'}</span></div>`;
       }
     }

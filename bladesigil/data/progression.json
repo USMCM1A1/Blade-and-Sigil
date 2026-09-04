@@ -1,5 +1,5 @@
 {
-  "_comment": "Class Progression (design doc v3): each class here gets a hard FORK at 'fork_level' into two lanes; classes absent from this file simply level along their base tables. Each lane: 'name' + 'archetype' (the name shown from capstone level on), 'blurb' (shown on the choice card), 'offsets' (permanent adds to the class table: hit = to-hit AND damage, ac = armor class, sp = spell points, detect = trap/secret %), 'passive' (always-on, from the passive list below), 'verb' (the signature action gained at its 'level'), 'capstone' (gained at its 'level'; numbers tunable), 'refinement' (upgrades the verb at its 'level'), and 'rite' (the Level 20 Rite, see below). PASSIVES: weapon_focus (+dmg with a chosen weapon category — the player picks which at the fork), braced_stance (-'reduce' damage taken per hit while a shield is worn), vital_strike, keen_senses, prepared_mind (the Wizard lane's spellbook: only prepared spells are castable; slots = 'slots_base' + max spell level; re-pick freely at each rest), overchannel (the Sorcerer lane: every cast costs 'discount' less SP, floor 1; knows only 'known_per_level' spells per spell level, picked on unlock), blessed_hands (+'heal' HP on every heal spell), sacred_weapon (+'dmg' divine damage on weapon hits). VERBS: rampage, guardians_stand, assassinate, vanish, arcane_insight (once per battle, your action: choose +'hit' to-hit, +'dc' save DC, or +'dmg' spell damage for the rest of the fight), overcast (toggle: pay 'cost_mult'x SP to cast a spell one level higher — +'extra_dice' damage/healing, +'dc_bonus' DC), mercy (free reaction: an ally cut to 0 HP immediately rises with 'dice' + WIS HP), zealous_strike (toggle: each landed melee hit spends 'cost' SP for +'dice' divine damage and 'heal' self-healing). CAPSTONES: rage, bulwark, lethality, set_trap, archmage (once per rest: cast ANY spellbook spell, prepared or not, for ALL remaining SP), twin_surge (once per rest: a spell resolves twice, then you are Exhausted a round), miracle (once per rest, ALL remaining SP, 'min_sp' minimum: the living are fully healed, the fallen rise at half), divine_inspiration (ALL remaining SP, 'min_sp' minimum: +'hit'/+'dmg'/+'ac' for 'rounds' rounds). REFINEMENTS: rampage_crits, stand_half_cost, assassinate_low_hp, vanish_free, insight_double (Arcane Insight grants TWO bonus types), overcast_cheap (Overcast costs 1.5x, rounded up), mercy_cures (Mercy also cures one condition), zealous_immunity (a Zealous Strike grants immunity to conditions until your next turn). TESTING TIP: the Playtest Bench (P) banks XP and bumps playstyle counters — the fastest road to any milestone. | NEW (2026-08-29): passives sundered_calm/granite_skin/warding_presence (a passive may carry a 'name' — weapon_focus wears 'Edge Eternal' for the Spellblade); verbs runic_riposte, ward_surge, unyielding, shared_fortitude; capstones whirling_verse, mirror_ward, mountains_heart, deep_roots; refinements riposte_allies, ward_surge_allies, unyielding_allies, fortitude_two; rite verbs crescendo, unbroken_chord, bedrock, hearthfire; counters riposteKills, wardDeflects, unyieldingSaves, alliesFortified. | RANGER (2026-08-29): passives ambidexterity/snap_shot; verbs hunters_surge/volley; capstones storm_of_blades/rain_of_arrows; refinements offhand_free/hawk_on_the_move; rite verbs pack_instinct/true_shot; counters surgeKills/volleyKills. | LANE GROWTH (designer session 2026-09-02): a lane may carry a \"growth\" block {levels, options} — the hero picks ONE option at each level listed, and every list deliberately holds MORE options than picks so two heroes of the same lane end up different (the designer's goal: \"your level 20 stoneshaper could be super different than a previous one\"). Effect fields, all optional: brace_vs ('spell'|'trap') · brace_bonus N · brace_no_shield · brace_allies (Braced Stance) · refuse <conditionId> (Bulwark: the mountain simply cannot get it) · aura_ac/aura_reduce/aura_saves N, aura_party, aura_refuse <conditionId> (Warding Presence) · vital_when ('poisoned'|'wounded'|'held'|'frightened'|'alone'|'bigger') (Vital Strike triggers) · skill N, find_range N, find_sure (passive detection within reach never rolls — it simply finds), search_turns N, disarm_safe, chest_safe (the rogue's craft) · saves N (anyone). ALL names, blurbs and numbers are PROPOSALS — rewrite freely. Ranger lanes deliberately have no growth: Favored Enemy already is one.",
+  "_comment": "Class Progression (design doc v3): each class here gets a hard FORK at 'fork_level' into two lanes; classes absent from this file simply level along their base tables. Each lane: 'name' + 'archetype' (the name shown from capstone level on), 'blurb' (shown on the choice card), 'offsets' (permanent adds to the class table: hit = to-hit AND damage, ac = armor class, sp = spell points, detect = trap/secret %), 'passive' (always-on, from the passive list below), 'verb' (the signature action gained at its 'level'), 'capstone' (gained at its 'level'; numbers tunable), 'refinement' (upgrades the verb at its 'level'), and 'rite' (the Level 20 Rite, see below). PASSIVES: weapon_focus (+dmg with a chosen weapon category — the player picks which at the fork), braced_stance (-'reduce' damage taken per hit while a shield is worn), vital_strike, keen_senses, prepared_mind (the Wizard lane's spellbook: only prepared spells are castable; slots = 'slots_base' + max spell level; re-pick freely at each rest), overchannel (the Sorcerer lane: every cast costs 'discount' less SP, floor 1; knows only 'known_per_level' spells per spell level, picked on unlock), blessed_hands (+'heal' HP on every heal spell), sacred_weapon (+'dmg' divine damage on weapon hits). VERBS: rampage, guardians_stand, assassinate, vanish, arcane_insight (once per battle, your action: choose +'hit' to-hit, +'dc' save DC, or +'dmg' spell damage for the rest of the fight), overcast (toggle: pay 'cost_mult'x SP to cast a spell one level higher — +'extra_dice' damage/healing, +'dc_bonus' DC), mercy (free reaction: an ally cut to 0 HP immediately rises with 'dice' + WIS HP), zealous_strike (toggle: each landed melee hit spends 'cost' SP for +'dice' divine damage and 'heal' self-healing). CAPSTONES: rage, bulwark, lethality, set_trap, archmage (once per rest: cast ANY spellbook spell, prepared or not, for ALL remaining SP), twin_surge (once per rest: a spell resolves twice, then you are Exhausted a round), miracle (once per rest, ALL remaining SP, 'min_sp' minimum: the living are fully healed, the fallen rise at half), divine_inspiration (ALL remaining SP, 'min_sp' minimum: +'hit'/+'dmg'/+'ac' for 'rounds' rounds). REFINEMENTS: rampage_crits, stand_half_cost, assassinate_low_hp, vanish_free, insight_double (Arcane Insight grants TWO bonus types), overcast_cheap (Overcast costs 1.5x, rounded up), mercy_cures (Mercy also cures one condition), zealous_immunity (a Zealous Strike grants immunity to conditions until your next turn). TESTING TIP: the Playtest Bench (P) banks XP and bumps playstyle counters — the fastest road to any milestone. | NEW (2026-08-29): passives sundered_calm/granite_skin/warding_presence (a passive may carry a 'name' — weapon_focus wears 'Edge Eternal' for the Spellblade); verbs runic_riposte, ward_surge, unyielding, shared_fortitude; capstones whirling_verse, mirror_ward, mountains_heart, deep_roots; refinements riposte_allies, ward_surge_allies, unyielding_allies, fortitude_two; rite verbs crescendo, unbroken_chord, bedrock, hearthfire; counters riposteKills, wardDeflects, unyieldingSaves, alliesFortified. | RANGER (2026-08-29): passives ambidexterity/snap_shot; verbs hunters_surge/volley; capstones storm_of_blades/rain_of_arrows; refinements offhand_free/hawk_on_the_move; rite verbs pack_instinct/true_shot; counters surgeKills/volleyKills. | LANE GROWTH (designer session 2026-09-02): a lane may carry a \"growth\" block {levels, options} — the hero picks ONE option at each level listed, and every list deliberately holds MORE options than picks so two heroes of the same lane end up different (the designer's goal: \"your level 20 stoneshaper could be super different than a previous one\"). Effect fields, all optional: brace_vs ('spell'|'trap') · brace_bonus N · brace_no_shield · brace_allies (Braced Stance) · refuse <conditionId> (Bulwark: the mountain simply cannot get it) · aura_ac/aura_reduce/aura_saves N, aura_party, aura_refuse <conditionId> (Warding Presence) · vital_when ('poisoned'|'wounded'|'held'|'frightened'|'alone'|'bigger') (Vital Strike triggers) · skill N, find_range N, find_sure (passive detection within reach never rolls — it simply finds), search_turns N, disarm_safe, chest_safe (the rogue's craft) · saves N (anyone). ALL names, blurbs and numbers are PROPOSALS — rewrite freely. Ranger lanes deliberately have no growth: Favored Enemy already is one. TEXT FIELDS (2026-09-04, moved out of the engine so they are yours): every passive has a 'blurb' shown on the crossroads card — write {field} to quote one of the passive's own numbers (e.g. '+{dmg} damage', '{name}: …'); every verb and capstone may carry 'how' (the 'how to use it' line on the milestone card); every rite has 'tracked_label' (the tally row on the character sheet) and 'tracked_deed' (the sentence fragment on the Rite's title step).",
   "_xp_comment": "XP CURVE (playtest proposal 2026-08-30, replaces the flat legacy 50 x level): XP to reach the NEXT level = base x growth^(level-1), rounded to the nearest 5. With 50/1.3: level 1->2 costs 50, 5->6 costs 145, 10->11 costs 530, 15->16 costs 1,955, 19->20 costs 5,600 - about 24,000 total to reach 20 (the old rule needed only 9,500, so a full-run party hit 20 on floor 13 and skipped the last third of the dungeon). Tune base/growth freely; delete the block to fall back to 50 x level.",
   "xp_curve": {
     "base": 50,
@@ -99,13 +99,15 @@
               14,
               16
             ],
-            "_comment": "extra_levels (designer ruling 2026-09-02): the hero swears to ONE weapon family at the fork, then ADDS another at each of these levels — the +1 damage covers every family sworn. Empty the list to go back to a single family."
+            "_comment": "extra_levels (designer ruling 2026-09-02): the hero swears to ONE weapon family at the fork, then ADDS another at each of these levels — the +1 damage covers every family sworn. Empty the list to go back to a single family.",
+            "blurb": "Weapon Focus: +{dmg} damage with a weapon type you choose"
           },
           "verb": {
             "id": "rampage",
             "level": 10,
             "name": "Rampage",
-            "blurb": "Felling a foe grants an immediate free attack on another foe in reach."
+            "blurb": "Felling a foe grants an immediate free attack on another foe in reach.",
+            "how": "It happens in the thick of battle: fell a foe with a melee swing and you strike again, free, at another foe in reach — and kills chain onward."
           },
           "capstone": {
             "id": "rage",
@@ -116,7 +118,8 @@
             "ac": -2,
             "extra_attacks": 1,
             "rounds": 3,
-            "blurb": "Forsake defense for fury: +2 hit and damage, one extra attack, -2 AC."
+            "blurb": "Forsake defense for fury: +2 hit and damage, one extra attack, -2 AC.",
+            "how": "Open the C menu in battle and choose it — trade your guard for fury."
           },
           "refinement": {
             "id": "rampage_crits",
@@ -147,7 +150,9 @@
                 "dungeon": "A gladiatorial proving-ground of endless foes",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Foes felled in Rampage",
+            "tracked_deed": "foes felled in Rampage"
           }
         },
         {
@@ -161,13 +166,15 @@
           },
           "passive": {
             "id": "braced_stance",
-            "reduce": 1
+            "reduce": 1,
+            "blurb": "Braced Stance: −{reduce} damage from every hit while a shield is worn"
           },
           "verb": {
             "id": "guardians_stand",
             "level": 10,
             "name": "Guardian's Stand",
-            "blurb": "When an ally is about to take a hit, step in and take it yourself."
+            "blurb": "When an ally is about to take a hit, step in and take it yourself.",
+            "how": "It's a reaction: when a blow is about to land on an ally, the battle pauses and asks. Y takes the hit yourself; N lets it fall."
           },
           "capstone": {
             "id": "bulwark",
@@ -175,7 +182,8 @@
             "name": "Bulwark",
             "aura_ac": 1,
             "taunt_rounds": 2,
-            "blurb": "Allies beside you gain +1 AC, and you can Taunt enemies into striking you."
+            "blurb": "Allies beside you gain +1 AC, and you can Taunt enemies into striking you.",
+            "how": "Always on: allies standing beside you gain armor. And Taunt joins the C menu — bellow, and enemies come for YOU."
           },
           "refinement": {
             "id": "stand_half_cost",
@@ -206,7 +214,9 @@
                 "dungeon": "A ruined keep under siege, with lives to hold",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Blows taken for allies",
+            "tracked_deed": "blows taken for allies at Guardian's Stand"
           },
           "growth": {
             "levels": [
@@ -271,20 +281,23 @@
           },
           "passive": {
             "id": "vital_strike",
-            "dmg": 2
+            "dmg": 2,
+            "blurb": "Vital Strike: +{dmg} damage against unaware or flanked foes"
           },
           "verb": {
             "id": "assassinate",
             "level": 10,
             "name": "Assassinate",
-            "blurb": "A strike against an unaware foe is an automatic critical hit."
+            "blurb": "A strike against an unaware foe is an automatic critical hit.",
+            "how": "It happens on its own: strike a foe marked \"unaware\" (start fights yourself, or Vanish first) and the blow is an automatic critical."
           },
           "capstone": {
             "id": "lethality",
             "level": 15,
             "name": "Lethality",
             "multiplier": 2,
-            "blurb": "Assassinate now deals double damage — but only against a mark no other party member stands beside. The kill belongs to you alone."
+            "blurb": "Assassinate now deals double damage — but only against a mark no other party member stands beside. The kill belongs to you alone.",
+            "how": "Automatic, but demanding: Assassinate now doubles its damage, and only triggers when no other party member stands beside the mark."
           },
           "refinement": {
             "id": "assassinate_low_hp",
@@ -315,7 +328,9 @@
                 "dungeon": "An assassination contract — one guarded mark, reached unseen",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Marks slain by Assassinate",
+            "tracked_deed": "marks slain by Assassinate"
           },
           "growth": {
             "levels": [
@@ -374,13 +389,15 @@
           },
           "passive": {
             "id": "keen_senses",
-            "bonus": 10
+            "bonus": 10,
+            "blurb": "Keen Senses: +{bonus}% to detect traps, secret doors, and trap work"
           },
           "verb": {
             "id": "vanish",
             "level": 10,
             "name": "Vanish",
-            "blurb": "Melt into shadow mid-battle: foes lose you utterly until you strike. Costs your whole action."
+            "blurb": "Melt into shadow mid-battle: foes lose you utterly until you strike. Costs your whole action.",
+            "how": "Open the C menu in battle and choose it — you disappear, monsters lose you entirely, and your next strike lands as an Assassinate."
           },
           "capstone": {
             "id": "deadly_webs",
@@ -419,7 +436,9 @@
                 "dungeon": "A vault heist thick with locks, wards, and traps",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Vanishes & traps set",
+            "tracked_deed": "vanishings and traps sprung from the shadows"
           },
           "growth": {
             "levels": [
@@ -519,7 +538,8 @@
           },
           "passive": {
             "id": "prepared_mind",
-            "slots_bonus": 1
+            "slots_bonus": 1,
+            "blurb": "Prepared Mind: keep the spellbook — study on, copy every scroll you find, and prepare {slots_bonus} more spell at a time, re-picked freely at every rest"
           },
           "verb": {
             "id": "arcane_insight",
@@ -528,13 +548,15 @@
             "hit": 2,
             "dc": 1,
             "dmg": 2,
-            "blurb": "Once per battle, spend your action reading the fight: choose a bonus — to-hit, save DC, or spell damage — and keep it for the rest of the encounter."
+            "blurb": "Once per battle, spend your action reading the fight: choose a bonus — to-hit, save DC, or spell damage — and keep it for the rest of the encounter.",
+            "how": "Joins the C menu, once per battle: spend your action to read the fight and pick an edge — to-hit, save DC, or spell damage — that lasts the whole encounter."
           },
           "capstone": {
             "id": "archmage",
             "level": 15,
             "name": "Archmage's Reach",
-            "blurb": "Once per rest: cast ANY spell written anywhere in your book — prepared or not — for every spell point you have left. An all-in gamble."
+            "blurb": "Once per rest: cast ANY spell written anywhere in your book — prepared or not — for every spell point you have left. An all-in gamble.",
+            "how": "In battle, the C menu now lists your UNPREPARED spells too — casting one spends every spell point you have. Once per rest."
           },
           "refinement": {
             "id": "insight_double",
@@ -565,7 +587,9 @@
                 "dungeon": "A lost archive sealed behind magical wards",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Book-casts outside preparation",
+            "tracked_deed": "spells cast from the book outside the day's preparation"
           }
         },
         {
@@ -585,7 +609,8 @@
               11,
               14,
               17
-            ]
+            ],
+            "blurb": "Overchannel: every cast costs {discount} less spell point (never below 1) — the book is set aside: you know only {known_per_level} spells per spell level (chosen forever, from the catalog or your old pages), plus one wild pick at levels 7/11/14/17"
           },
           "verb": {
             "id": "overcast",
@@ -594,14 +619,16 @@
             "cost_mult": 2,
             "extra_dice": "2d6",
             "dc_bonus": 1,
-            "blurb": "Pay double spell points to cast a spell as if one level higher: +2d6 to its dice and +1 to its save DC."
+            "blurb": "Pay double spell points to cast a spell as if one level higher: +2d6 to its dice and +1 to its save DC.",
+            "how": "A stance in the C menu, free to flip: while it burns, damage and healing spells cost extra SP and strike one level harder. Watch the menu's costs change."
           },
           "capstone": {
             "id": "twin_surge",
             "level": 15,
             "name": "Stormsurge",
             "blurb": "Once per rest: a spell you cast resolves TWICE in immediate succession — then the channeling leaves you Exhausted for a round.",
-            "_comment": "CONTENT FLAG: verb name is a placeholder — rename freely"
+            "_comment": "CONTENT FLAG: verb name is a placeholder — rename freely",
+            "how": "Joins the C menu, once per rest: arm it, then cast — the spell resolves twice, and the backlash costs you your next turn."
           },
           "refinement": {
             "id": "overcast_cheap",
@@ -632,7 +659,9 @@
                 "dungeon": "A raw magical convergence zone, unstable and hungry",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Overcasts landed",
+            "tracked_deed": "spells overcast beyond their level"
           }
         }
       ]
@@ -652,21 +681,24 @@
           },
           "passive": {
             "id": "blessed_hands",
-            "heal": 2
+            "heal": 2,
+            "blurb": "Blessed Hands: +{heal} HP on every healing spell you cast"
           },
           "verb": {
             "id": "mercy",
             "level": 10,
             "name": "Mercy",
             "dice": "1d8",
-            "blurb": "A free reaction, every time: the instant an ally is cut down to 0 HP, they rise again with 1d8 + your WIS in hit points."
+            "blurb": "A free reaction, every time: the instant an ally is cut down to 0 HP, they rise again with 1d8 + your WIS in hit points.",
+            "how": "It happens on its own: the instant an ally is cut to 0 HP, they rise again with 1d8 + your WIS. Every single time, free."
           },
           "capstone": {
             "id": "miracle",
             "level": 15,
             "name": "Miracle",
             "min_sp": 5,
-            "blurb": "Once per rest: every spell point you have left, spent at once — the living are healed to full, and the fallen rise at half health. An all-in gamble."
+            "blurb": "Once per rest: every spell point you have left, spent at once — the living are healed to full, and the fallen rise at half health. An all-in gamble.",
+            "how": "Joins the C menu, once per rest: every remaining spell point at once — the living are healed to full, the fallen rise at half."
           },
           "refinement": {
             "id": "mercy_cures",
@@ -697,7 +729,9 @@
                 "dungeon": "A sanctified ruin overrun by undead — restore the shrine",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Allies caught by Mercy",
+            "tracked_deed": "allies caught by Mercy at the brink"
           }
         },
         {
@@ -711,7 +745,8 @@
           },
           "passive": {
             "id": "sacred_weapon",
-            "dmg": 1
+            "dmg": 1,
+            "blurb": "Sacred Weapon: +{dmg} divine damage on every weapon hit"
           },
           "verb": {
             "id": "zealous_strike",
@@ -720,7 +755,8 @@
             "cost": 3,
             "dice": "2d6",
             "heal": "1d6",
-            "blurb": "A toggle, free to flip: while burning, every melee hit you land spends 3 spell points for +2d6 divine damage — and heals you 1d6."
+            "blurb": "A toggle, free to flip: while burning, every melee hit you land spends 3 spell points for +2d6 divine damage — and heals you 1d6.",
+            "how": "A stance in the C menu, free to flip: while it burns, every melee hit you land spends SP for bonus divine damage — and heals you a little."
           },
           "capstone": {
             "id": "divine_inspiration",
@@ -731,7 +767,8 @@
             "ac": 3,
             "rounds": 3,
             "min_sp": 5,
-            "blurb": "Every spell point you have left, spent at once: +3 to hit, +3 damage, +3 AC for 3 rounds. Briefly, heaven fights in your armor."
+            "blurb": "Every spell point you have left, spent at once: +3 to hit, +3 damage, +3 AC for 3 rounds. Briefly, heaven fights in your armor.",
+            "how": "Joins the C menu: every remaining spell point at once (5 minimum) buys +3 hit, +3 damage, +3 AC for 3 rounds."
           },
           "refinement": {
             "id": "zealous_immunity",
@@ -762,7 +799,9 @@
                 "dungeon": "A trial of faith — a solo gauntlet under a self-imposed vow",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Zealous Strikes landed",
+            "tracked_deed": "blows landed burning with Zealous Strike"
           }
         }
       ]
@@ -789,13 +828,15 @@
               14,
               16
             ],
-            "_comment": "extra_levels (designer ruling 2026-09-02): the hero swears to ONE weapon family at the fork, then ADDS another at each of these levels — the +1 damage covers every family sworn. Empty the list to go back to a single family."
+            "_comment": "extra_levels (designer ruling 2026-09-02): the hero swears to ONE weapon family at the fork, then ADDS another at each of these levels — the +1 damage covers every family sworn. Empty the list to go back to a single family.",
+            "blurb": "{name}: +{dmg} damage with a weapon type you choose"
           },
           "verb": {
             "id": "runic_riposte",
             "level": 10,
             "name": "Runic Riposte",
-            "blurb": "Whenever a foe's melee blow lands on you, you strike back at once — free, every time."
+            "blurb": "Whenever a foe's melee blow lands on you, you strike back at once — free, every time.",
+            "how": "It happens on its own: whenever a monster's melee blow lands on you (even one your wards soak), you strike straight back — free, every time. Stand beside your foes."
           },
           "capstone": {
             "id": "whirling_verse",
@@ -803,7 +844,8 @@
             "name": "Whirling Verse",
             "rounds": 3,
             "min_sp": 1,
-            "blurb": "Every spell point you have left, and your Stance falls silent: for 3 rounds every landed hit grants a free extra strike. An all-in gamble — when it ends you have nothing, not even the baseline verse."
+            "blurb": "Every spell point you have left, and your Stance falls silent: for 3 rounds every landed hit grants a free extra strike. An all-in gamble — when it ends you have nothing, not even the baseline verse.",
+            "how": "Open the C menu and choose it — it takes EVERY spell point you have left and ends your Stance, and for 3 rounds every landed hit strikes again. An all-in gamble: when it ends you have nothing."
           },
           "refinement": {
             "id": "riposte_allies",
@@ -834,7 +876,9 @@
                 "dungeon": "Dueling grounds — a running gauntlet of one-on-one challenges",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Foes felled by Runic Riposte",
+            "tracked_deed": "foes felled by Runic Riposte"
           }
         },
         {
@@ -849,7 +893,8 @@
           "passive": {
             "id": "sundered_calm",
             "name": "Sundered Calm",
-            "saves": 1
+            "saves": 1,
+            "blurb": "{name}: +{saves} on every saving throw"
           },
           "verb": {
             "id": "ward_surge",
@@ -857,7 +902,8 @@
             "name": "Ward Surge",
             "cost": 2,
             "ac": 4,
-            "blurb": "A reaction: as a foe swings at you, spend 2 SP for +4 AC and saves against that one blow."
+            "blurb": "A reaction: as a foe swings at you, spend 2 SP for +4 AC and saves against that one blow.",
+            "how": "It's a reaction: as a foe swings at you, the battle pauses and asks. Y spends the SP for +4 AC and saves against that one blow; N lets the die roll as it will."
           },
           "capstone": {
             "id": "mirror_ward",
@@ -865,7 +911,8 @@
             "name": "Mirror Ward",
             "rounds": 3,
             "reflect": 0.5,
-            "blurb": "For 3 rounds half of every wound you take is thrown back at its source — but you cannot move while the mirror holds."
+            "blurb": "For 3 rounds half of every wound you take is thrown back at its source — but you cannot move while the mirror holds.",
+            "how": "Open the C menu and choose it — for 3 rounds half of every wound flies back at the attacker, but you cannot move. Plant yourself where they must come."
           },
           "refinement": {
             "id": "ward_surge_allies",
@@ -896,7 +943,9 @@
                 "dungeon": "A hall of mirrors — an enemy-caster gauntlet that punishes standing still",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Blows turned or reflected",
+            "tracked_deed": "blows turned aside or thrown back by the ward"
           }
         }
       ]
@@ -917,20 +966,23 @@
           "passive": {
             "id": "granite_skin",
             "name": "Granite Skin",
-            "reduce": 1
+            "reduce": 1,
+            "blurb": "{name}: every un-elemental blow loses {reduce} damage"
           },
           "verb": {
             "id": "unyielding",
             "level": 10,
             "name": "Unyielding",
-            "blurb": "A blow that would drop you to 0 HP leaves you at 1 instead. Every time."
+            "blurb": "A blow that would drop you to 0 HP leaves you at 1 instead. Every time.",
+            "how": "It happens on its own: any blow that would drop you to 0 HP leaves you at 1 instead. Poison and spellfire are not blows — mind them."
           },
           "capstone": {
             "id": "mountains_heart",
             "level": 15,
             "name": "Mountain's Heart",
             "rounds": 3,
-            "blurb": "For 3 rounds every wound is halved and no critical can land — but your hit and damage bonus is nothing and you cannot move. A wall, not a warrior."
+            "blurb": "For 3 rounds every wound is halved and no critical can land — but your hit and damage bonus is nothing and you cannot move. A wall, not a warrior.",
+            "how": "Open the C menu and choose it — for 3 rounds wounds are halved, but your hit/damage bonus is nothing and you cannot move. Hold a doorway; let others swing."
           },
           "refinement": {
             "id": "unyielding_allies",
@@ -961,7 +1013,9 @@
                 "dungeon": "A collapsing mine — a solo endurance gauntlet against escalating harm",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Falls refused by Unyielding",
+            "tracked_deed": "falls refused by Unyielding"
           },
           "growth": {
             "levels": [
@@ -1021,7 +1075,8 @@
           "passive": {
             "id": "warding_presence",
             "name": "Warding Presence",
-            "saves": 1
+            "saves": 1,
+            "blurb": "{name}: allies standing beside you gain +{saves} on every save"
           },
           "verb": {
             "id": "shared_fortitude",
@@ -1029,7 +1084,8 @@
             "name": "Shared Fortitude",
             "cost": 3,
             "dice": "2d8",
-            "blurb": "Spend 3 SP: an ally gains 2d8 + your CON of absorbed damage for the rest of the battle."
+            "blurb": "Spend 3 SP: an ally gains 2d8 + your CON of absorbed damage for the rest of the battle.",
+            "how": "Joins the C menu: aim at an ally and spend the SP — they gain a pool of absorbed damage that drinks blows first, all battle long."
           },
           "capstone": {
             "id": "deep_roots",
@@ -1037,7 +1093,8 @@
             "name": "Aegis of the Deep Roots",
             "rounds": 3,
             "min_sp": 3,
-            "blurb": "Once per rest, every spell point you have left: every AC, save, and resistance buff on you spreads to the whole party for 3 rounds. Raise your wards first — an empty hold shares nothing."
+            "blurb": "Once per rest, every spell point you have left: every AC, save, and resistance buff on you spreads to the whole party for 3 rounds. Raise your wards first — an empty hold shares nothing.",
+            "how": "Joins the C menu, once per rest: raise your wards FIRST, then spend every spell point to spread them across the whole party for 3 rounds."
           },
           "refinement": {
             "id": "fortitude_two",
@@ -1068,7 +1125,9 @@
                 "dungeon": "A dwarven hold under siege — defend a whole camp at once",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Allies fortified & sheltered",
+            "tracked_deed": "allies fortified and sheltered"
           },
           "growth": {
             "levels": [
@@ -1132,14 +1191,16 @@
             "id": "ambidexterity",
             "name": "Ambidexterity",
             "penalty": 2,
-            "dmg": 1
+            "dmg": 1,
+            "blurb": "{name}: the off-hand blade swings at only −{penalty}, and one-handed melee weapons hit +{dmg} harder"
           },
           "verb": {
             "id": "hunters_surge",
             "level": 10,
             "name": "Hunter's Surge",
             "cost": 2,
-            "blurb": "A stance: while it burns, each attack spends 2 SP and the off-hand matches the main hand blow for blow."
+            "blurb": "A stance: while it burns, each attack spends 2 SP and the off-hand matches the main hand blow for blow.",
+            "how": "A stance in the C menu, free to flip: while it burns, each attack action spends SP and your off-hand blade swings as many times as your main hand. Needs two one-handed weapons in hand (E)."
           },
           "capstone": {
             "id": "storm_of_blades",
@@ -1148,7 +1209,8 @@
             "rounds": 3,
             "dmg": 2,
             "min_sp": 1,
-            "blurb": "Every spell point at once: for 3 rounds every main-hand hit earns a free off-hand strike at no penalty, and every attack lands +2 harder."
+            "blurb": "Every spell point at once: for 3 rounds every main-hand hit earns a free off-hand strike at no penalty, and every attack lands +2 harder.",
+            "how": "Open the C menu and choose it — every spell point at once buys 3 rounds where every main-hand hit earns a free off-hand strike with no penalty, +2 damage on everything."
           },
           "refinement": {
             "id": "offhand_free",
@@ -1179,7 +1241,9 @@
                 "dungeon": "The Long Hunt — track one legendary beast through close warrens",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Kills under Hunter's Surge / the Storm",
+            "tracked_deed": "kills made under Hunter's Surge or the Storm of Blades"
           }
         },
         {
@@ -1192,13 +1256,15 @@
             "id": "snap_shot",
             "name": "Snap Shot",
             "point_blank": 0,
-            "dmg": 1
+            "dmg": 1,
+            "blurb": "{name}: no point-blank penalty, and bows hit +{dmg} harder"
           },
           "verb": {
             "id": "volley",
             "level": 10,
             "name": "Volley",
-            "blurb": "Dropping a foe with a bow shot grants an immediate free shot at another foe in range — kills chain while arrows last."
+            "blurb": "Dropping a foe with a bow shot grants an immediate free shot at another foe in range — kills chain while arrows last.",
+            "how": "It happens on its own: drop a foe with a bow shot and another arrow flies free at the nearest foe in range — kills chain while the quiver holds."
           },
           "capstone": {
             "id": "rain_of_arrows",
@@ -1206,7 +1272,8 @@
             "name": "Rain of Arrows",
             "rounds": 3,
             "spread": 1,
-            "blurb": "For 3 rounds every shot also strikes each foe beside its target (one arrow per foe struck) — but you cannot move while the rain falls."
+            "blurb": "For 3 rounds every shot also strikes each foe beside its target (one arrow per foe struck) — but you cannot move while the rain falls.",
+            "how": "Open the C menu with a bow in hand — for 3 rounds every shot also strikes each foe beside its target (one arrow each), but you cannot move. Find a line and hold it."
           },
           "refinement": {
             "id": "hawk_on_the_move",
@@ -1237,7 +1304,9 @@
                 "dungeon": "The Ford — hold a narrow crossing against advancing waves",
                 "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
               }
-            ]
+            ],
+            "tracked_label": "Foes felled by Volley",
+            "tracked_deed": "foes felled by Volley"
           }
         }
       ]
