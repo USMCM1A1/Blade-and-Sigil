@@ -121,6 +121,7 @@ export class Game {
   constructor(data) {
     this.data = data;
     this.messages = [];
+    this.messageSeq = 0;    // every line ever spoken, counted past the cap (the log panel keys on it)
     this.gold = 0;
     this.inventory = {}; // shared party pouch: item id -> count
     this.turn = 0;
@@ -882,6 +883,7 @@ export class Game {
   // ---- Messages ----
   log(text, kind = 'combat') {
     this.messages.push({ text, kind });
+    this.messageSeq++;
     if (this.messages.length > LOG_CAP) this.messages.shift();
     // Nearly every state change speaks — so every message quietly refreshes
     // the run autosave (debounced; never in battle/arena; a wipe clears it).

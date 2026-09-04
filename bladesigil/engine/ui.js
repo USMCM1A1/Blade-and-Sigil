@@ -772,7 +772,7 @@ function renderEquipment(game) {
     nameEl.textContent = ch.name;
   }
   document.getElementById('eq-stats').textContent =
-    `Level ${ch.level} ${ch.race.name} ${game.displayClass(ch)} · AC ${ch.ac} · ${ch.weapon.name} ${ch.weapon.damage}${ch.maxSp ? ` · SP ${ch.sp}/${ch.maxSp}` : ''}`;
+    `Level ${ch.level} ${ch.race.name} ${game.displayClass(ch)} · HP ${ch.hp}/${ch.maxHp}${ch.maxSp ? ` · SP ${ch.sp}/${ch.maxSp}` : ''} · AC ${ch.ac} · ${ch.weapon.name} ${ch.weapon.damage}`;
 
   // The six abilities, with the design-doc modifier beside each score. A
   // score raised by gear glows gold and NAMES the piece (the named-bonus rule).
@@ -1389,13 +1389,23 @@ export function updateUI(game) {
     if (u.status.innerHTML !== badges) u.status.innerHTML = badges;
   }
 
+  // The log panel: append every line spoken since the last frame. Keyed on
+  // the running count (messageSeq), not the array length — the array is
+  // capped at LOG_CAP, so comparing lengths went silent for good once the
+  // cap was reached (the "log stopped around level five" playtest bug).
   const log = document.getElementById('log');
-  while (log.children.length < game.messages.length) {
-    const m = game.messages[log.children.length];
+  if (logGame !== game) { logGame = game; logShown = 0; log.innerHTML = ''; }
+  const fresh = Math.min(game.messageSeq - logShown, game.messages.length);
+  for (const m of game.messages.slice(game.messages.length - fresh)) {
     const div = document.createElement('div');
     div.className = `msg-${m.kind}`;
     div.textContent = m.text;
     log.appendChild(div);
+  }
+  if (fresh > 0) {
+    logShown = game.messageSeq;
+    while (log.children.length > game.messages.length) log.removeChild(log.firstChild);
     log.scrollTop = log.scrollHeight;
   }
 }
+let logGame = null, logShown = 0;
