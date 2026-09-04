@@ -25,9 +25,8 @@ export const TIMING = {                  // milliseconds; the player must SEE ea
   swing: 300,         // between a multi-attacker's blows
   stagger: 160,       // between staggered bolt/breath/spell targets and volley arrows
   staggerSlow: 150,   // between afflict / summon placements
-  staggerTail: 200,   // grace after the last staggered target before the hand-back
+  staggerTail: 200,   // grace after the last staggered target before the hand-back (also the summon's lead)
   blink: 350,         // the Overlord's Elsewhere
-  summonLead: 400,    // before conjured monsters take the field
   partingLead: 400,   // before the first parting blow on a fleeing party
   partingBlow: 600,   // between parting blows
   fleeExit: 900,      // after the last parting blow, the party is away
