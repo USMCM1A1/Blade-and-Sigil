@@ -7,6 +7,7 @@ import { generateFloor } from './dungeon.js';
 import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement, groupOfType, focusGroupOf, focusList, focusName, abilityPicksAllowed, growthPicksAllowed, growthEffect, growthNamed, growthPicks } from './progression.js';
 import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances } from './magic.js';
 import { autosave as autosaveRun, TEST_MODE } from './save.js';
+import { VISION_RADIUS, MONSTER_AGGRO_RANGE, BATTLE_RADIUS, CAMP_AMBUSH_TURNS, CAMP_TURNS, AMBUSH_PACK, VAULT_BAND_FLOORS, SCOUT_CAP, LOG_CAP } from './constants.js';
 import { ELEMENTS, FAMILIES, ABILITIES, SAVES, KINDS, isDice, isDiceOrInt, conditionIds as conditionIdList, monsterIds as monsterIdList } from './validate.js';
 import * as audio from './audio.js';
 
@@ -133,9 +134,6 @@ export function validateMonsters(data) {
   }
 }
 
-const VISION_RADIUS = 6.5;
-const MONSTER_AGGRO_RANGE = 7;
-const BATTLE_RADIUS = 3; // monsters this close (and visible) join a battle
 
 export class Game {
   constructor(data) {
@@ -1019,7 +1017,7 @@ export class Game {
   // ---- Messages ----
   log(text, kind = 'combat') {
     this.messages.push({ text, kind });
-    if (this.messages.length > 200) this.messages.shift();
+    if (this.messages.length > LOG_CAP) this.messages.shift();
     // Nearly every state change speaks — so every message quietly refreshes
     // the run autosave (debounced; never in battle/arena; a wipe clears it).
     this.autosave();
@@ -1303,7 +1301,7 @@ export class Game {
       const shelfAt = band => Object.entries(this.data.items.items)
         .filter(([id, d]) => wearable(d.type) && (d.tier ?? 1) === band && !offLimits.has(id));
       for (let i = 0; i < (v.gear_pieces ?? 1); i++) {
-        let band = Math.min(5, Math.ceil(depth / 4));
+        let band = Math.min(5, Math.ceil(depth / VAULT_BAND_FLOORS));
         let shelf = shelfAt(band);
         while (!shelf.length && band > 1) shelf = shelfAt(--band);
         if (!shelf.length) break;
@@ -1517,7 +1515,7 @@ export class Game {
           ch.sp += Math.ceil((ch.maxSp - ch.sp) / 2);
         }
         this.log(`The party makes camp (−${mouths} rations)... but in the dead of night, something finds the fire!`, 'death');
-        this.advanceTime(25); // half a watch passes before the attack
+        this.advanceTime(CAMP_AMBUSH_TURNS); // half a watch passes before the attack
         if (this.over) return;
         this.updateVision();
         this.startBattle(pack[0], true);
@@ -1538,7 +1536,7 @@ export class Game {
     this.afterFullRest();
     // A watch of camp time passes AFTER the healing — lingering poison
     // ticks through the night, so cure it before you sleep.
-    this.advanceTime(50);
+    this.advanceTime(CAMP_TURNS);
   }
 
   // Wandering monsters stumble onto the camp: 1-3 of one type from this
@@ -1549,7 +1547,7 @@ export class Game {
     if (!ids.length) return null;
     const id = ids[Math.floor(Math.random() * ids.length)];
     const def = this.data.monsters.monsters[id];
-    const count = 1 + Math.floor(Math.random() * 3);
+    const count = AMBUSH_PACK.min + Math.floor(Math.random() * AMBUSH_PACK.extra);
     const spots = this.openSpotsAround(count);
     if (!spots.length) return null;
     const pack = spots.map(s => ({ ...def, id, x: s.x, y: s.y, maxHp: def.hp, conditions: [] }));
@@ -1561,7 +1559,7 @@ export class Game {
   // ambushes and the playtest bench's monster spawner.
   openSpotsAround(count) {
     const spots = [];
-    for (let r = 1; r <= 3 && spots.length < count; r++) {
+    for (let r = 1; r <= AMBUSH_PACK.radius && spots.length < count; r++) {
       for (let dy = -r; dy <= r && spots.length < count; dy++) {
         for (let dx = -r; dx <= r && spots.length < count; dx++) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
@@ -2230,7 +2228,7 @@ export class Game {
   // wears the credit (highest skill rolls first).
   scouts() {
     return this.party.filter(ch => ch.alive && (ch.cls.scouting || growthEffect(this.data, ch, 'watch')))
-      .map(ch => ({ ch, chance: Math.max(0, Math.min(95, this.heroSkill(ch) + (ch.cls.scouting?.bonus ?? 0))),
+      .map(ch => ({ ch, chance: Math.max(0, Math.min(SCOUT_CAP, this.heroSkill(ch) + (ch.cls.scouting?.bonus ?? 0))),
         what: ch.cls.scouting ? (ch.cls.scouting.name ?? 'Scouting') : (growthPicks(this.data, ch).find(o => o.watch)?.name ?? 'Point Man') }))
       .filter(s => s.chance > 0)
       .sort((a, b) => b.chance - a.chance);

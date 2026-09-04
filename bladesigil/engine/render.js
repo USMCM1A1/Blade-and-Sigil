@@ -1,6 +1,7 @@
 // Canvas renderer: tile map, fog of war, sprites, camera.
 
 import { abilityMod } from './rules.js';
+import { RENDER } from './constants.js';
 
 const TILE = 56;
 const PARTY_ICON = 'assets/heroes/party-icon.png';
@@ -277,8 +278,8 @@ export class Renderer {
     // The field owns the stage (designer's markup 2026-08-26): a slim panel
     // on the LEFT carries the name, round, initiative ladder, and turn info;
     // the grid gets everything else, nearly floor to ceiling.
-    const PANEL = 220;
-    const CELL = Math.max(44, Math.min(Math.floor((W - PANEL - 24) / gw), Math.floor((H - 20) / gh)));
+    const PANEL = RENDER.panel;
+    const CELL = Math.max(RENDER.cellMin, Math.min(Math.floor((W - PANEL - 24) / gw), Math.floor((H - 20) / gh)));
     const ox = PANEL + Math.max(0, (W - PANEL - gw * CELL) / 2);
     const oy = Math.max(0, (H - gh * CELL) / 2);
 
@@ -314,7 +315,7 @@ export class Renderer {
     // The initiative ladder: a vertical stack of portrait + name + HP bar,
     // the active combatant ringed in gold.
     const order = b.combatants.filter(c => c.kind === 'hero' ? true : c.ref.hp > 0);
-    const CHIP = 40, ROW = 50;
+    const CHIP = RENDER.chip, ROW = RENDER.row;
     for (const c of order) {
       const isActive = c === b.active();
       const dead = c.kind === 'hero' && !c.ref.alive;
@@ -414,7 +415,7 @@ export class Renderer {
       ctx.save();
       if (dead) ctx.globalAlpha = 0.5;
       if (hidden) ctx.globalAlpha = 0.4; // in the shadows: the player sees a ghost, monsters see nothing
-      if (dying) ctx.globalAlpha = Math.max(0.35, 0.9 - (nowD - c.diedAt) / 1600);
+      if (dying) ctx.globalAlpha = Math.max(0.35, 0.9 - (nowD - c.diedAt) / RENDER.corpseFade);
       const sprite = c.kind === 'hero'
         ? (c.ref.alive ? this.game.heroSprite(c.ref) : c.ref.cls.sprite_dead)
         : (dying ? (c.ref.sprite_dead || c.ref.sprite) : c.ref.sprite);
@@ -514,10 +515,10 @@ export class Renderer {
     // Floating combat text: rises and fades over a second, so hits, heals,
     // and misses read right on the battlefield instead of only in the log.
     const now = performance.now();
-    b.fx = b.fx.filter(f => now - f.born < 1100);
+    b.fx = b.fx.filter(f => now - f.born < RENDER.fxLife);
     for (const f of b.fx) {
       if (now < f.born) continue; // holding for impact (the bolt is mid-air)
-      const age = (now - f.born) / 1100;
+      const age = (now - f.born) / RENDER.fxLife;
       ctx.save();
       ctx.globalAlpha = 1 - age * age;
       ctx.font = 'bold 17px Verdana';
@@ -631,10 +632,10 @@ export class Renderer {
     if (b.mode === 'menu' && a?.kind === 'hero') {
       const full = b.abilities(a);
       const sel = Math.min(b.menuSel ?? 0, full.length - 1);
-      const maxRows = Math.max(3, Math.min(full.length, Math.floor((H - 150) / 44)));
+      const maxRows = Math.max(3, Math.min(full.length, Math.floor((H - 150) / RENDER.menuRow)));
       const start = Math.max(0, Math.min(sel - Math.floor(maxRows / 2), full.length - maxRows));
       const list = full.slice(start, start + maxRows);
-      const mw = 460, mh = 70 + list.length * 44;
+      const mw = 460, mh = 70 + list.length * RENDER.menuRow;
       const mx = PANEL + (W - PANEL - mw) / 2, my = (H - mh) / 2;
       ctx.fillStyle = 'rgba(10,10,16,0.92)';
       ctx.fillRect(mx, my, mw, mh);
@@ -648,7 +649,7 @@ export class Renderer {
       ctx.fillText(`${a.ref.name}'s abilities${a.ref.maxSp ? ` — ${a.ref.sp} SP` : ''}${start > 0 ? ' ▲' : ''}${start + maxRows < full.length ? ' ▼' : ''}`, mx + mw / 2, my + 12);
       list.forEach((s, i) => {
         const idx = start + i;
-        const ly = my + 48 + i * 44;
+        const ly = my + 48 + i * RENDER.menuRow;
         if (idx === sel) {
           ctx.fillStyle = 'rgba(212,169,78,0.16)';
           ctx.fillRect(mx + 8, ly - 6, mw - 16, 42);
@@ -672,7 +673,7 @@ export class Renderer {
     // Item menu overlay — same skin as the spell menu.
     if (b.mode === 'items' && a?.kind === 'hero') {
       const list = b.usableItems(a);
-      const mw = 560, mh = 70 + list.length * 44;
+      const mw = 560, mh = 70 + list.length * RENDER.menuRow;
       const mx = PANEL + (W - PANEL - mw) / 2, my = (H - mh) / 2;
       ctx.fillStyle = 'rgba(10,10,16,0.92)';
       ctx.fillRect(mx, my, mw, mh);
@@ -685,7 +686,7 @@ export class Renderer {
       ctx.textBaseline = 'top';
       ctx.fillText(`The party pouch — ${a.ref.name} drinks or reads`, mx + mw / 2, my + 12);
       list.forEach((it, i) => {
-        const ly = my + 48 + i * 44;
+        const ly = my + 48 + i * RENDER.menuRow;
         ctx.textAlign = 'left';
         ctx.fillStyle = it.usable ? '#cfc4a6' : '#66605a';
         ctx.font = 'bold 14px Georgia';
@@ -706,7 +707,7 @@ export class Renderer {
     // Swap-weapon overlay (W) — same skin as the item menu.
     if (b.mode === 'swap' && a?.kind === 'hero') {
       const list = b.swapOptions(a);
-      const mw = 520, mh = 92 + list.length * 44;
+      const mw = 520, mh = 92 + list.length * RENDER.menuRow;
       const mx = PANEL + (W - PANEL - mw) / 2, my = (H - mh) / 2;
       ctx.fillStyle = 'rgba(10,10,16,0.92)';
       ctx.fillRect(mx, my, mw, mh);
@@ -722,7 +723,7 @@ export class Renderer {
       ctx.fillStyle = '#8a8a99';
       ctx.fillText('drawing a one-hander in place of a bow brings a shield up with it', mx + mw / 2, my + 34);
       list.forEach((it, i) => {
-        const ly = my + 66 + i * 44;
+        const ly = my + 66 + i * RENDER.menuRow;
         ctx.textAlign = 'left';
         ctx.fillStyle = it.reason ? '#66605a' : '#cfc4a6';
         ctx.font = 'bold 14px Georgia';

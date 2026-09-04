@@ -5,6 +5,7 @@
 import { roll, d20, maxRoll, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
 import { ELEMENTS } from './validate.js';
+import { HERO_MOVE, MONSTER_MOVE, CHAIN_CAP, TIMING, COLOR } from './constants.js';
 import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName, focusMatches, groupOfType, focusName, growthEffect, growthNamed, growthPicks, snareGrant, snareKinds, snareDice } from './progression.js';
 import { spellCost, spellBuff, activeStances, unpreparedSpells, knownSpells, scaleSteps, giftOf, scrollGamble } from './magic.js';
 import * as audio from './audio.js';
@@ -13,8 +14,7 @@ import * as audio from './audio.js';
 const timedSum = (ref, key) => (ref.timedBuffs ?? []).reduce((s, b) => s + (b[key] || 0), 0);
 
 export const GRID_W = 13, GRID_H = 8;
-const HERO_MOVE = 4;
-const monsterMove = m => (m.speed > 1 ? 2 : 4); // map-slow monsters are battle-slow too
+const monsterMove = m => (m.speed > 1 ? MONSTER_MOVE.slow : MONSTER_MOVE.normal); // map-slow monsters are battle-slow too
 
 // Is THIS cast being read off a page? spells.json's "scroll": true only says
 // a scroll of the spell can EXIST; the reading path sets s.scroll to the
@@ -192,7 +192,7 @@ export class Battle {
     if (!c.unseen) return false;
     c.unseen = false;
     c.revealedRound = this.round;
-    this.addFx(c.x, c.y, 'revealed!', '#ffd24a');
+    this.addFx(c.x, c.y, 'revealed!', COLOR.gold);
     if (why) this.game.log(why, 'good');
     return true;
   }
@@ -260,7 +260,7 @@ export class Battle {
     const math = `save d20 ${die} ${bonus >= 0 ? '+' : '−'}${Math.abs(bonus)} = ${die + bonus} vs DC ${aura.dc}`;
     if (die + bonus >= aura.dc) {
       hc.steeled.add(mc.uid);
-      this.addFx(hc.x, hc.y, 'steeled!', '#ffd24a');
+      this.addFx(hc.x, hc.y, 'steeled!', COLOR.gold);
       this.game.log(`Dread rolls off the ${mc.ref.name} — ${hc.ref.name} ${closing ? 'closes in anyway' : 'stands firm'} (${math}), steeled against it for the battle.`, 'good');
       return true;
     }
@@ -301,7 +301,7 @@ export class Battle {
           b.rounds--;
           if (b.rounds <= 0) {
             c.ref.timedBuffs = c.ref.timedBuffs.filter(x => x !== b);
-            this.addFx(c.x, c.y, `${b.name} fades`, '#9a94a8');
+            this.addFx(c.x, c.y, `${b.name} fades`, COLOR.dim);
             this.game.log(`${c.ref.name}'s ${b.name.toLowerCase()} fades.`);
           }
         }
@@ -313,7 +313,7 @@ export class Battle {
           setTimeout(() => {
             if (this.game.battle !== this) return;
             this.nextTurn();
-          }, 800);
+          }, TIMING.skipTurn);
           return;
         }
         this.movesLeft = HERO_MOVE;
@@ -326,7 +326,7 @@ export class Battle {
         const root = this.rootedBy(c.ref);
         if (root) {
           this.movesLeft = 0;
-          this.addFx(c.x, c.y, 'rooted', '#9a94a8');
+          this.addFx(c.x, c.y, 'rooted', COLOR.dim);
           this.game.log(`${c.ref.name} cannot move while ${root.name} holds.`, 'info');
         }
         this.busy = false;
@@ -348,7 +348,7 @@ export class Battle {
           if (this.pendingReaction || this.pendingAction) return; // frozen mid-blow, or an ability still in flight — resumeAfterBlow / finishMonsterAction continues
           if (this.checkEnd()) return;
           this.nextTurn();
-        }, 600);
+        }, TIMING.monsterTurn);
         return;
       }
     }
@@ -402,7 +402,7 @@ export class Battle {
     const ref = targetC.ref;
     // Zealous Strike, perfected (18): the last blow's fire still shields.
     if (targetC.kind === 'hero' && ref.zealousImmune) {
-      this.addFx(targetC.x, targetC.y, 'immune!', '#ffd24a');
+      this.addFx(targetC.x, targetC.y, 'immune!', COLOR.gold);
       this.game.log(`${ref.name}'s Zealous Strike still burns — no affliction can touch them.`, 'good');
       return;
     }
@@ -411,7 +411,7 @@ export class Battle {
       : abilityMod(ref.abilities[def.save ?? 'con']) + this.game.heroSaveBonus(ref);
     if (targetC.kind === 'hero' && this.surgeSave?.target === ref) bonus += this.surgeSave.ac; // Ward Surge guards the save too
     if (d20() + bonus >= dc) {
-      this.addFx(targetC.x, targetC.y, 'resisted', '#9a94a8');
+      this.addFx(targetC.x, targetC.y, 'resisted', COLOR.dim);
       this.game.log(`${ref.name} resists — not ${def.name.toLowerCase()}!`);
       return;
     }
@@ -498,7 +498,7 @@ export class Battle {
     if (foe) { this.heroAttack(c, foe); return; }
     if (this.movesLeft <= 0 || !this.open(nx, ny)) {
       const root = this.movesLeft <= 0 ? this.rootedBy(c.ref) : null;
-      if (root) { this.addFx(c.x, c.y, 'rooted', '#9a94a8'); this.game.log(`${c.ref.name} is rooted by ${root.name}.`, 'info'); }
+      if (root) { this.addFx(c.x, c.y, 'rooted', COLOR.dim); this.game.log(`${c.ref.name} is rooted by ${root.name}.`, 'info'); }
       return;
     }
     // Fear: a frightened hero cannot force a step toward whoever scared them.
@@ -733,13 +733,13 @@ export class Battle {
     if (monster.magic_to_hit && !ch.weapon.enchanted && !(ch.timedBuffs ?? []).some(b => b.enchant)) {
       ch.hidden = false;
       foeC.aware = true;
-      this.addFx(foeC.x, foeC.y, 'needs magic!', '#9a94a8');
+      this.addFx(foeC.x, foeC.y, 'needs magic!', COLOR.dim);
       this.game.log(`${ch.name}'s ${ch.weapon.name.toLowerCase()} passes straight through the ${monster.name} — only an enchanted weapon or a spell can bite it!`, 'info');
       return { hit: false, immune: true };
     }
     const assassinate = this.assassinateTriggers(c, foeC);
     if (!assassinate && this.assassinateGuarded(c, foeC)) {
-      this.addFx(foeC.x, foeC.y, 'guarded!', '#9a94a8');
+      this.addFx(foeC.x, foeC.y, 'guarded!', COLOR.dim);
       this.game.log(`The ${monster.name} is unaware — but an ally stands beside it, and Lethality strikes only the isolated. No Assassinate.`, 'info');
     }
     const wasHidden = !!ch.hidden;
@@ -751,7 +751,7 @@ export class Battle {
     const die = d20();
     // True Shot (the Deadeye's Rite): the armed shot cannot miss and crits.
     const trueShot = ch.trueShotArmed && ch.weapon.range && !this.offhandPenalty;
-    if (trueShot) { ch.trueShotArmed = false; this.addFx(c.x, c.y, `${(ch.rite?.abilityName ?? 'TRUE SHOT').toUpperCase()}!`, '#ffd24a'); }
+    if (trueShot) { ch.trueShotArmed = false; this.addFx(c.x, c.y, `${(ch.rite?.abilityName ?? 'TRUE SHOT').toUpperCase()}!`, COLOR.gold); }
     const crit = die === 20 || assassinate || !!this.forceCrit || trueShot;
     const atkParts = this.attackParts(ch, monster);
     const atkTotal = die + this.sumParts(atkParts);
@@ -768,7 +768,7 @@ export class Battle {
       const zVerb = ch.zealousOn && !ch.weapon.range && hasVerb(this.game.data, ch, 'zealous_strike')
         ? laneOf(this.game.data, ch).verb : null;
       const zeal = zVerb && (this.game.arena || ch.sp >= (zVerb.cost ?? 3));
-      if (zVerb && !zeal) this.addFx(foeC.x, foeC.y, 'zeal falters — no SP', '#9a94a8');
+      if (zVerb && !zeal) this.addFx(foeC.x, foeC.y, 'zeal falters — no SP', COLOR.dim);
       if (zeal) {
         if (!this.game.arena) ch.sp -= zVerb.cost ?? 3;
         dmgParts.push([Math.max(1, roll(zVerb.dice ?? '2d6')), `${zVerb.name ?? 'Zealous Strike'} (${zVerb.dice ?? '2d6'})`]);
@@ -803,7 +803,7 @@ export class Battle {
       if (bane) {
         dmg *= 2;
         label = `-${dmg}!!`;
-        this.addFx(foeC.x, foeC.y, ch.weapon.flavor === 'holy' ? 'holy fire!' : 'bane!', '#ffd24a');
+        this.addFx(foeC.x, foeC.y, ch.weapon.flavor === 'holy' ? 'holy fire!' : 'bane!', COLOR.gold);
       }
       // Physical resists (the animated sword): edged and piercing steel
       // glances off some hides — half damage, named. Bring a mace.
@@ -813,7 +813,7 @@ export class Battle {
         const was = dmg;
         dmg = Math.max(1, Math.floor(dmg / 2));
         phys = `resists ${kind}: ${was} → ${dmg}`;
-        this.addFx(foeC.x, foeC.y, `resists ${kind}!`, '#9a94a8');
+        this.addFx(foeC.x, foeC.y, `resists ${kind}!`, COLOR.dim);
         label = label.replace(/-\d+/, `-${dmg}`); // keep any crit exclamations
       }
       // Regeneration bookkeeping: an elemental rider on the blow sears the
@@ -827,7 +827,7 @@ export class Battle {
       else if (vital && dmgParts.some(([, l]) => l.startsWith('Vital'))) {
         this.addFx(foeC.x, foeC.y, vital === 'unaware' ? 'vital: unaware!' : 'vital: flanked!', '#b03a8e');
       }
-      this.addFx(foeC.x, foeC.y, label, crit ? '#ffd24a' : '#ff6a4a');
+      this.addFx(foeC.x, foeC.y, label, crit ? COLOR.gold : '#ff6a4a');
       // The math, spelled out: every bonus by name, so a +1 FEELS like a +1.
       const toHit = assassinate ? 'auto-hit' : crit ? 'natural 20!' : sure && atkTotal < ac ? `cannot miss — ${sure.name}` : `d20 ${die}${this.fmtParts(atkParts)} = ${atkTotal} vs ${acText}`;
       const mults = `${lethal ? `, ×${lethal} Lethality` : ''}${bane ? `, ${bane}` : ''}${phys ? `, ½ ${phys}` : ''}`;
@@ -841,7 +841,7 @@ export class Battle {
       if (zeal) {
         ch.counters.zealousStrikes++;
         const heal = Math.min(Math.max(1, roll(zVerb.heal ?? '1d6')), ch.maxHp - ch.hp);
-        if (heal > 0) { ch.hp += heal; this.fxOn(ch, `+${heal}`, '#6ad46a'); }
+        if (heal > 0) { ch.hp += heal; this.fxOn(ch, `+${heal}`, COLOR.green); }
         const immune = hasRefinement(this.game.data, ch, 'zealous_immunity');
         if (immune) ch.zealousImmune = true;
         this.game.log(`${zVerb.name ?? 'Zealous Strike'}! ${ch.name} burns ${this.game.arena ? 0 : zVerb.cost ?? 3} SP${heal > 0 ? ` — ${heal} HP returns` : ''}${immune ? ' — and no affliction can touch them until their next turn' : ''}.`, 'good');
@@ -863,14 +863,14 @@ export class Battle {
       // Storm of Blades: a main-hand hit earns a free off-hand strike, no penalty.
       const storm = (ch.timedBuffs ?? []).find(b => b.storm);
       if (storm && ch.offhand && !this.offhanding && !this.offhandPenalty && monster.hp > 0 && !ch.weapon.range) {
-        this.addFx(c.x, c.y, `${storm.name}!`, '#e0c060');
+        this.addFx(c.x, c.y, `${storm.name}!`, COLOR.sun);
         const again = this.offhandStrike(c, foeC, 0);
         dmg += again.dmg ?? 0;
         kill = kill || again.kill;
       }
       if (verse && !this.inVerse && monster.hp > 0 && !ch.weapon.range) {
         this.inVerse = true;
-        this.addFx(c.x, c.y, `${verse.name}!`, '#e0c060');
+        this.addFx(c.x, c.y, `${verse.name}!`, COLOR.sun);
         this.game.log(`${verse.name} — ${ch.name} strikes again!`, 'combat');
         const again = this.strike(c, foeC, 'strikes');
         this.inVerse = false;
@@ -879,7 +879,7 @@ export class Battle {
       }
       return { hit: true, crit, assassinate, kill, dmg };
     }
-    this.addFx(foeC.x, foeC.y, 'miss', '#9a94a8');
+    this.addFx(foeC.x, foeC.y, 'miss', COLOR.dim);
     this.game.log(`${ch.name} ${verb} at the ${monster.name} and misses (d20 ${die}${this.fmtParts(atkParts)} = ${atkTotal} vs ${acText}).`);
     return { hit: false, crit: false, assassinate: false, kill: false, dmg: 0 };
   }
@@ -889,13 +889,13 @@ export class Battle {
   volleyChain(c) {
     const ch = c.ref;
     const verb = laneOf(this.game.data, ch).verb;
-    for (let links = 0; links < 12; links++) {
+    for (let links = 0; links < CHAIN_CAP; links++) {
       if (this.game.quiverCount(ch) <= 0) { this.game.log(`${verb.name ?? 'Volley'} ends — the quiver is empty.`, 'info'); return; }
       const next = this.monsters()
         .filter(m => this.dist(c.x, c.y, m.x, m.y) <= (ch.weapon.range ?? 0) && this.losClear(c.x, c.y, m.x, m.y))
         .sort((a, b) => this.dist(c.x, c.y, a.x, a.y) - this.dist(c.x, c.y, b.x, b.y))[0];
       if (!next) return;
-      this.addFx(c.x, c.y, `${(verb.name ?? 'VOLLEY').toUpperCase()}!`, '#d4a94e');
+      this.addFx(c.x, c.y, `${(verb.name ?? 'VOLLEY').toUpperCase()}!`, COLOR.amber);
       this.game.log(`${verb.name ?? 'Volley'}! ${ch.name} looses again at the ${next.ref.name}.`, 'combat');
       const res = this.shoot(c, next, 0);
       if (res.kill) { ch.counters.volleyKills++; this.slay(next.ref); continue; }
@@ -907,12 +907,12 @@ export class Battle {
   // another foe in reach — and kills CHAIN. At 18 a natural 20 counts too.
   rampageChain(c) {
     if (!hasVerb(this.game.data, c.ref, 'rampage')) return;
-    for (let links = 0; links < 12; links++) { // generous cap against pathology
+    for (let links = 0; links < CHAIN_CAP; links++) { // generous cap against pathology
       const next = this.monsters()
         .filter(mc => Math.abs(mc.x - c.x) + Math.abs(mc.y - c.y) === 1)
         .sort((a, b) => a.ref.hp - b.ref.hp)[0]; // fury seeks the weakest neighbor
       if (!next) return;
-      this.addFx(c.x, c.y, 'RAMPAGE!', '#e0483a');
+      this.addFx(c.x, c.y, 'RAMPAGE!', COLOR.red);
       this.game.log(`${c.ref.name} rampages onward!`, 'combat');
       const res = this.strike(c, next, 'swings');
       if (res.kill) {
@@ -964,10 +964,10 @@ export class Battle {
     const surgeVerb = ch.surgeOn && ch.offhand && !shooting && hasVerb(this.game.data, ch, 'hunters_surge') ? laneOf(this.game.data, ch).verb : null;
     const surgeCost = ch.packArmed ? 0 : (surgeVerb?.cost ?? 2);
     const surging = surgeVerb && (this.game.arena || ch.sp >= surgeCost);
-    if (surgeVerb && !surging) this.addFx(c.x, c.y, 'surge falters — no SP', '#9a94a8');
+    if (surgeVerb && !surging) this.addFx(c.x, c.y, 'surge falters — no SP', COLOR.dim);
     if (surging) {
       if (!this.game.arena) ch.sp -= surgeCost;
-      this.addFx(c.x, c.y, `${(surgeVerb.name ?? 'SURGE').toUpperCase()}!`, '#e0c060');
+      this.addFx(c.x, c.y, `${(surgeVerb.name ?? 'SURGE').toUpperCase()}!`, COLOR.sun);
       this.game.log(`${surgeVerb.name ?? "Hunter's Surge"}! ${ch.name} spends ${surgeCost} SP — both blades, blow for blow.`, 'good');
     }
     const rain = shooting ? (ch.timedBuffs ?? []).find(b => b.rain) : null;
@@ -978,14 +978,14 @@ export class Battle {
         // The arrow crosses the field; its number lands on impact. A second
         // shot follows a beat behind the first.
         if (this.game.quiverCount(ch) <= 0) { this.game.log(`${ch.name}'s quiver is empty.`, 'info'); break; }
-        res = this.shoot(c, foeC, a * 160);
+        res = this.shoot(c, foeC, a * TIMING.stagger);
         // Rain of Arrows: every foe beside the target takes a shaft too.
         if (rain) {
           for (const other of this.monsters().filter(m => m !== foeC && this.dist(m.x, m.y, foeC.x, foeC.y) <= (rain.spread ?? 1))) {
             if (this.game.quiverCount(ch) <= 0) { this.game.log(`The quiver runs dry mid-rain.`, 'info'); break; }
             if (!this.losClear(c.x, c.y, other.x, other.y)) continue;
-            this.addFx(other.x, other.y, rain.name, '#d4a94e');
-            const r2 = this.shoot(c, other, a * 160 + 120);
+            this.addFx(other.x, other.y, rain.name, COLOR.amber);
+            const r2 = this.shoot(c, other, a * TIMING.stagger + 120);
             if (r2.kill) this.slay(other.ref);
           }
         }
@@ -1322,7 +1322,7 @@ export class Battle {
     }
     if (!s.affordable) {
       const spent = s.once_per_rest && c.ref.spentRest?.[s.id];
-      this.addFx(c.x, c.y, spent ? 'spent — rest first' : 'not enough SP', '#9a94a8');
+      this.addFx(c.x, c.y, spent ? 'spent — rest first' : 'not enough SP', COLOR.dim);
       this.game.log(spent ? `${s.name} is spent until the party rests.` : `${c.ref.name} lacks the spell points for ${s.name}.`, 'info');
       return;
     }
@@ -1361,7 +1361,7 @@ export class Battle {
       this.markSpent(ref, 'pack_instinct');
       ref.packArmed = true;
       audio.play('spell_buff');
-      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#e0c060');
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, COLOR.sun);
       this.game.log(`${ref.name} feels the pack at their back — until their next turn the surge is free and the off-hand true.`, 'good');
       return;
     }
@@ -1369,7 +1369,7 @@ export class Battle {
       this.markSpent(ref, 'true_shot');
       ref.trueShotArmed = true;
       audio.play('spell_buff');
-      this.addFx(c.x, c.y, `${entry.name.toUpperCase()} armed`, '#ffd24a');
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()} armed`, COLOR.gold);
       this.game.log(`${ref.name} nocks ${entry.name} — the next arrow was always going to land.`, 'good');
       return;
     }
@@ -1388,7 +1388,7 @@ export class Battle {
     if (entry.id === 'final_word') {
       ref.finalWordArmed = true;
       audio.play('spell_arcane');
-      this.addFx(c.x, c.y, `${entry.name.toUpperCase()} armed`, '#d4a94e');
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()} armed`, COLOR.amber);
       this.game.log(`${ref.name} opens the book to a page no one else can read. The next spell is free — any page at all.`, 'good');
       return;
     }
@@ -1403,7 +1403,7 @@ export class Battle {
       this.markSpent(ref, entry.id);
       ref[{ crescendo: 'crescendoArmed', unbroken_chord: 'chordArmed', bedrock: 'bedrock' }[entry.id]] = true;
       audio.play(entry.id === 'bedrock' ? 'spell_buff' : 'spell_arcane');
-      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, entry.id === 'bedrock' ? '#b8a890' : '#e0c060');
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, entry.id === 'bedrock' ? '#b8a890' : COLOR.sun);
       this.game.log(entry.id === 'crescendo' ? `${ref.name} raises ${entry.name} — until their next turn, every riposte lands perfectly.`
         : entry.id === 'unbroken_chord' ? `${ref.name} sings ${entry.name} — until their next turn, the ward costs nothing.`
           : `${ref.name} becomes ${entry.name} — until their next turn, no blow can do more than 1.`, 'good');
@@ -1417,12 +1417,12 @@ export class Battle {
         if (!hc.ref.alive || hc.ref === ref) continue;
         hc.ref.timedBuffs = (hc.ref.timedBuffs ?? []).filter(b => b.name !== entry.name);
         hc.ref.timedBuffs.push({ name: entry.name, hit: 0, dmg: 0, ac: 0, saves: 1, attacks: 0, rounds: 3, absorb: ref.level });
-        this.addFx(hc.x, hc.y, `+${ref.level} ward`, '#e0a060');
-        this.particleFx(hc.x, hc.y, 'sparkle', '#e0a060');
+        this.addFx(hc.x, hc.y, `+${ref.level} ward`, COLOR.ember);
+        this.particleFx(hc.x, hc.y, 'sparkle', COLOR.ember);
         n++;
       }
       ref.counters.alliesFortified += n;
-      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#e0a060');
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, COLOR.ember);
       this.game.log(`${ref.name} kindles ${entry.name} — ${n} all${n === 1 ? 'y' : 'ies'} warmed: ${ref.level} absorbed damage and +1 saves for 3 rounds.`, 'good');
       return;
     }
@@ -1430,7 +1430,7 @@ export class Battle {
       this.markSpent(ref, 'sanctuary');
       audio.play('spell_light');
       this.sanctuary = { c };
-      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#7fd4c8');
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, COLOR.teal);
       this.game.log(`${ref.name} raises ${entry.name} — until their next turn, death waits outside the circle.`, 'good');
       return;
     }
@@ -1458,7 +1458,7 @@ export class Battle {
         name: cap.name ?? 'Divine Inspiration',
         hit: cap.hit ?? 3, dmg: cap.dmg ?? 3, ac: cap.ac ?? 3, rounds: cap.rounds ?? 3,
       });
-      this.addFx(c.x, c.y, `${(cap.name ?? 'DIVINE INSPIRATION').toUpperCase()}!`, '#ffd24a');
+      this.addFx(c.x, c.y, `${(cap.name ?? 'DIVINE INSPIRATION').toUpperCase()}!`, COLOR.gold);
       this.game.log(`${ref.name} pours every prayer into one moment (${spent} SP) — heaven fights in their armor!`, 'good');
       this.endHeroTurn();
       return;
@@ -1469,19 +1469,19 @@ export class Battle {
       ref.spentRest.miracle = true;
       const spent = ref.sp;
       if (!this.game.arena) ref.sp = 0;
-      this.addFx(c.x, c.y, `${(cap.name ?? 'MIRACLE').toUpperCase()}!`, '#ffd24a');
+      this.addFx(c.x, c.y, `${(cap.name ?? 'MIRACLE').toUpperCase()}!`, COLOR.gold);
       this.game.log(`${ref.name} spends everything at once (${spent} SP) — a ${cap.name ?? 'Miracle'}!`, 'good');
       for (const hc of this.heroes()) {
         const ally = hc.ref;
         if (ally.alive && ally.hp < ally.maxHp) {
           const healed = ally.maxHp - ally.hp;
           ally.hp = ally.maxHp;
-          this.fxOn(ally, `+${healed}`, '#6ad46a');
+          this.fxOn(ally, `+${healed}`, COLOR.green);
         } else if (!ally.alive) {
           ally.alive = true;
           ally.hp = Math.max(1, Math.floor(ally.maxHp / 2));
           ally.conditions = [];
-          this.fxOn(ally, 'RISEN!', '#ffd24a');
+          this.fxOn(ally, 'RISEN!', COLOR.gold);
           this.game.log(`${ally.name} rises — called back by the ${cap.name ?? 'Miracle'}!`, 'good');
         }
       }
@@ -1494,7 +1494,7 @@ export class Battle {
       audio.play('spell_buff');
       ref.timedBuffs = ref.timedBuffs.filter(b => !b.storm);
       ref.timedBuffs.push({ name: cap.name ?? 'Storm of Blades', hit: 0, dmg: cap.dmg ?? 2, ac: 0, saves: 0, attacks: 0, rounds: cap.rounds ?? 3, storm: true });
-      this.addFx(c.x, c.y, `${(cap.name ?? 'STORM OF BLADES').toUpperCase()}!`, '#e0c060');
+      this.addFx(c.x, c.y, `${(cap.name ?? 'STORM OF BLADES').toUpperCase()}!`, COLOR.sun);
       this.game.log(`${ref.name} spends everything (${spent} SP) on ${cap.name ?? 'the Storm of Blades'} — two knives, ${cap.rounds ?? 3} rounds, no mercy.`, 'good');
       this.endHeroTurn();
       return;
@@ -1504,7 +1504,7 @@ export class Battle {
       audio.play('arrow');
       ref.timedBuffs = ref.timedBuffs.filter(b => !b.rain);
       ref.timedBuffs.push({ name: cap.name ?? 'Rain of Arrows', hit: 0, dmg: 0, ac: 0, saves: 0, attacks: 0, rounds: cap.rounds ?? 3, rain: true, spread: cap.spread ?? 1, rooted: true });
-      this.addFx(c.x, c.y, `${(cap.name ?? 'RAIN OF ARROWS').toUpperCase()}!`, '#d4a94e');
+      this.addFx(c.x, c.y, `${(cap.name ?? 'RAIN OF ARROWS').toUpperCase()}!`, COLOR.amber);
       this.game.log(`${ref.name} plants their feet and lets the ${cap.name ?? 'Rain of Arrows'} fall — every shot finds every foe beside its mark, for ${cap.rounds ?? 3} rounds.`, 'good');
       this.endHeroTurn();
       return;
@@ -1517,7 +1517,7 @@ export class Battle {
       ref.timedBuffs = ref.timedBuffs.filter(b => !b.verse && !b.stance);
       ref.timedBuffs.push({ name: cap.name ?? 'Whirling Verse', hit: 0, dmg: 0, ac: 0, saves: 0, attacks: 0, rounds: cap.rounds ?? 3, verse: true });
       audio.play('spell_buff');
-      this.addFx(c.x, c.y, `${(cap.name ?? 'WHIRLING VERSE').toUpperCase()}!`, '#e0c060');
+      this.addFx(c.x, c.y, `${(cap.name ?? 'WHIRLING VERSE').toUpperCase()}!`, COLOR.sun);
       this.game.log(`${ref.name} pours everything into ${cap.name ?? 'the Whirling Verse'} — ${spent} SP gone${silenced.length ? `, ${silenced.join(' & ')} falls silent` : ''}. For ${cap.rounds ?? 3} rounds every hit will earn another.`, 'good');
       this.endHeroTurn();
       return;
@@ -1543,7 +1543,7 @@ export class Battle {
     if (entry.id === 'deep_roots') {
       const wards = this.shareableWards(ref);
       if (!wards.length) {
-        this.addFx(c.x, c.y, 'nothing to share', '#9a94a8');
+        this.addFx(c.x, c.y, 'nothing to share', COLOR.dim);
         this.game.log(`${ref.name} has no ward raised to share — sing one first.`, 'info');
         return; // the moment isn't wasted
       }
@@ -1560,12 +1560,12 @@ export class Battle {
           hc.ref.timedBuffs.push({ name, hit: 0, dmg: 0, ac: b.ac ?? 0, saves: b.saves ?? 0, attacks: 0, rounds: cap.rounds ?? 3,
             resist: b.resist ?? null, reduce: b.reduce ?? 0, halve: !!b.halve, immune_conditions: b.immune_conditions ?? false });
         }
-        this.particleFx(hc.x, hc.y, 'sparkle', '#e0a060');
-        this.addFx(hc.x, hc.y, 'the roots hold', '#e0a060');
+        this.particleFx(hc.x, hc.y, 'sparkle', COLOR.ember);
+        this.addFx(hc.x, hc.y, 'the roots hold', COLOR.ember);
         n++;
       }
       ref.counters.alliesFortified += n;
-      this.addFx(c.x, c.y, `${(cap.name ?? 'DEEP ROOTS').toUpperCase()}!`, '#e0a060');
+      this.addFx(c.x, c.y, `${(cap.name ?? 'DEEP ROOTS').toUpperCase()}!`, COLOR.ember);
       this.game.log(`${ref.name} pours everything (${spent} SP) into ${cap.name ?? 'the Deep Roots'} — ${wards.map(b => b.name).join(', ')} spread${wards.length === 1 ? 's' : ''} to the whole party for ${cap.rounds ?? 3} rounds.`, 'good');
       this.endHeroTurn();
       return;
@@ -1578,23 +1578,23 @@ export class Battle {
         hit: cap.hit ?? 2, dmg: cap.dmg ?? 2, ac: cap.ac ?? -2,
         attacks: cap.extra_attacks ?? 1, rounds: cap.rounds ?? 3,
       });
-      this.addFx(c.x, c.y, 'RAGE!', '#e0483a');
+      this.addFx(c.x, c.y, 'RAGE!', COLOR.red);
       this.game.log(`${ref.name} gives themself to the fury — all blade, no shield!`, 'good');
     } else if (entry.id === 'taunt') {
       audio.play('spell_buff');
       this.taunt = { c, until: this.round + (cap.taunt_rounds ?? 2) };
-      this.addFx(c.x, c.y, 'TAUNT!', '#d4a94e');
+      this.addFx(c.x, c.y, 'TAUNT!', COLOR.amber);
       this.game.log(`${ref.name} bellows a challenge — every foe turns their way!`, 'good');
     } else if (entry.id === 'whirlwind') {
       audio.play('melee_hit');
       // The Rite's storm of steel: one strike at every foe in reach.
       const foes = this.monsters().filter(mc => Math.abs(mc.x - c.x) + Math.abs(mc.y - c.y) === 1);
       if (!foes.length) {
-        this.addFx(c.x, c.y, 'no foe in reach', '#9a94a8');
+        this.addFx(c.x, c.y, 'no foe in reach', COLOR.dim);
         this.game.log(`${ref.name} finds no one in reach for ${entry.name}.`, 'info');
         return; // the action isn't wasted — move in and try again
       }
-      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#ffd24a');
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, COLOR.gold);
       this.game.log(`${ref.name} unleashes ${entry.name} — steel in every direction!`, 'good');
       for (const foeC of foes) {
         const res = this.strike(c, foeC, 'swings');
@@ -1604,13 +1604,13 @@ export class Battle {
       audio.play('spell_buff');
       (this.aegisSpent ??= new Set()).add(ref);
       this.aegis = { c, until: this.round + 1 };
-      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, '#7fd4c8');
+      this.addFx(c.x, c.y, `${entry.name.toUpperCase()}!`, COLOR.teal);
       this.game.log(`${ref.name} raises ${entry.name} — for this round, every blow meant for the party finds them instead.`, 'good');
     } else if (entry.id === 'vanish') {
       audio.play('vanish'); // its own moment id (designer's pick 2026-08-26: sdr_invisible)
       ref.hidden = true;
       ref.counters.shadowFeats++;
-      this.addFx(c.x, c.y, 'VANISH', '#8a7ab8');
+      this.addFx(c.x, c.y, 'VANISH', COLOR.shadow);
       this.game.log(`${ref.name} melts into the shadows — the enemy blinks, and finds nothing.`, 'good');
       // Perfected Vanish (18) costs nothing; before that, it IS the action.
       if (!hasRefinement(this.game.data, ref, 'vanish_free')) this.endHeroTurn();
@@ -1674,7 +1674,7 @@ export class Battle {
       if (!it.usable) { this.game.log(it.def.description, 'info'); return; }
       const moved = this.game.restockQuiver(c.ref);
       this.mode = 'move';
-      this.addFx(c.x, c.y, `+${moved} arrows`, '#d4a94e');
+      this.addFx(c.x, c.y, `+${moved} arrows`, COLOR.amber);
       this.game.log(`${c.ref.name} refills the quiver from the pouch (+${moved} → ${c.ref.quiver}/${this.game.quiverCap(c.ref)}) — it takes the turn.`, 'info');
       this.endHeroTurn();
       return;
@@ -1691,7 +1691,7 @@ export class Battle {
         if (roll > chance) {
           this.game.consumeScroll(it.id);
           audio.play('spellbook');
-          this.addFx(c.x, c.y, 'it burns!', '#e0483a');
+          this.addFx(c.x, c.y, 'it burns!', COLOR.red);
           this.game.log(`${c.ref.name} squints at the ${it.def.name} — the words twist away (rolled ${roll} vs ${chance}%). The page blackens and crumbles, and the moment is lost.`, 'death');
           this.endHeroTurn();
           return;
@@ -1715,7 +1715,7 @@ export class Battle {
     if (!c || c.kind !== 'hero' || !this.canShoot(c)) return;
     const why = this.shootBlock(c);
     if (why) {
-      this.addFx(c.x, c.y, 'no shot', '#9a94a8');
+      this.addFx(c.x, c.y, 'no shot', COLOR.dim);
       this.game.log(`${c.ref.name} cannot shoot — ${why}.`, 'info');
       return;
     }
@@ -1751,7 +1751,7 @@ export class Battle {
       if (shield) this.game.equipItem(shield.id, ch);
     }
     this.mode = 'move';
-    this.addFx(c.x, c.y, `${it.def.name} ready`, '#d4a94e');
+    this.addFx(c.x, c.y, `${it.def.name} ready`, COLOR.amber);
     // Quickdraw (a Ranger knack): so many swaps per battle cost nothing.
     const free = giftOf(ch)?.free_swaps ?? 0;
     if (free > (ch.freeSwapsUsed ?? 0)) {
@@ -1845,7 +1845,7 @@ export class Battle {
       audio.play('disarm');
       this.battleTraps.push({ x, y, owner: c.ref, dice, kind, name, rider, dc: this.snareDC(c.ref) });
       c.ref.counters.shadowFeats++;
-      this.addFx(x, y, 'snare set', '#d4a94e');
+      this.addFx(x, y, 'snare set', COLOR.amber);
       this.game.log(`${c.ref.name} lays ${name === 'Snare' ? 'a snare' : `a ${name.toLowerCase()}`} and steps back. Someone will find it the hard way.`, 'good');
       this.endHeroTurn();
       return;
@@ -1874,8 +1874,8 @@ export class Battle {
         t.ref.timedBuffs = (t.ref.timedBuffs ?? []).filter(b => b.name !== (v.name ?? 'Shared Fortitude'));
         t.ref.timedBuffs.push({ name: v.name ?? 'Shared Fortitude', hit: 0, dmg: 0, ac: 0, saves: 0, attacks: 0, rounds: null, absorb: pool });
         c.ref.counters.alliesFortified++;
-        this.addFx(t.x, t.y, `+${pool} ward`, '#e0a060');
-        this.particleFx(t.x, t.y, 'sparkle', '#e0a060');
+        this.addFx(t.x, t.y, `+${pool} ward`, COLOR.ember);
+        this.particleFx(t.x, t.y, 'sparkle', COLOR.ember);
         this.game.log(`${v.name ?? 'Shared Fortitude'}: ${t.ref.name} gains ${pool} absorbed damage (${v.dice ?? '2d8'} → ${base}${con ? ` ${con > 0 ? '+' : '−'}${Math.abs(con)} CON` : ''}) for the battle${targets.length > 1 && t === targets[1] ? ' — sheltered too' : ''}.`, 'good');
       }
       this.game.log(`${c.ref.name} spends ${this.game.arena ? 0 : cost} SP on ${v.name ?? 'Shared Fortitude'}.`, 'info');
@@ -1909,7 +1909,7 @@ export class Battle {
       this.cancelTargeting();
       this.markSpent(c.ref, 'judgment');
       audio.play('spell_light');
-      this.addFx(c.x, c.y, `${p.entry.name.toUpperCase()}!`, '#ffd24a');
+      this.addFx(c.x, c.y, `${p.entry.name.toUpperCase()}!`, COLOR.gold);
       this.game.log(`${c.ref.name} pronounces ${p.entry.name} — this blow was written before the fight began.`, 'good');
       this.forceCrit = true;
       const res = this.strike(c, foeC, 'strikes');
@@ -1917,7 +1917,7 @@ export class Battle {
       const heal = Math.min(res.dmg ?? 0, c.ref.maxHp - c.ref.hp);
       if (heal > 0) {
         c.ref.hp += heal;
-        this.fxOn(c.ref, `+${heal}`, '#6ad46a');
+        this.fxOn(c.ref, `+${heal}`, COLOR.green);
         this.game.log(`${p.entry.name} returns its harvest — ${heal} HP to ${c.ref.name}.`, 'good');
       }
       if (foeC.ref.hp <= 0) this.slay(foeC.ref);
@@ -1932,11 +1932,11 @@ export class Battle {
       this.cancelTargeting();
       this.markSpent(c.ref, 'shadowstep');
       audio.play('spell_arcane');
-      this.addFx(c.x, c.y, `${p.entry.name.toUpperCase()}!`, '#8a7ab8');
+      this.addFx(c.x, c.y, `${p.entry.name.toUpperCase()}!`, COLOR.shadow);
       c.x = x; c.y = y;
       c.ref.hidden = true;
       c.ref.counters.shadowFeats++;
-      this.addFx(x, y, 'from the shadows…', '#8a7ab8');
+      this.addFx(x, y, 'from the shadows…', COLOR.shadow);
       this.game.log(`${c.ref.name} is simply… elsewhere. The shadows keep their secret.`, 'good');
       return; // free — the turn goes on
     }
@@ -2002,9 +2002,9 @@ export class Battle {
   // without one. Returns the milliseconds until IMPACT so the numbers can
   // arrive with the blow.
   defaultFx(s) {
-    if (s.type === 'heal') return { kind: 'sparkle', color: '#6ad46a' };
-    if (s.type === 'buff') return { kind: 'sparkle', color: '#d4a94e' };
-    if (s.type === 'afflict') return { kind: 'wisp', color: '#8a7ab8' };
+    if (s.type === 'heal') return { kind: 'sparkle', color: COLOR.green };
+    if (s.type === 'buff') return { kind: 'sparkle', color: COLOR.amber };
+    if (s.type === 'afflict') return { kind: 'wisp', color: COLOR.shadow };
     return s.area ? { kind: 'bolt', color: '#ff9a3a', burst: 'fire' } : { kind: 'bolt', color: '#ffb04a' };
   }
 
@@ -2157,8 +2157,8 @@ export class Battle {
       const healed = Math.min(amount, t.ref.maxHp - t.ref.hp);
       t.ref.hp += healed;
       const cured = s.cures ? this.cureConditions(t.ref, s.cures) : [];
-      if (healed > 0 || cured.length) this.addFx(t.x, t.y, healed > 0 ? `+${healed}` : 'cured!', '#6ad46a', impact);
-      if (targets.length > 1 && t !== targets[0]) this.particleFx(t.x, t.y, 'sparkle', s.fx?.color ?? '#6ad46a');
+      if (healed > 0 || cured.length) this.addFx(t.x, t.y, healed > 0 ? `+${healed}` : 'cured!', COLOR.green, impact);
+      if (targets.length > 1 && t !== targets[0]) this.particleFx(t.x, t.y, 'sparkle', s.fx?.color ?? COLOR.green);
       this.game.log(`${t.ref.name} recovers ${healed} HP (${math}${healed < amount ? ' — capped at full' : ''})${cured.length ? ` — ${cured.map(n => n.toLowerCase()).join(', ')} cured` : ''}.`, 'good');
     }
   }
@@ -2174,7 +2174,7 @@ export class Battle {
       ally.ref.hp += healed;
       math = r.math;
     }
-    this.addFx(x, y, cured.length ? 'cured!' : healed > 0 ? `+${healed}` : 'nothing to cure', cured.length || healed > 0 ? '#6ad46a' : '#9a94a8', impact);
+    this.addFx(x, y, cured.length ? 'cured!' : healed > 0 ? `+${healed}` : 'nothing to cure', cured.length || healed > 0 ? COLOR.green : COLOR.dim, impact);
     this.game.log(cured.length
       ? `${s.name} lifts ${cured.map(n => n.toLowerCase()).join(', ')} from ${ally.ref.name}${healed > 0 ? ` and mends ${healed} HP (${math})` : ''}.`
       : `${ally.ref.name} had nothing for ${s.name} to cure${healed > 0 ? ` — but ${healed} HP mends (${math})` : ''}.`, cured.length ? 'good' : 'info');
@@ -2188,7 +2188,7 @@ export class Battle {
     ref.hp = Math.max(1, Math.floor(ref.maxHp * (s.hp ?? 0.5)));
     ref.conditions = [];
     audio.play('temple_revive');
-    this.addFx(x, y, 'RISEN!', '#ffd24a', impact);
+    this.addFx(x, y, 'RISEN!', COLOR.gold, impact);
     this.game.log(`${ref.name} rises — ${s.name} calls them back with ${ref.hp} HP.`, 'good');
   }
 
@@ -2290,7 +2290,7 @@ export class Battle {
       if (t.kind === 'monster' && s.double_vs && ref.family === s.double_vs) {
         dmg *= 2;
         math += ` ×2 vs ${ref.family}`;
-        this.addFx(t.x, t.y, s.fx?.sound === 'light' ? 'holy fire!' : 'bane!', '#ffd24a', impact);
+        this.addFx(t.x, t.y, s.fx?.sound === 'light' ? 'holy fire!' : 'bane!', COLOR.gold, impact);
       }
       // Friendly fire meets elemental protection: a hero caught in the blast
       // is guarded by worn resist/immunity (or a warding spell) for the element.
@@ -2298,7 +2298,7 @@ export class Battle {
         const elem = spellElem;
         const guard = elem ? this.game.elementGuard(ref, elem) : null;
         if (guard?.kind === 'immune') {
-          this.addFx(t.x, t.y, 'immune!', '#7fd4c8', impact);
+          this.addFx(t.x, t.y, 'immune!', COLOR.teal, impact);
           this.game.log(`The blast washes over ${ref.name} — the ${guard.name} drinks the ${elem} whole!`, 'good');
           continue;
         }
@@ -2309,7 +2309,7 @@ export class Battle {
       }
       if (t.kind === 'monster') t.aware = true; // seared awake, saved or not
       if (saved && dmg <= 0) {
-        this.addFx(t.x, t.y, 'resisted', '#9a94a8', impact);
+        this.addFx(t.x, t.y, 'resisted', COLOR.dim, impact);
         this.game.log(`${ref.name} shrugs off the ${s.name.toLowerCase()} (${math}${saveText}).`);
         continue;
       }
@@ -2377,9 +2377,9 @@ export class Battle {
       // A Hearthstone dwarf's tracked deed: every ally sheltered by a verse.
       if (ch !== c.ref && laneOf(this.game.data, c.ref)?.rite?.tracked === 'alliesFortified') c.ref.counters.alliesFortified++;
       if (s.hidden) { ch.hidden = true; audio.play('vanish'); }
-      this.fxOn(ch, s.name, s.fx?.color ?? '#d4a94e');
+      this.fxOn(ch, s.name, s.fx?.color ?? COLOR.amber);
       const tc = this.combatants.find(cc => cc.ref === ch);
-      if (tc) this.particleFx(tc.x, tc.y, s.fx?.kind === 'wisp' ? 'wisp' : 'sparkle', s.fx?.color ?? '#d4a94e');
+      if (tc) this.particleFx(tc.x, tc.y, s.fx?.kind === 'wisp' ? 'wisp' : 'sparkle', s.fx?.color ?? COLOR.amber);
     }
     const who = s.targets === 'self' ? c.ref.name : s.targets === 'ally' ? targets[0].name : 'the party';
     this.game.log(`${s.name} settles on ${who}: ${bits.join(', ')}${absorbText}${rounds ? ` for ${rounds} round${rounds > 1 ? 's' : ''}${m.extraRounds ? ` (+${m.extraRounds} caster level)` : ''}` : s.stance ? ' — a Stance, held until the next full rest' : ' this battle'}.`, 'good');
@@ -2440,7 +2440,7 @@ export class Battle {
       } else {
         const heal = Math.min(m.regen.amount ?? 5, (m.maxHp ?? m.hp) - m.hp);
         m.hp += heal;
-        this.addFx(c.x, c.y, `+${heal} regeneration`, '#6ad46a');
+        this.addFx(c.x, c.y, `+${heal} regeneration`, COLOR.green);
         this.game.log(`The ${m.name}'s wounds knit closed — ${heal} HP regenerates.`);
       }
     }
@@ -2484,7 +2484,7 @@ export class Battle {
       c.phase = idx;
       c.cds = {}; c.uses = {}; // a new phase opens with every power ready (its list is its own — indices restart)
       const ph = m.phases[idx];
-      this.fxOn(m, (ph.name ?? 'a new phase').toUpperCase() + '!', '#d4a94e');
+      this.fxOn(m, (ph.name ?? 'a new phase').toUpperCase() + '!', COLOR.amber);
       this.game.log(`The ${m.name} enters ${ph.name ?? `phase ${idx + 2}`}${ph.name ? '' : ''}!`, 'death');
       if (ph.line) this.speak(m, ph.line);
     }
@@ -2604,7 +2604,7 @@ export class Battle {
     if (element) {
       const guard = this.game.elementGuard(target, element);
       if (guard?.kind === 'immune') {
-        this.fxOn(target, 'immune!', '#7fd4c8');
+        this.fxOn(target, 'immune!', COLOR.teal);
         this.game.log(`The blast washes over ${target.name} — the ${guard.name} drinks the ${element} whole!`, 'good');
         return;
       }
@@ -2617,7 +2617,7 @@ export class Battle {
       betweenPools: d => this.braceSoak(target, d, bits, 'spell'),
     });
     if (dmg <= 0) {
-      this.fxOn(target, 'blocked', '#9a94a8');
+      this.fxOn(target, 'blocked', COLOR.dim);
       this.game.log(`${target.name} — the ward takes it all (${bits.join(' · ')}).`, 'good');
       return;
     }
@@ -2652,14 +2652,14 @@ export class Battle {
           const dmg = saved ? Math.floor(raw / 2) : raw;
           const bits = [`${ab.name ?? 'blast'} ${ab.dice} → ${raw}${saved ? `, halved — ${text}` : text ? ` · ${text}` : ''}`];
           if (saved && dmg <= 0) {
-            this.fxOn(hc.ref, 'resisted', '#9a94a8');
+            this.fxOn(hc.ref, 'resisted', COLOR.dim);
             this.game.log(`${hc.ref.name} twists clear of the ${(ab.name ?? 'blast').toLowerCase()} (${text}).`);
           } else {
             this.abilityHit(m, hc, dmg, ab.element, bits);
           }
-        }, i * 160);
+        }, i * TIMING.stagger);
       });
-      setTimeout(() => this.finishMonsterAction(), targets.length * 160 + 200);
+      setTimeout(() => this.finishMonsterAction(), targets.length * TIMING.stagger + TIMING.staggerTail);
     }, impact);
   }
 
@@ -2678,7 +2678,7 @@ export class Battle {
         : [primary];
     }
     const cdef = this.game.conditionDef(ab.condition);
-    const impact = party ? 0 : this.emitSpellFx(c, { fx: ab.fx ?? { kind: 'wisp', color: cdef?.color ?? '#8a7ab8' }, type: 'afflict' }, targets[0].x, targets[0].y);
+    const impact = party ? 0 : this.emitSpellFx(c, { fx: ab.fx ?? { kind: 'wisp', color: cdef?.color ?? COLOR.shadow }, type: 'afflict' }, targets[0].x, targets[0].y);
     if (ab.fx?.sound) audio.play(`spell_${ab.fx.sound}`);
     this.game.log(`The ${m.name} ${party ? `casts ${ab.name ?? 'a curse'} over the whole party` : `aims ${ab.name ?? 'a curse'} at ${targets[0].ref.name}`}! Save DC ${ab.dc ?? 13}.`, 'combat');
     this.pendingAction = true;
@@ -2687,11 +2687,11 @@ export class Battle {
       targets.forEach((hc, i) => {
         setTimeout(() => {
           if (this.game.battle !== this || !hc.ref.alive) return;
-          this.particleFx(hc.x, hc.y, ab.fx?.kind === 'sparkle' ? 'sparkle' : 'wisp', ab.fx?.color ?? cdef?.color ?? '#8a7ab8');
+          this.particleFx(hc.x, hc.y, ab.fx?.kind === 'sparkle' ? 'sparkle' : 'wisp', ab.fx?.color ?? cdef?.color ?? COLOR.shadow);
           this.tryInflict(hc, ab.condition, ab.rounds ?? 2, ab.dc ?? 13, c.uid);
-        }, i * 150);
+        }, i * TIMING.staggerSlow);
       });
-      setTimeout(() => this.finishMonsterAction(), targets.length * 150 + 200);
+      setTimeout(() => this.finishMonsterAction(), targets.length * TIMING.staggerSlow + TIMING.staggerTail);
     }, impact);
   }
 
@@ -2734,20 +2734,20 @@ export class Battle {
       return;
     }
     audio.play('summon');
-    this.particleFx(c.x, c.y, ab.fx?.kind ?? 'wisp', ab.fx?.color ?? '#b48cff');
-    this.addFx(c.x, c.y, (ab.name ?? 'SUMMON').toUpperCase() + '!', ab.fx?.color ?? '#b48cff');
+    this.particleFx(c.x, c.y, ab.fx?.kind ?? 'wisp', ab.fx?.color ?? COLOR.violet);
+    this.addFx(c.x, c.y, (ab.name ?? 'SUMMON').toUpperCase() + '!', ab.fx?.color ?? COLOR.violet);
     this.pendingAction = true;
     made.forEach((cc, i) => setTimeout(() => {
       if (this.game.battle !== this) return;
-      this.particleFx(cc.x, cc.y, 'wisp', ab.fx?.color ?? '#b48cff');
-      this.addFx(cc.x, cc.y, cc.ref.name + '!', ab.fx?.color ?? '#b48cff');
-    }, 200 + i * 150));
+      this.particleFx(cc.x, cc.y, 'wisp', ab.fx?.color ?? COLOR.violet);
+      this.addFx(cc.x, cc.y, cc.ref.name + '!', ab.fx?.color ?? COLOR.violet);
+    }, TIMING.staggerTail + i * TIMING.staggerSlow));
     const tally = {};
     for (const cc of made) tally[cc.ref.name] = (tally[cc.ref.name] ?? 0) + 1;
     const list = Object.entries(tally).map(([n, k]) => (k > 1 ? `${k} ${n}s` : `a ${n}`)).join(', ');
     this.game.log(`The ${m.name} ${ab.name ? `works ${ab.name} — ` : 'gestures, and '}${list} tear${made.length > 1 ? '' : 's'} into being beside it! (Conjured: no XP, and ${ab.unbound ? 'they stay when it falls' : 'they dissolve when their master falls'}.)`, 'death');
     this.sweepHidden();
-    setTimeout(() => this.finishMonsterAction(), 400 + made.length * 150);
+    setTimeout(() => this.finishMonsterAction(), TIMING.summonLead + made.length * TIMING.staggerSlow);
   }
 
   // Summons bound to a fallen master dissolve. Called from slay().
@@ -2757,7 +2757,7 @@ export class Battle {
     for (const mc of bound) {
       mc.ref.hp = 0;
       mc.diedAt = performance.now();
-      this.addFx(mc.x, mc.y, 'unmade!', '#b48cff');
+      this.addFx(mc.x, mc.y, 'unmade!', COLOR.violet);
     }
     this.game.log(`The binding breaks — ${bound.map(mc => mc.ref.name).join(', ')} unravel${bound.length > 1 ? '' : 's'} into nothing without ${masterC.ref.name}'s will to hold them.`, 'good');
   }
@@ -2785,23 +2785,23 @@ export class Battle {
     if (!to) { this.finishMonsterAction(); return; }
     const from = { x: c.x, y: c.y };
     audio.play('vanish');
-    this.particleFx(from.x, from.y, ab.fx?.kind ?? 'wisp', ab.fx?.color ?? '#b48cff');
-    this.addFx(from.x, from.y, (ab.name ?? 'BLINK').toUpperCase() + '!', ab.fx?.color ?? '#b48cff');
+    this.particleFx(from.x, from.y, ab.fx?.kind ?? 'wisp', ab.fx?.color ?? COLOR.violet);
+    this.addFx(from.x, from.y, (ab.name ?? 'BLINK').toUpperCase() + '!', ab.fx?.color ?? COLOR.violet);
     c.x = to.x; c.y = to.y;
     this.pendingAction = true;
     setTimeout(() => {
       if (this.game.battle !== this) return;
-      this.particleFx(to.x, to.y, 'sparkle', ab.fx?.color ?? '#b48cff');
+      this.particleFx(to.x, to.y, 'sparkle', ab.fx?.color ?? COLOR.violet);
       this.game.log(`The ${c.ref.name} ${ab.name ? `works ${ab.name} and ` : ''}is elsewhere — it reappears ${this.dist(from.x, from.y, to.x, to.y)} squares away, out of reach.`, 'death');
       this.finishMonsterAction();
-    }, 350);
+    }, TIMING.blink);
   }
 
   monsterVanish(c, ab) {
     c.unseen = true;
     audio.play('vanish');
-    this.particleFx(c.x, c.y, ab.fx?.kind ?? 'wisp', ab.fx?.color ?? '#8a7ab8');
-    this.addFx(c.x, c.y, (ab.name ?? 'VANISH').toUpperCase(), '#8a7ab8');
+    this.particleFx(c.x, c.y, ab.fx?.kind ?? 'wisp', ab.fx?.color ?? COLOR.shadow);
+    this.addFx(c.x, c.y, (ab.name ?? 'VANISH').toUpperCase(), COLOR.shadow);
     this.game.log(`The ${c.ref.name} ${ab.name ? `works ${ab.name} and ` : ''}is simply gone — the party's eyes slide off the empty air.`, 'death');
     this.finishMonsterAction();
   }
@@ -2814,8 +2814,8 @@ export class Battle {
     if (!targets.length) return;
     for (const t of targets) {
       t.haste = { attacks: ab.extra_attacks ?? 1, rounds: (ab.rounds ?? 2) + 1, name };
-      this.particleFx(t.x, t.y, 'sparkle', ab.fx?.color ?? '#e0483a');
-      this.addFx(t.x, t.y, name + '!', ab.fx?.color ?? '#e0483a');
+      this.particleFx(t.x, t.y, 'sparkle', ab.fx?.color ?? COLOR.red);
+      this.addFx(t.x, t.y, name + '!', ab.fx?.color ?? COLOR.red);
     }
     audio.play('spell_buff');
     this.game.log(ab.targets === 'self'
@@ -2850,7 +2850,7 @@ export class Battle {
         setTimeout(() => {
           if (this.game.battle !== this || !hc.ref.alive) return;
           if (s.type === 'afflict') {
-            this.particleFx(hc.x, hc.y, 'wisp', s.fx?.color ?? '#8a7ab8');
+            this.particleFx(hc.x, hc.y, 'wisp', s.fx?.color ?? COLOR.shadow);
             this.tryInflict(hc, s.condition.id, s.condition.rounds + (s.scale?.rounds ? steps * s.scale.rounds : 0), dc, c.uid);
             return;
           }
@@ -2866,7 +2866,7 @@ export class Battle {
           const { saved, text } = s.auto ? { saved: false, text: '' } : this.abilitySave(hc, s.save ?? 'dex', dc);
           const dmg = saved ? Math.floor(raw / 2) : raw;
           if (saved && dmg <= 0) {
-            this.fxOn(hc.ref, 'resisted', '#9a94a8');
+            this.fxOn(hc.ref, 'resisted', COLOR.dim);
             this.game.log(`${hc.ref.name} shrugs off the ${s.name.toLowerCase()} (${text}).`);
             return;
           }
@@ -2880,7 +2880,7 @@ export class Battle {
             const cdef = this.game.conditionDef(s.condition.id);
             if (cdef) this.addFx(hc.x, hc.y, cdef.name + '!', cdef.color);
           }
-        }, i * 160);
+        }, i * TIMING.stagger);
       });
       setTimeout(() => {
         if (this.game.battle !== this) return;
@@ -2890,7 +2890,7 @@ export class Battle {
           if (heal > 0) { m.hp += heal; this.fxOn(m, `+${heal}`, '#c03050'); this.game.log(`${s.name} drinks deep — ${heal} HP flows back into the ${m.name}.`, 'death'); }
         }
         this.finishMonsterAction();
-      }, targets.length * 160 + 200);
+      }, targets.length * TIMING.stagger + TIMING.staggerTail);
     }, impact);
   }
 
@@ -2939,7 +2939,7 @@ export class Battle {
       const next = this.adjacentHero(chain.c);
       if (!next || chain.c.ref.hp <= 0) { this.swingChain = null; this.finishMonsterAction(); return; }
       this.doSwing(next);
-    }, 300);
+    }, TIMING.swing);
   }
 
   // An async monster action (staggered swings, a traveled bolt) is done:
@@ -3139,7 +3139,7 @@ export class Battle {
       // no question asked, that's what the round was bought for.
       const aegisC = tc?.kind === 'hero' && !this.fleeing ? this.aegisGuard(target) : null;
       if (aegisC) {
-        this.fxOn(target, 'shielded!', '#7fd4c8');
+        this.fxOn(target, 'shielded!', COLOR.teal);
         this.game.log(`The blow meant for ${target.name} breaks against ${aegisC.ref.name}'s guard!`, 'good');
         this.applyMonsterHit(m, aegisC.ref, Math.max(1, Math.ceil(dmg / 2)));
         return;
@@ -3153,7 +3153,7 @@ export class Battle {
       }
       this.applyMonsterHit(m, target, dmg);
     } else {
-      this.fxOn(target, 'miss', '#9a94a8');
+      this.fxOn(target, 'miss', COLOR.dim);
       this.game.log(`The ${m.name} lunges at ${target.name} but misses (${hitText}).`);
     }
   }
@@ -3165,7 +3165,7 @@ export class Battle {
       const guard = this.game.elementGuard(target, m.element);
       if (guard?.kind === 'immune') {
         this.lastMonsterRoll = null;
-        this.fxOn(target, 'immune!', '#7fd4c8');
+        this.fxOn(target, 'immune!', COLOR.teal);
         this.game.log(`The ${m.name} strikes ${target.name} — the ${guard.name} drinks the ${m.element} whole!`, 'good');
         return;
       }
@@ -3191,7 +3191,7 @@ export class Battle {
     this.lastMonsterRoll = null; // redirected blows (Aegis, the Stand) skip the roll text next time
     audio.play('melee_hit');
     if (dmg <= 0) {
-      this.fxOn(target, 'blocked', '#9a94a8');
+      this.fxOn(target, 'blocked', COLOR.dim);
       this.game.log(`The ${m.name} strikes ${target.name} — the guard takes it all${rollText ? ` (${rollText})` : ''}.`);
       this.riposte(m, target);
       return;
@@ -3322,7 +3322,7 @@ export class Battle {
     const d = m.drains;
     const { saved, text } = this.abilitySave(tc, 'con', d.dc ?? 14);
     if (saved) {
-      this.fxOn(target, 'resisted', '#9a94a8');
+      this.fxOn(target, 'resisted', COLOR.dim);
       this.game.log(`${target.name}'s life holds fast against the ${m.name}'s drain (${text}).`, 'good');
       return;
     }
@@ -3365,7 +3365,7 @@ export class Battle {
     const ch = rc.ref;
     const verb = laneOf(this.game.data, ch).verb;
     this.riposting = true;
-    this.addFx(rc.x, rc.y, `${(verb.name ?? 'RIPOSTE').toUpperCase()}!`, '#e0c060');
+    this.addFx(rc.x, rc.y, `${(verb.name ?? 'RIPOSTE').toUpperCase()}!`, COLOR.sun);
     this.game.log(`${verb.name ?? 'Runic Riposte'}! ${ch.name} answers the ${m.name}${rc !== vc ? ` for ${victim.name}` : ''}.`, 'combat');
     audio.play('melee_hit');
     if (ch.crescendoArmed) this.forceCrit = true;
@@ -3408,8 +3408,8 @@ export class Battle {
       if (p?.id === 'braced_stance' && this.game.hasShield(g)) cost = Math.max(0, cost - (p.reduce ?? 1));
       g.counters.standSaves++;
       audio.play('melee_hit');
-      this.fxOn(r.target, 'shielded!', '#7fd4c8');
-      this.fxOn(g, cost > 0 ? `-${cost}` : 'blocked', '#d4a94e');
+      this.fxOn(r.target, 'shielded!', COLOR.teal);
+      this.fxOn(g, cost > 0 ? `-${cost}` : 'blocked', COLOR.amber);
       this.game.log(`${g.name} throws themself before the blow meant for ${r.target.name}${cost > 0 ? ` — ${cost} damage taken` : ' — and shrugs it off'}!`, 'good');
       g.hp -= cost;
       if (g.hp <= 0) this.downHero(g, { attack: true });
@@ -3428,7 +3428,7 @@ export class Battle {
     const sc = this.sanctuary;
     if (sc && sc.c.ref.alive) {
       ref.hp = 1;
-      this.fxOn(ref, 'SANCTUARY!', '#7fd4c8');
+      this.fxOn(ref, 'SANCTUARY!', COLOR.teal);
       this.game.log(`${ref.name} is struck to the very edge — and ${sc.c.ref.rite?.abilityName ?? 'Sanctuary'} refuses the fall. 1 HP.`, 'good');
       return false;
     }
@@ -3466,7 +3466,7 @@ export class Battle {
         cured = this.game.conditionDef(ref.conditions[0].id)?.name;
         ref.conditions.shift();
       }
-      this.fxOn(ref, `MERCY! +${ref.hp}`, '#6ad46a');
+      this.fxOn(ref, `MERCY! +${ref.hp}`, COLOR.green);
       this.game.log(`${ref.name} falls — and ${cleric.name}'s ${verb.name ?? 'Mercy'} catches them before they land: up again with ${ref.hp} HP (${verb.dice ?? '1d8'} → ${base}${wis ? ` ${wis > 0 ? '+' : '−'}${Math.abs(wis)} WIS` : ''})${cured ? `, ${cured.toLowerCase()} cured` : ''}.`, 'good');
       return false;
     }
@@ -3483,7 +3483,7 @@ export class Battle {
     const c = this.combatants.find(cc => cc.ref === monster);
     if (c) {
       c.diedAt = performance.now(); // the renderer shows the body falling
-      this.addFx(c.x, c.y, 'slain!', '#e0483a');
+      this.addFx(c.x, c.y, 'slain!', COLOR.red);
       // Death burst (the black slaad): the corpse detonates — don't stand
       // next to the kill. Heroes in the wash save for half.
       if (monster.death_burst && !monster.burst) {
@@ -3503,7 +3503,7 @@ export class Battle {
     this.game.log(`The ${monster.name} is slain! Each hero gains ${monster.xp} XP.`, 'good');
     const newlyReady = this.game.awardXp(monster.xp);
     if (newlyReady.length) audio.play('ready_to_level'); // the ding means ONE thing now
-    for (const ch of newlyReady) this.fxOn(ch, 'READY TO LEVEL!', '#d4a94e');
+    for (const ch of newlyReady) this.fxOn(ch, 'READY TO LEVEL!', COLOR.amber);
     if (this.game.depth === 'boss' && monster.id === this.game.data.dungeon.boss.monster) {
       this.game.victory = true; // the run is won — the map shows the banner when the fight ends
       this.game.log(`The ${monster.name} is destroyed! The endless dark is broken — the party has conquered the dungeon!`, 'good');
@@ -3525,7 +3525,7 @@ export class Battle {
       const { saved, text } = db.save ? this.abilitySave(h, db.save, db.dc ?? 14) : { saved: false, text: '' };
       const dmg = saved ? Math.floor(raw / 2) : raw;
       if (saved && dmg <= 0) {
-        this.fxOn(h.ref, 'resisted', '#9a94a8');
+        this.fxOn(h.ref, 'resisted', COLOR.dim);
         this.game.log(`${h.ref.name} dives clear of the burst (${text}).`);
         continue;
       }
@@ -3558,7 +3558,7 @@ export class Battle {
         if (game.battle !== this) return;
         game.battle = null;
         game.endArena();
-      }, 2000);
+      }, TIMING.endBeat);
       return true;
     }
     if (game.party.every(ch => !ch.alive)) {
@@ -3567,7 +3567,7 @@ export class Battle {
       this.busy = true; // input locked while the scene plays out
       game.over = true;
       game.log('The entire party has fallen. The dungeon keeps its dead. Press R to try again.', 'death');
-      setTimeout(() => { if (game.battle === this) game.battle = null; }, 2400);
+      setTimeout(() => { if (game.battle === this) game.battle = null; }, TIMING.wipeBeat);
       return true;
     }
     if (!this.monsters().length) {
@@ -3584,7 +3584,7 @@ export class Battle {
           game.updateVision();
           game.autosave(); // the dust settles — the run is worth keeping again
         }
-      }, 2000);
+      }, TIMING.endBeat);
       return true;
     }
     return false;
@@ -3663,7 +3663,7 @@ export class Battle {
     blows.forEach(([m, t], i) => setTimeout(() => {
       if (this.game.battle !== this) return;
       if (t.alive) this.monsterAttack(m, t);
-      if (i === blows.length - 1 && !this.checkEnd()) setTimeout(exit, 900);
-    }, 400 + i * 600));
+      if (i === blows.length - 1 && !this.checkEnd()) setTimeout(exit, TIMING.fleeExit);
+    }, TIMING.partingLead + i * TIMING.partingBlow));
   }
 }
