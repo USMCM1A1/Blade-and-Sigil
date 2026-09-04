@@ -2153,12 +2153,42 @@ export class Game {
       } else if (dist <= MONSTER_AGGRO_RANGE && this.isVisible(m.x, m.y)) {
         this.monsterStep(m, dx, dy);
         if (Math.max(Math.abs(this.partyPos.x - m.x), Math.abs(this.partyPos.y - m.y)) <= 1) {
+          // The scout's warning (designer 2026-09-03): a watchful hero may
+          // call the approach — the monster halts, the party acts first.
+          // It only works once per approach: dither, and it catches you.
+          const scout = !m.halted && this.scoutWarning(m);
+          if (scout) {
+            m.halted = true;
+            audio.play('discover');
+            this.log(`${scout.name} hears them coming — the ${m.name} halts at the edge of the torchlight. (${scout.what}: rolled ${scout.roll} vs ${scout.chance}%)`, 'good');
+            continue;
+          }
           this.log(`The ${m.name} catches the party!`, 'info');
           this.startBattle(m, true);
           return;
         }
       }
     }
+  }
+
+  // Heroes who keep watch on the approach: a Ranger (classes.json
+  // "scouting") or a Shadows thief with the Point Man pick (growth
+  // "watch": true). Each rolls d100 under their skill; the first success
+  // wears the credit (highest skill rolls first).
+  scouts() {
+    return this.party.filter(ch => ch.alive && (ch.cls.scouting || growthEffect(this.data, ch, 'watch')))
+      .map(ch => ({ ch, chance: Math.max(0, Math.min(95, this.heroSkill(ch) + (ch.cls.scouting?.bonus ?? 0))),
+        what: ch.cls.scouting ? (ch.cls.scouting.name ?? 'Scouting') : (growthPicks(this.data, ch).find(o => o.watch)?.name ?? 'Point Man') }))
+      .filter(s => s.chance > 0)
+      .sort((a, b) => b.chance - a.chance);
+  }
+
+  scoutWarning(m) {
+    for (const s of this.scouts()) {
+      const roll = Math.floor(Math.random() * 100) + 1;
+      if (roll <= s.chance) return { name: s.ch.name, what: s.what, roll, chance: s.chance };
+    }
+    return null;
   }
 
   monsterStep(m, dx, dy) {

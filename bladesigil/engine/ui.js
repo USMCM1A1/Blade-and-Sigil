@@ -1120,6 +1120,7 @@ function renderPath(game, ch) {
   let rows = '';
   const gift = giftOf(ch);
   if (gift) rows += row(true, gift.name, `${gift.blurb ?? ''}${ch.gift?.element ? ` Sworn against ${ch.gift.element}.` : ''}`, 'creation gift');
+  if (ch.cls.scouting) rows += row(true, ch.cls.scouting.name ?? 'Scouting', `${ch.cls.scouting.blurb ?? ''} (${Math.max(0, Math.min(95, game.heroSkill(ch) + (ch.cls.scouting.bonus ?? 0)))}% now)`, 'class');
   if (ch.cls.favored_enemy) {
     const fav = Object.entries(ch.favored ?? {});
     const next = (ch.cls.favored_enemy.levels ?? []).find(l => l > ch.level);

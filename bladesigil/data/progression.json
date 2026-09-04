@@ -429,6 +429,12 @@
             ],
             "options": [
               {
+                "id": "point_man",
+                "name": "Point Man",
+                "blurb": "You walk ahead and listen. When a monster the party can see closes in, roll your skill: on a success it halts at the edge of the torchlight and the party acts first — no ambush, and you begin the fight hidden as always.",
+                "watch": true
+              },
+              {
                 "id": "snare_venom",
                 "name": "Venom Snare",
                 "blurb": "A blade smeared with spider-milk. The snare poisons what it catches.",

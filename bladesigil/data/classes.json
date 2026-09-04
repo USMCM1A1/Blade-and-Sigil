@@ -936,7 +936,12 @@
         "1": 9,
         "2": 15
       },
-      "dual_wield": {
+      "scouting": {
+      "name": "Scouting",
+      "blurb": "The Ranger keeps watch on the trail. When a monster the party can see closes to arm's reach, the Ranger rolls their skill: on a success it halts at the edge of the torchlight and the party acts first — no ambush.",
+      "bonus": 0
+    },
+    "dual_wield": {
         "penalty": 4
       },
       "point_blank_penalty": 2,
