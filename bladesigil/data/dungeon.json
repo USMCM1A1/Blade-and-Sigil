@@ -1109,10 +1109,11 @@
         "wight": 3,
         "troll": 3,
         "shadow": 3,
-        "elemental_small": 2,
         "animated_armor": 2,
         "succubus": 1,
-        "red_slaad": 1
+        "red_slaad": 1,
+        "elemental_fire_small": 1,
+        "elemental_earth_small": 1
       },
       "monster_count": "2d4+5",
       "chest_count": "1d3+1",
@@ -1209,10 +1210,10 @@
         },
         {
           "weight": 2,
-          "name": "slaad and bound spark",
+          "name": "slaad and bound flame",
           "group": [
             "red_slaad",
-            "elemental_small"
+            "elemental_fire_small"
           ]
         },
         {
@@ -1238,9 +1239,10 @@
         "wight": 3,
         "troll": 3,
         "shadow": 2,
-        "elemental_small": 2,
         "black_pudding": 1,
-        "blue_slaad": 1
+        "blue_slaad": 1,
+        "elemental_water_small": 1,
+        "elemental_air_small": 1
       },
       "monster_count": "2d4+5",
       "chest_count": "1d3+1",
@@ -1330,7 +1332,7 @@
           "name": "slaad and sparks",
           "group": [
             "blue_slaad",
-            "elemental_small"
+            "elemental_air_small"
           ]
         },
         {
@@ -1354,11 +1356,13 @@
       "monsters": {
         "spectre": 3,
         "illithid": 3,
-        "elemental_medium": 3,
         "flesh_golem": 2,
         "black_pudding": 2,
         "incubus": 1,
-        "green_slaad": 1
+        "green_slaad": 1,
+        "elemental_fire_medium": 1,
+        "elemental_earth_medium": 1,
+        "elemental_water_medium": 1
       },
       "monster_count": "2d4+5",
       "chest_count": "1d3+1",
@@ -1444,7 +1448,7 @@
           "name": "slaadi at play",
           "group": [
             "green_slaad",
-            "elemental_medium"
+            "elemental_water_medium"
           ]
         },
         {
@@ -1469,10 +1473,11 @@
       "monsters": {
         "spectre": 3,
         "illithid": 3,
-        "elemental_medium": 2,
         "vampire": 2,
         "grey_slaad": 1,
-        "ninja": 2
+        "ninja": 2,
+        "elemental_air_medium": 1,
+        "elemental_water_medium": 1
       },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
@@ -1567,7 +1572,7 @@
           "weight": 1,
           "group": [
             "grey_slaad",
-            "elemental_medium"
+            "elemental_earth_medium"
           ]
         },
         {
@@ -1592,12 +1597,14 @@
       ],
       "monsters": {
         "mummy": 3,
-        "elemental_large": 3,
         "beholder": 2,
         "clay_golem": 2,
         "drider": 1,
         "dao": 1,
-        "ninja": 2
+        "ninja": 2,
+        "elemental_fire_large": 1,
+        "elemental_earth_large": 1,
+        "elemental_air_large": 1
       },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
@@ -1685,8 +1692,8 @@
           "name": "a dao and bound elementals",
           "group": [
             "dao",
-            "elemental_small",
-            "elemental_small"
+            "elemental_earth_small",
+            "elemental_earth_small"
           ]
         },
         {
@@ -1717,12 +1724,13 @@
       "monsters": {
         "mummy": 3,
         "alhoon": 3,
-        "elemental_large": 2,
         "beholder": 2,
         "death_slaad": 1,
         "djinn": 1,
         "ninja": 2,
-        "invisible_stalker": 2
+        "invisible_stalker": 2,
+        "elemental_water_large": 1,
+        "elemental_air_large": 1
       },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
@@ -1810,8 +1818,8 @@
           "name": "a djinn and its whirlwinds",
           "group": [
             "djinn",
-            "elemental_medium",
-            "elemental_medium"
+            "elemental_air_medium",
+            "elemental_air_medium"
           ]
         },
         {
@@ -1925,7 +1933,7 @@
           "name": "an efreet with fire on a leash",
           "group": [
             "efreet",
-            "elemental_medium",
+            "elemental_fire_medium",
             "mephit"
           ]
         },
@@ -2278,7 +2286,7 @@
           "group": [
             "efreeti_lord",
             "efreet",
-            "elemental_medium"
+            "elemental_fire_large"
           ]
         },
         {

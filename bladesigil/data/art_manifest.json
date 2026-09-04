@@ -425,19 +425,70 @@
       "post": "trim"
     },
     {
-      "id": "monster_elemental_small",
+      "id": "monster_elemental_fire_small",
       "style": "monster_card",
-      "prompt": "a small churning vortex of stone, flame and water bound into a rough humanoid shape.",
-      "out": "assets/enemies/gen/elemental_small.png",
+      "prompt": "a small elemental of roaring living flame in a rough humanoid shape, embers streaming from its limbs, the flagstones scorched black beneath it.",
+      "out": "assets/enemies/gen/elemental_fire_small.png",
       "size": 1024,
       "post": "trim"
     },
     {
-      "id": "monster_elemental_small_dead",
+      "id": "monster_elemental_earth_small",
       "style": "monster_card",
-      "prompt": "the same creature slain — a small churning vortex of stone, flame and water bound into a rough humanoid shape — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
-      "reference": "assets/enemies/gen/elemental_small.png",
-      "out": "assets/enemies/gen/elemental_small_dead.png",
+      "prompt": "a small elemental of packed boulders and cracked bedrock in a hulking humanoid shape, moss and rubble sliding from its shoulders, fists like millstones.",
+      "out": "assets/enemies/gen/elemental_earth_small.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_water_small",
+      "style": "monster_card",
+      "prompt": "a small elemental of surging dark water and rime-crusted ice in a heaving humanoid shape, frost spreading across the flagstones around it.",
+      "out": "assets/enemies/gen/elemental_water_small.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_air_small",
+      "style": "monster_card",
+      "prompt": "a small elemental of howling wind and dust in a half-seen humanoid whirl, forks of lightning crackling through the vortex, loose stones spinning around it.",
+      "out": "assets/enemies/gen/elemental_air_small.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_fire_small_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a small elemental of roaring living flame in a rough humanoid shape, embers streaming from its limbs, the flagstones scorched black beneath it — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_fire_small.png",
+      "out": "assets/enemies/gen/elemental_fire_small_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_earth_small_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a small elemental of packed boulders and cracked bedrock in a hulking humanoid shape, moss and rubble sliding from its shoulders, fists like millstones — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_earth_small.png",
+      "out": "assets/enemies/gen/elemental_earth_small_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_water_small_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a small elemental of surging dark water and rime-crusted ice in a heaving humanoid shape, frost spreading across the flagstones around it — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_water_small.png",
+      "out": "assets/enemies/gen/elemental_water_small_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_air_small_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a small elemental of howling wind and dust in a half-seen humanoid whirl, forks of lightning crackling through the vortex, loose stones spinning around it — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_air_small.png",
+      "out": "assets/enemies/gen/elemental_air_small_dead.png",
       "size": 1024,
       "post": "trim"
     },
@@ -527,19 +578,70 @@
       "post": "trim"
     },
     {
-      "id": "monster_elemental_medium",
+      "id": "monster_elemental_fire_medium",
       "style": "monster_card",
-      "prompt": "a man-sized roaring elemental of braided flame, stone and storm-wind towering over the flagstones.",
-      "out": "assets/enemies/gen/elemental_medium.png",
+      "prompt": "a man-sized elemental of roaring living flame in a rough humanoid shape, embers streaming from its limbs, the flagstones scorched black beneath it.",
+      "out": "assets/enemies/gen/elemental_fire_medium.png",
       "size": 1024,
       "post": "trim"
     },
     {
-      "id": "monster_elemental_medium_dead",
+      "id": "monster_elemental_earth_medium",
       "style": "monster_card",
-      "prompt": "the same creature slain — a man-sized roaring elemental of braided flame, stone and storm-wind towering over the flagstones — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
-      "reference": "assets/enemies/gen/elemental_medium.png",
-      "out": "assets/enemies/gen/elemental_medium_dead.png",
+      "prompt": "a man-sized elemental of packed boulders and cracked bedrock in a hulking humanoid shape, moss and rubble sliding from its shoulders, fists like millstones.",
+      "out": "assets/enemies/gen/elemental_earth_medium.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_water_medium",
+      "style": "monster_card",
+      "prompt": "a man-sized elemental of surging dark water and rime-crusted ice in a heaving humanoid shape, frost spreading across the flagstones around it.",
+      "out": "assets/enemies/gen/elemental_water_medium.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_air_medium",
+      "style": "monster_card",
+      "prompt": "a man-sized elemental of howling wind and dust in a half-seen humanoid whirl, forks of lightning crackling through the vortex, loose stones spinning around it.",
+      "out": "assets/enemies/gen/elemental_air_medium.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_fire_medium_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a man-sized elemental of roaring living flame in a rough humanoid shape, embers streaming from its limbs, the flagstones scorched black beneath it — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_fire_medium.png",
+      "out": "assets/enemies/gen/elemental_fire_medium_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_earth_medium_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a man-sized elemental of packed boulders and cracked bedrock in a hulking humanoid shape, moss and rubble sliding from its shoulders, fists like millstones — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_earth_medium.png",
+      "out": "assets/enemies/gen/elemental_earth_medium_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_water_medium_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a man-sized elemental of surging dark water and rime-crusted ice in a heaving humanoid shape, frost spreading across the flagstones around it — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_water_medium.png",
+      "out": "assets/enemies/gen/elemental_water_medium_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_air_medium_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a man-sized elemental of howling wind and dust in a half-seen humanoid whirl, forks of lightning crackling through the vortex, loose stones spinning around it — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_air_medium.png",
+      "out": "assets/enemies/gen/elemental_air_medium_dead.png",
       "size": 1024,
       "post": "trim"
     },
@@ -642,19 +744,70 @@
       "post": "trim"
     },
     {
-      "id": "monster_elemental_large",
+      "id": "monster_elemental_fire_large",
       "style": "monster_card",
-      "prompt": "a towering elemental colossus of magma, bedrock and hurricane filling the chamber to the ceiling.",
-      "out": "assets/enemies/gen/elemental_large.png",
+      "prompt": "a towering elemental of roaring living flame in a rough humanoid shape, embers streaming from its limbs, the flagstones scorched black beneath it.",
+      "out": "assets/enemies/gen/elemental_fire_large.png",
       "size": 1024,
       "post": "trim"
     },
     {
-      "id": "monster_elemental_large_dead",
+      "id": "monster_elemental_earth_large",
       "style": "monster_card",
-      "prompt": "the same creature slain — a towering elemental colossus of magma, bedrock and hurricane filling the chamber to the ceiling — now lifeless on the dungeon floor, collapsed and defeated, the scene quiet.",
-      "reference": "assets/enemies/gen/elemental_large.png",
-      "out": "assets/enemies/gen/elemental_large_dead.png",
+      "prompt": "a towering elemental of packed boulders and cracked bedrock in a hulking humanoid shape, moss and rubble sliding from its shoulders, fists like millstones.",
+      "out": "assets/enemies/gen/elemental_earth_large.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_water_large",
+      "style": "monster_card",
+      "prompt": "a towering elemental of surging dark water and rime-crusted ice in a heaving humanoid shape, frost spreading across the flagstones around it.",
+      "out": "assets/enemies/gen/elemental_water_large.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_air_large",
+      "style": "monster_card",
+      "prompt": "a towering elemental of howling wind and dust in a half-seen humanoid whirl, forks of lightning crackling through the vortex, loose stones spinning around it.",
+      "out": "assets/enemies/gen/elemental_air_large.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_fire_large_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a towering elemental of roaring living flame in a rough humanoid shape, embers streaming from its limbs, the flagstones scorched black beneath it — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_fire_large.png",
+      "out": "assets/enemies/gen/elemental_fire_large_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_earth_large_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a towering elemental of packed boulders and cracked bedrock in a hulking humanoid shape, moss and rubble sliding from its shoulders, fists like millstones — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_earth_large.png",
+      "out": "assets/enemies/gen/elemental_earth_large_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_water_large_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a towering elemental of surging dark water and rime-crusted ice in a heaving humanoid shape, frost spreading across the flagstones around it — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_water_large.png",
+      "out": "assets/enemies/gen/elemental_water_large_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "monster_elemental_air_large_dead",
+      "style": "monster_card",
+      "prompt": "the same creature slain — a towering elemental of howling wind and dust in a half-seen humanoid whirl, forks of lightning crackling through the vortex, loose stones spinning around it — now lifeless on the dungeon floor, its element guttering out, collapsed and defeated, the scene quiet.",
+      "reference": "assets/enemies/gen/elemental_air_large.png",
+      "out": "assets/enemies/gen/elemental_air_large_dead.png",
       "size": 1024,
       "post": "trim"
     },
