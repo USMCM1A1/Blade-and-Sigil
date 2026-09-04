@@ -309,11 +309,6 @@ export function heroMaxSpellLevel(ch, level = ch.level) {
   for (const [lvl, at] of Object.entries(u)) if (level >= at) best = Math.max(best, Number(lvl));
   return best;
 }
-// The character level a spell level opens at, for this hero's class.
-export function heroUnlockLevel(ch, spellLevel) {
-  return ch.cls.spell_unlocks?.[String(spellLevel)] ?? unlockLevel(spellLevel);
-}
-
 // The doc's SP formula — or a legacy per-level array, or nothing (0 SP).
 export function spellPointsFor(cls, level) {
   const sp = cls.spell_points;

@@ -39,3 +39,15 @@ export function abilityMod(score) {
 }
 
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+// The odds a d20 attack lands: d20 + bonus vs 10 + AC, shown as a fraction
+// clamped to 5%..95% (a natural 20 always hits, a 1 never does). THE
+// formula the bump/aim previews quote — battle.js rolls the same die.
+export function hitChance(attackBonus, ac) {
+  return clamp((21 + attackBonus - (10 + ac)) / 20, 0.05, 0.95);
+}
+
+// The odds a save FAILS: d20 + save bonus < DC, clamped the same way.
+export function saveFailChance(dc, saveBonus) {
+  return clamp((dc - saveBonus - 1) / 20, 0.05, 0.95);
+}

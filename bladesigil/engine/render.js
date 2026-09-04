@@ -1,6 +1,6 @@
 // Canvas renderer: tile map, fog of war, sprites, camera.
 
-import { abilityMod } from './rules.js';
+import { hitChance, saveFailChance } from './rules.js';
 import { RENDER } from './constants.js';
 
 const TILE = 56;
@@ -130,12 +130,7 @@ export class Renderer {
     // An undetected secret door wears a wall's face; a spotted one glows.
     if (c === 'S' && !game.revealed?.has(`${x},${y}`)) c = '#';
     if (c === '#') {
-      ctx.fillStyle = COLORS.wall;
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = COLORS.wallTop;
-      ctx.fillRect(px, py, TILE, 5);
-      ctx.fillStyle = COLORS.wallDark;
-      ctx.fillRect(px, py + TILE - 5, TILE, 5);
+      this.drawWallBlock(px, py, TILE);
       return;
     }
     if (c === 'S') { // revealed secret door: a stone slab betrayed by its seam
@@ -270,27 +265,47 @@ export class Renderer {
   // ---- Tactical battlefield (Phase 3a) ----
   // A template-built grid: every combatant on their own square, the active
   // hero ringed in gold with their reachable squares lit.
+  // The battle screen (split in refactor step 6c, 2026-09-04): layout, then
+  // each layer in paint order — panel head, initiative ladder, grid,
+  // combatants, spell/float fx, turn status, menus, reactions, the ending.
   drawBattle() {
-    const { ctx, game } = this;
-    const b = game.battle;
-    const W = this.canvas.width, H = this.canvas.height;
-    const gw = b.grid[0].length, gh = b.grid.length;
-    // The field owns the stage (designer's markup 2026-08-26): a slim panel
-    // on the LEFT carries the name, round, initiative ladder, and turn info;
-    // the grid gets everything else, nearly floor to ceiling.
-    const PANEL = RENDER.panel;
-    const CELL = Math.max(RENDER.cellMin, Math.min(Math.floor((W - PANEL - 24) / gw), Math.floor((H - 20) / gh)));
-    const ox = PANEL + Math.max(0, (W - PANEL - gw * CELL) / 2);
-    const oy = Math.max(0, (H - gh * CELL) / 2);
-
+    const L = this.battleLayout();
+    const { ctx, W, H, PANEL } = L;
     ctx.fillStyle = '#101018';
     ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#0c0c13';
     ctx.fillRect(0, 0, PANEL, H);
+    const pw = this.panelWriter(L);
+    this.drawBattleHead(L, pw);
+    this.drawBattleLadder(L, pw);
+    this.drawBattleGrid(L);
+    this.drawBattleCombatants(L);
+    this.drawBattleFx(L);
+    this.drawBattleStatus(L, pw);
+    this.drawBattleMenus(L);
+    this.drawBattleReaction(L);
+    this.drawBattleEnding(L);
+  }
 
-    // Panel text helper: wrapped lines that keep their own cursor.
-    let panelY = 12;
-    const panelLine = (text, font, color, lh = 18) => {
+  // The field owns the stage (designer's markup 2026-08-26): a slim panel
+  // on the LEFT carries the name, round, initiative ladder, and turn info;
+  // the grid gets everything else, nearly floor to ceiling.
+  battleLayout() {
+    const b = this.game.battle;
+    const W = this.canvas.width, H = this.canvas.height;
+    const gw = b.grid[0].length, gh = b.grid.length;
+    const PANEL = RENDER.panel;
+    const CELL = Math.max(RENDER.cellMin, Math.min(Math.floor((W - PANEL - 24) / gw), Math.floor((H - 20) / gh)));
+    const ox = PANEL + Math.max(0, (W - PANEL - gw * CELL) / 2);
+    const oy = Math.max(0, (H - gh * CELL) / 2);
+    return { ctx: this.ctx, b, W, H, gw, gh, PANEL, CELL, ox, oy };
+  }
+
+  // Panel text: wrapped lines that keep their own cursor down the left panel.
+  panelWriter(L) {
+    const { ctx, PANEL } = L;
+    const pw = { y: 12 };
+    pw.line = (text, font, color, lh = 18) => {
       ctx.font = font;
       ctx.fillStyle = color;
       ctx.textAlign = 'left';
@@ -300,18 +315,27 @@ export class Renderer {
       for (const wd of words) {
         const test = line ? `${line} ${wd}` : wd;
         if (ctx.measureText(test).width > PANEL - 28 && line) {
-          ctx.fillText(line, 14, panelY);
-          panelY += lh;
+          ctx.fillText(line, 14, pw.y);
+          pw.y += lh;
           line = wd;
         } else line = test;
       }
-      if (line) { ctx.fillText(line, 14, panelY); panelY += lh; }
+      if (line) { ctx.fillText(line, 14, pw.y); pw.y += lh; }
     };
+    return pw;
+  }
 
-    panelLine(`⚔ ${b.templateName}`, 'bold 18px Georgia', COLORS.stairs, 22);
-    panelLine(`Round ${b.round}`, '13px Georgia', '#8a8a99', 16);
-    panelY += 8;
+  drawBattleHead(L, pw) {
+    const { ctx, b, W, H, gw, gh, PANEL, CELL, ox, oy } = L;
+    const game = this.game;
+    pw.line(`⚔ ${b.templateName}`, 'bold 18px Georgia', COLORS.stairs, 22);
+    pw.line(`Round ${b.round}`, '13px Georgia', '#8a8a99', 16);
+    pw.y += 8;
+  }
 
+  drawBattleLadder(L, pw) {
+    const { ctx, b, W, H, gw, gh, PANEL, CELL, ox, oy } = L;
+    const game = this.game;
     // The initiative ladder: a vertical stack of portrait + name + HP bar,
     // the active combatant ringed in gold.
     const order = b.combatants.filter(c => c.kind === 'hero' ? true : c.ref.hp > 0);
@@ -325,27 +349,27 @@ export class Renderer {
       ctx.save();
       if (dead) ctx.globalAlpha = 0.35;
       ctx.fillStyle = '#0a0a0f';
-      ctx.fillRect(14, panelY, CHIP, CHIP);
-      if (icon) ctx.drawImage(icon, 14, panelY, CHIP, CHIP);
+      ctx.fillRect(14, pw.y, CHIP, CHIP);
+      if (icon) ctx.drawImage(icon, 14, pw.y, CHIP, CHIP);
       ctx.strokeStyle = isActive ? COLORS.stairs : (c.kind === 'hero' ? '#3d4d6d' : '#5d3535');
       ctx.lineWidth = isActive ? 3 : 1.5;
-      ctx.strokeRect(14.5, panelY + 0.5, CHIP - 1, CHIP - 1);
+      ctx.strokeRect(14.5, pw.y + 0.5, CHIP - 1, CHIP - 1);
       ctx.font = `${isActive ? 'bold ' : ''}13px Georgia`;
       ctx.fillStyle = isActive ? '#ffe9b8' : (c.kind === 'hero' ? '#cfc4a6' : '#c89090');
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText((isActive ? '▸ ' : '') + c.ref.name, 62, panelY + 6, PANEL - 76);
-      const hpFrac = Math.max(0, c.ref.hp / c.ref.maxHp);
-      ctx.fillStyle = '#0a0a0f';
-      ctx.fillRect(62, panelY + 26, PANEL - 80, 5);
-      ctx.fillStyle = c.kind === 'hero' ? '#5c88d8' : '#c04848';
-      ctx.fillRect(62, panelY + 26, (PANEL - 80) * hpFrac, 5);
+      ctx.fillText((isActive ? '▸ ' : '') + c.ref.name, 62, pw.y + 6, PANEL - 76);
+      this.drawBar(62, pw.y + 26, PANEL - 80, 5, c.ref.hp / c.ref.maxHp, c.kind === 'hero' ? '#5c88d8' : '#c04848');
       ctx.restore();
-      panelY += ROW;
+      pw.y += ROW;
     }
-    panelY += 12;
+    pw.y += 12;
     ctx.textBaseline = 'top';
+  }
 
+  drawBattleGrid(L) {
+    const { ctx, b, W, H, gw, gh, PANEL, CELL, ox, oy } = L;
+    const game = this.game;
     // The battlefield grid. In targeting mode, squares in range glow cold;
     // in move mode the active hero's reachable squares glow warm.
     const a0 = b.active();
@@ -354,12 +378,7 @@ export class Renderer {
       for (let x = 0; x < gw; x++) {
         const px = ox + x * CELL, py = oy + y * CELL;
         if (b.grid[y][x] === '#') {
-          ctx.fillStyle = COLORS.wall;
-          ctx.fillRect(px, py, CELL, CELL);
-          ctx.fillStyle = COLORS.wallTop;
-          ctx.fillRect(px, py, CELL, 5);
-          ctx.fillStyle = COLORS.wallDark;
-          ctx.fillRect(px, py + CELL - 5, CELL, 5);
+          this.drawWallBlock(px, py, CELL);
         } else {
           let fill = COLORS.floor;
           if (reach.has(y * gw + x)) fill = '#2c2a1e';
@@ -395,7 +414,11 @@ export class Renderer {
       ctx.textBaseline = 'middle';
       ctx.fillText('⚙', ox + t.x * CELL + CELL / 2, oy + t.y * CELL + CELL / 2);
     }
+  }
 
+  drawBattleCombatants(L) {
+    const { ctx, b, W, H, gw, gh, PANEL, CELL, ox, oy } = L;
+    const game = this.game;
     // Combatants. Slain monsters fall and stay on the field as faded,
     // walkable corpses for the rest of the battle. Corpses draw first so
     // anyone stepping onto the square stands on top of the body.
@@ -499,14 +522,15 @@ export class Renderer {
       ctx.textBaseline = 'alphabetic';
       ctx.fillText(c.ref.name.slice(0, 9), px + CELL / 2, py + CELL - 12);
       if (!dying) { // corpses keep a faint name but lose the drained HP bar
-        ctx.fillStyle = '#0a0a0f';
-        ctx.fillRect(px + 5, py + CELL - 9, CELL - 10, 5);
-        ctx.fillStyle = c.kind === 'hero' ? '#5c88d8' : '#c04848';
-        ctx.fillRect(px + 5, py + CELL - 9, (CELL - 10) * Math.max(0, c.ref.hp / c.ref.maxHp), 5);
+        this.drawBar(px + 5, py + CELL - 9, CELL - 10, 5, c.ref.hp / c.ref.maxHp, c.kind === 'hero' ? '#5c88d8' : '#c04848');
       }
       ctx.restore();
     }
+  }
 
+  drawBattleFx(L) {
+    const { ctx, b, W, H, gw, gh, PANEL, CELL, ox, oy } = L;
+    const game = this.game;
     // Animated spell visuals: bolts crossing the field, beams and lightning
     // connecting caster to target, bursts washing the squares they caught,
     // sparkles rising from the mended. Drawn UNDER the floating numbers.
@@ -546,13 +570,17 @@ export class Renderer {
       ctx.textBaseline = 'bottom';
       ctx.fillText('✛', px + CELL / 2, py - 2);
     }
+  }
 
+  drawBattleStatus(L, pw) {
+    const { ctx, b, W, H, gw, gh, PANEL, CELL, ox, oy } = L;
+    const game = this.game;
     // Turn status + hints live in the left panel now (below the ladder).
     const a = b.active();
     if (a?.kind === 'monster') {
-      panelLine(`The ${a.ref.name} acts…`, 'bold 14px Georgia', '#e08080');
+      pw.line(`The ${a.ref.name} acts…`, 'bold 14px Georgia', '#e08080');
     } else if (a?.kind === 'hero' && b.mode === 'move') {
-      panelLine(`${a.ref.name}'s turn — ${b.movesLeft} move${b.movesLeft === 1 ? '' : 's'} left`, 'bold 14px Georgia', COLORS.stairs);
+      pw.line(`${a.ref.name}'s turn — ${b.movesLeft} move${b.movesLeft === 1 ? '' : 's'} left`, 'bold 14px Georgia', COLORS.stairs);
       // Bump preview: a foe in reach shows the odds — and why (stealth tags).
       const foe = b.monsters()
         .filter(mc => Math.abs(mc.x - a.x) + Math.abs(mc.y - a.y) === 1)
@@ -565,11 +593,11 @@ export class Renderer {
         else if (b.isUnaware(foe, a.ref)) tags.push('💤 unaware');
         if (b.isFlanked(foe)) tags.push('flanked');
         if (foe.ref.resist_physical?.includes(b.weaponKind(a.ref.weapon))) tags.push(`resists ${b.weaponKind(a.ref.weapon)} — half damage`);
-        const pct = Math.round(Math.max(5, Math.min(95, (21 + b.attackBonus(a.ref, foe.ref) - (10 + foe.ref.ac)) / 20 * 100)));
+        const pct = Math.round(hitChance(b.attackBonus(a.ref, foe.ref), foe.ref.ac) * 100);
         if (foe.ref.magic_to_hit && !a.ref.weapon.enchanted) {
-          panelLine(`bump the ${foe.ref.name}: NO EFFECT — it needs magic to hit!`, '13px Georgia', '#e08080', 16);
+          pw.line(`bump the ${foe.ref.name}: NO EFFECT — it needs magic to hit!`, '13px Georgia', '#e08080', 16);
         } else {
-          panelLine(`bump the ${foe.ref.name}: ${tags.some(t => t.startsWith('ASSASSINATE')) ? 'auto-crit' : `${pct}% to hit`}${tags.length ? ` (${tags.join(', ')})` : ''}`, '13px Georgia', '#e8d8a8', 16);
+          pw.line(`bump the ${foe.ref.name}: ${tags.some(t => t.startsWith('ASSASSINATE')) ? 'auto-crit' : `${pct}% to hit`}${tags.length ? ` (${tags.join(', ')})` : ''}`, '13px Georgia', '#e8d8a8', 16);
         }
       }
     } else if (b.mode === 'target') {
@@ -586,26 +614,25 @@ export class Renderer {
       let odds = '';
       const tgt = b.cursor && b.cursorValid() && b.monsterAt(b.cursor.x, b.cursor.y);
       if (tgt) {
-        const pct = pr => `${Math.round(Math.max(5, Math.min(95, pr * 100)))}%`;
+        const pct = pr => `${Math.round(pr * 100)}%`;
         if (p.kind === 'shoot') {
           odds = tgt.ref.magic_to_hit && !a.ref.weapon.enchanted
             ? ' · NO EFFECT — it needs magic to hit!'
-            : ` · ${pct((21 + b.attackBonus(a.ref, tgt.ref) - (10 + tgt.ref.ac)) / 20)} to hit${tgt.ref.resist_physical?.includes(b.weaponKind(a.ref.weapon)) ? ` (resists ${b.weaponKind(a.ref.weapon)} — half damage)` : ''}`;
+            : ` · ${pct(hitChance(b.attackBonus(a.ref, tgt.ref), tgt.ref.ac))} to hit${tgt.ref.resist_physical?.includes(b.weaponKind(a.ref.weapon)) ? ` (resists ${b.weaponKind(a.ref.weapon)} — half damage)` : ''}`;
         } else if (p.kind === 'deathblow') {
           odds = ' · an automatic critical — it cannot miss';
         } else if (p.spell) {
           const s = p.spell;
           if (s.auto) odds = ' · never misses';
           else if (s.save || s.type === 'afflict') {
-            // Insight and Overcast raise the bar — the preview shows the real DC.
-            const dc = 10 + s.level + abilityMod(a.ref.abilities[s.stat])
-              + (a.ref.insight?.dc ?? 0) + (s.dc_bonus ?? 0);
-            const failSave = (dc - (tgt.ref.save || 0) - 1) / 20;
+            // Insight and Overcast raise the bar — the preview shows the real DC (battle.spellMath: the same math the cast uses).
+            const { dc } = b.spellMath(a, s);
+            const failSave = saveFailChance(dc, tgt.ref.save || 0);
             odds = ` · save DC ${dc} — ${pct(failSave)} for full ${s.type === 'afflict' ? 'effect' : 'damage'}`;
           }
         }
       }
-      panelLine(`Aiming ${what} — range ${b.pending.range}${odds}`, 'bold 14px Georgia', COLORS.stairs);
+      pw.line(`Aiming ${what} — range ${b.pending.range}${odds}`, 'bold 14px Georgia', COLORS.stairs);
     }
     // The C hint NAMES the hero's battle arts — a power nobody sees is a
     // power nobody uses (Rage, Vanish, and every named Rite verb).
@@ -623,9 +650,14 @@ export class Renderer {
     const hints = b.mode === 'target'
       ? 'arrows — aim · Enter — unleash! · Esc — cancel'
       : `arrows — move & bump to attack · ${cHint}${a?.kind === 'hero' && b.canShoot(a) ? (b.shootBlock(a) ? `F — shoot (${b.shootBlock(a).startsWith('the quiver') ? 'quiver empty!' : 'stand still'}) · ` : `F — shoot${b.pointBlank(a.ref) ? ` (−${b.pointBlank(a.ref)} point-blank)` : ''}${Number.isFinite(this.game.quiverCount(a.ref)) ? ` · quiver ${this.game.quiverCount(a.ref)}/${this.game.quiverCap(a.ref)}` : ''} · `) : ''}${a?.kind === 'hero' && b.usableItems(a).length ? 'I — item · ' : ''}${a?.kind === 'hero' && b.swapOptions(a).length ? 'W — swap weapon · ' : ''}Space — end turn · Esc — flee`;
-    panelY += 8;
-    for (const hint of hints.split(' · ')) panelLine(hint, '12.5px Georgia', 'rgba(207,196,166,0.65)', 17);
+    pw.y += 8;
+    for (const hint of hints.split(' · ')) pw.line(hint, '12.5px Georgia', 'rgba(207,196,166,0.65)', 17);
+  }
 
+  drawBattleMenus(L) {
+    const { ctx, b, W, H, gw, gh, PANEL, CELL, ox, oy } = L;
+    const game = this.game;
+    const a = b.active();
     // Abilities menu overlay (spells + class battle arts). A high-level
     // caster's list outgrows nine digits, so the menu scrolls: arrows walk a
     // highlight, Enter casts it, digits still snap to the first nine.
@@ -637,16 +669,7 @@ export class Renderer {
       const list = full.slice(start, start + maxRows);
       const mw = 460, mh = 70 + list.length * RENDER.menuRow;
       const mx = PANEL + (W - PANEL - mw) / 2, my = (H - mh) / 2;
-      ctx.fillStyle = 'rgba(10,10,16,0.92)';
-      ctx.fillRect(mx, my, mw, mh);
-      ctx.strokeStyle = COLORS.stairs;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(mx, my, mw, mh);
-      ctx.fillStyle = COLORS.stairs;
-      ctx.font = 'bold 17px Georgia';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(`${a.ref.name}'s abilities${a.ref.maxSp ? ` — ${a.ref.sp} SP` : ''}${start > 0 ? ' ▲' : ''}${start + maxRows < full.length ? ' ▼' : ''}`, mx + mw / 2, my + 12);
+      this.menuFrame(mx, my, mw, mh, `${a.ref.name}'s abilities${a.ref.maxSp ? ` — ${a.ref.sp} SP` : ''}${start > 0 ? ' ▲' : ''}${start + maxRows < full.length ? ' ▼' : ''}`);
       list.forEach((s, i) => {
         const idx = start + i;
         const ly = my + 48 + i * RENDER.menuRow;
@@ -664,10 +687,7 @@ export class Renderer {
         ctx.fillStyle = s.affordable ? '#8a8a99' : '#55504c';
         ctx.fillText(s.description.length > 76 ? s.description.slice(0, 74) + '…' : s.description, mx + 38, ly + 17);
       });
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#8a8a99';
-      ctx.font = '12px Georgia';
-      ctx.fillText('↑↓ choose · Enter or number — cast · Esc — close', mx + mw / 2, my + mh - 22);
+      this.menuFooter(mx, my, mw, mh, '↑↓ choose · Enter or number — cast · Esc — close');
     }
 
     // Item menu overlay — same skin as the spell menu.
@@ -675,16 +695,7 @@ export class Renderer {
       const list = b.usableItems(a);
       const mw = 560, mh = 70 + list.length * RENDER.menuRow;
       const mx = PANEL + (W - PANEL - mw) / 2, my = (H - mh) / 2;
-      ctx.fillStyle = 'rgba(10,10,16,0.92)';
-      ctx.fillRect(mx, my, mw, mh);
-      ctx.strokeStyle = COLORS.stairs;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(mx, my, mw, mh);
-      ctx.fillStyle = COLORS.stairs;
-      ctx.font = 'bold 17px Georgia';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(`The party pouch — ${a.ref.name} drinks or reads`, mx + mw / 2, my + 12);
+      this.menuFrame(mx, my, mw, mh, `The party pouch — ${a.ref.name} drinks or reads`);
       list.forEach((it, i) => {
         const ly = my + 48 + i * RENDER.menuRow;
         ctx.textAlign = 'left';
@@ -698,10 +709,7 @@ export class Renderer {
         const line = it.kind === 'scroll' && it.reason ? it.reason : it.def.description;
         ctx.fillText(line.length > 88 ? line.slice(0, 86) + '…' : line, mx + 38, ly + 17);
       });
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#8a8a99';
-      ctx.font = '12px Georgia';
-      ctx.fillText('press a number to drink or read (ends the turn) · Esc to close', mx + mw / 2, my + mh - 22);
+      this.menuFooter(mx, my, mw, mh, 'press a number to drink or read (ends the turn) · Esc to close');
     }
 
     // Swap-weapon overlay (W) — same skin as the item menu.
@@ -709,16 +717,7 @@ export class Renderer {
       const list = b.swapOptions(a);
       const mw = 520, mh = 92 + list.length * RENDER.menuRow;
       const mx = PANEL + (W - PANEL - mw) / 2, my = (H - mh) / 2;
-      ctx.fillStyle = 'rgba(10,10,16,0.92)';
-      ctx.fillRect(mx, my, mw, mh);
-      ctx.strokeStyle = COLORS.stairs;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(mx, my, mw, mh);
-      ctx.fillStyle = COLORS.stairs;
-      ctx.font = 'bold 17px Georgia';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(`${a.ref.name} swaps weapons — now: ${a.ref.weapon.name}${a.ref.equipment.hand2 ? ` & ${this.game.itemDef(a.ref.equipment.hand2).name}` : ''}`, mx + mw / 2, my + 12);
+      this.menuFrame(mx, my, mw, mh, `${a.ref.name} swaps weapons — now: ${a.ref.weapon.name}${a.ref.equipment.hand2 ? ` & ${this.game.itemDef(a.ref.equipment.hand2).name}` : ''}`);
       ctx.font = 'italic 12px Georgia';
       ctx.fillStyle = '#8a8a99';
       ctx.fillText('drawing a one-hander in place of a bow brings a shield up with it', mx + mw / 2, my + 34);
@@ -734,12 +733,13 @@ export class Renderer {
         ctx.fillStyle = it.reason ? '#55504c' : '#8a8a99';
         ctx.fillText(it.reason ?? d.description ?? '', mx + 38, ly + 17);
       });
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#8a8a99';
-      ctx.font = '12px Georgia';
-      ctx.fillText('press a number to ready it (ends the turn) · Esc to close', mx + mw / 2, my + mh - 22);
+      this.menuFooter(mx, my, mw, mh, 'press a number to ready it (ends the turn) · Esc to close');
     }
+  }
 
+  drawBattleReaction(L) {
+    const { ctx, b, W, H, gw, gh, PANEL, CELL, ox, oy } = L;
+    const game = this.game;
     // Guardian's Stand: the blow hangs in the air while the player decides.
     if (b.pendingReaction) {
       const r = b.pendingReaction;
@@ -776,12 +776,60 @@ export class Renderer {
       ctx.fillText(`Y — ${r.guardian.name} takes the blow · N — let it land`, mx + mw / 2, my + 74);
       }
     }
+  }
 
+  drawBattleEnding(L) {
+    const { ctx, b, W, H, gw, gh, PANEL, CELL, ox, oy } = L;
+    const game = this.game;
     // Ending beat: let the killing blow's numbers land first, then banner.
     if (b.ending && performance.now() - b.endedAt > 700) {
       this.drawBanner(b.ending === 'victory' ? 'VICTORY!' : 'THE PARTY HAS FALLEN',
         b.ending === 'victory' ? COLORS.stairs : '#b03535');
     }
+  }
+
+  // A centered overlay menu's box, border and title — the abilities, item
+  // and swap menus share one skin.
+  menuFrame(mx, my, mw, mh, title) {
+    const { ctx } = this;
+    ctx.fillStyle = 'rgba(10,10,16,0.92)';
+    ctx.fillRect(mx, my, mw, mh);
+    ctx.strokeStyle = COLORS.stairs;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(mx, my, mw, mh);
+    ctx.fillStyle = COLORS.stairs;
+    ctx.font = 'bold 17px Georgia';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(title, mx + mw / 2, my + 12);
+  }
+
+  menuFooter(mx, my, mw, mh, text) {
+    const { ctx } = this;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#8a8a99';
+    ctx.font = '12px Georgia';
+    ctx.fillText(text, mx + mw / 2, my + mh - 22);
+  }
+
+  // A wall block: face, lit top edge, shadowed bottom edge (map and battle).
+  drawWallBlock(px, py, size) {
+    const { ctx } = this;
+    ctx.fillStyle = COLORS.wall;
+    ctx.fillRect(px, py, size, size);
+    ctx.fillStyle = COLORS.wallTop;
+    ctx.fillRect(px, py, size, 5);
+    ctx.fillStyle = COLORS.wallDark;
+    ctx.fillRect(px, py + size - 5, size, 5);
+  }
+
+  // A bar: dark trough, colored fill to `frac`.
+  drawBar(px, py, w, h, frac, color, trough = '#0a0a0f') {
+    const { ctx } = this;
+    ctx.fillStyle = trough;
+    ctx.fillRect(px, py, w, h);
+    ctx.fillStyle = color;
+    ctx.fillRect(px, py, w * Math.max(0, frac), h);
   }
 
   // ---- Spell visuals ----
@@ -919,11 +967,7 @@ export class Renderer {
   }
 
   drawHpBar(m, px, py) {
-    const { ctx } = this;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(px + 4, py - 1, TILE - 8, 4);
-    ctx.fillStyle = '#c04848';
-    ctx.fillRect(px + 4, py - 1, (TILE - 8) * Math.max(0, m.hp / m.maxHp), 4);
+    this.drawBar(px + 4, py - 1, TILE - 8, 4, m.hp / m.maxHp, '#c04848', '#000');
   }
 
   drawBanner(text, color) {

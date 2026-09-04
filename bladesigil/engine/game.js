@@ -5,7 +5,7 @@ import { DataError } from './loader.js';
 import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
 import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement, groupOfType, focusGroupOf, focusList, focusName, abilityPicksAllowed, growthPicksAllowed, growthEffect, growthNamed, growthPicks } from './progression.js';
-import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances } from './magic.js';
+import { unlockLevel, maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances } from './magic.js';
 import { autosave as autosaveRun, TEST_MODE } from './save.js';
 import { makeHero, makeMonster, rollHp, hpAtLevel } from './entities.js';
 import { MONSTER_ABILITIES, ABILITY_TYPES } from './monster-abilities.js';
@@ -247,7 +247,7 @@ export class Game {
     ch.spellbook.push(def.spell);
     audio.play('spell_arcane');
     if (ch.prepared.length < preparedSlots(this.data, ch) && spell.level <= maxSpellLevel(ch.level)) ch.prepared.push(def.spell); // the new page takes a free slot — nothing else is touched
-    this.log(`${ch.name} copies ${spell.name} into the spellbook — the scroll crumbles as the ink takes.${spell.level > maxSpellLevel(ch.level) ? ` (A level-${spell.level} spell: castable at character level ${[0, 1, 4, 8, 12, 16][spell.level]}.)` : ' Prepare it at any rest.'}`, 'good');
+    this.log(`${ch.name} copies ${spell.name} into the spellbook — the scroll crumbles as the ink takes.${spell.level > maxSpellLevel(ch.level) ? ` (A level-${spell.level} spell: castable at character level ${unlockLevel(spell.level)}.)` : ' Prepare it at any rest.'}`, 'good');
     return true;
   }
 
@@ -2078,9 +2078,13 @@ export class Game {
   // "scouting") or a Shadows thief with the Point Man pick (growth
   // "watch": true). Each rolls d100 under their skill; the first success
   // wears the credit (highest skill rolls first).
+  // The scout's warning chance: skill + the class's scouting bonus, capped —
+  // never a certainty. The sheet quotes the same number.
+  scoutChance(ch) { return Math.max(0, Math.min(SCOUT_CAP, this.heroSkill(ch) + (ch.cls.scouting?.bonus ?? 0))); }
+
   scouts() {
     return this.party.filter(ch => ch.alive && (ch.cls.scouting || growthEffect(this.data, ch, 'watch')))
-      .map(ch => ({ ch, chance: Math.max(0, Math.min(SCOUT_CAP, this.heroSkill(ch) + (ch.cls.scouting?.bonus ?? 0))),
+      .map(ch => ({ ch, chance: this.scoutChance(ch),
         what: ch.cls.scouting ? (ch.cls.scouting.name ?? 'Scouting') : (growthPicks(this.data, ch).find(o => o.watch)?.name ?? 'Point Man') }))
       .filter(s => s.chance > 0)
       .sort((a, b) => b.chance - a.chance);

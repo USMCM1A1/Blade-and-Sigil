@@ -4,8 +4,7 @@
 
 import { abilityMod } from './rules.js';
 import { classProg, laneOf, passiveOf, riteTier, favoredPicksOwed, groupOfType, focusGroupOf, focusList, focusName, growthOptions, growthPicks } from './progression.js';
-import { SCOUT_CAP } from './constants.js';
-import { magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, activeStances, spellSchool, FAMILIES } from './magic.js';
+import { unlockLevel, magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, activeStances, spellSchool, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
 
 // Every UI button clicks (designer's pick 2026-08-26: GAM_09) — except where
@@ -1061,7 +1060,7 @@ function renderMilestoneCard(game, ch, m) {
       ? `The road teaches its own songs. <b>${ch.name}</b> now knows <b>${sp?.name ?? m.spell}</b>.`
       : `In the quiet after prayer, a word arrives unbidden. <b>${ch.name}</b> now knows <b>${sp?.name ?? m.spell}</b> — a prayer no book teaches.`;
     power = { name: sp?.name ?? m.spell, blurb: `${sp?.description ?? ''} (${spellMetaLine(game, ch, { id: m.spell, ...sp })})` };
-    how = `It joins the C menu in battle like any prayer, castable from ${[0, 1, 4, 8, 12, 16][sp?.level ?? 1] <= ch.level ? 'now' : `character level ${[0, 1, 4, 8, 12, 16][sp?.level ?? 1]}`}.`;
+    how = `It joins the C menu in battle like any prayer, castable from ${unlockLevel(sp?.level ?? 1) <= ch.level ? 'now' : `character level ${unlockLevel(sp?.level ?? 1)}`}.`;
   } else if (m.kind === 'refinement') {
     step = 'Level 18 — mastery';
     headline = `Ten thousand repetitions have honed <b>${lane.verb?.name ?? 'the signature move'}</b> to its final edge.`;
@@ -1096,7 +1095,7 @@ function renderPath(game, ch) {
   let rows = '';
   const gift = giftOf(ch);
   if (gift) rows += row(true, gift.name, `${gift.blurb ?? ''}${ch.gift?.element ? ` Sworn against ${ch.gift.element}.` : ''}`, 'creation gift');
-  if (ch.cls.scouting) rows += row(true, ch.cls.scouting.name ?? 'Scouting', `${ch.cls.scouting.blurb ?? ''} (${Math.max(0, Math.min(SCOUT_CAP, game.heroSkill(ch) + (ch.cls.scouting.bonus ?? 0)))}% now)`, 'class');
+  if (ch.cls.scouting) rows += row(true, ch.cls.scouting.name ?? 'Scouting', `${ch.cls.scouting.blurb ?? ''} (${game.scoutChance(ch)}% now)`, 'class');
   if (ch.cls.favored_enemy) {
     const fav = Object.entries(ch.favored ?? {});
     const next = (ch.cls.favored_enemy.levels ?? []).find(l => l > ch.level);
@@ -1258,7 +1257,7 @@ function renderSpellbook(game) {
   let pages = '';
   for (let lvl = 1; lvl <= 5; lvl++) {
     const list = byLevel[lvl] ?? [];
-    const unlockAt = [0, 1, 4, 8, 12, 16][lvl];
+    const unlockAt = unlockLevel(lvl);
     const deep = lvl > tier;
     if (!list.length && deep) continue; // nothing to say about a level not yet reached
     const stanceLvl = model === 'lane' && list.length && list.every(s => s.stance);
