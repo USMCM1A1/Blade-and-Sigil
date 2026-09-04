@@ -8,7 +8,8 @@ import { spellPointsFor } from './magic.js';
 
 import { peekRun } from './save.js';
 
-const SAVE_KEY = 'bs_party';
+import { TEST_MODE } from './save.js';
+const SAVE_KEY = TEST_MODE ? 'bs_party_test' : 'bs_party';
 const PARTY_SIZE = 4;
 const ABILITIES = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
 const ABILITY_NAMES = {

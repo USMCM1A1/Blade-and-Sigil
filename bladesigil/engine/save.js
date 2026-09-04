@@ -7,7 +7,11 @@
 
 import { groupOfType } from './progression.js';
 
-const RUN_KEY = 'bs_run';
+// Test mode (2026-09-03, after a verification run overwrote the designer's
+// save): open the game as index.html?test and EVERY slot gets a _test
+// suffix — nothing done in that tab can touch the real run or party.
+export const TEST_MODE = typeof location !== 'undefined' && /[?&]test\b/.test(location.search);
+const RUN_KEY = TEST_MODE ? 'bs_run_test' : 'bs_run';
 const SAVE_VERSION = 1;
 
 // Everything about a hero that is played, not derived. Derived fields

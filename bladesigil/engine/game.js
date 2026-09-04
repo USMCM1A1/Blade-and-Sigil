@@ -6,7 +6,7 @@ import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
 import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement, groupOfType, focusGroupOf, focusList, focusName, abilityPicksAllowed, growthPicksAllowed, growthEffect, growthNamed, growthPicks } from './progression.js';
 import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances, FAMILIES } from './magic.js';
-import { autosave as autosaveRun } from './save.js';
+import { autosave as autosaveRun, TEST_MODE } from './save.js';
 import * as audio from './audio.js';
 
 // "a, b and c" — for lists spoken in the log.
@@ -413,7 +413,8 @@ export class Game {
   saveMarchingOrder() {
     if (!this.partyDef) return;
     try {
-      if (localStorage.getItem('bs_party')) localStorage.setItem('bs_party', JSON.stringify(this.partyDef));
+      const key = TEST_MODE ? 'bs_party_test' : 'bs_party';
+      if (localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(this.partyDef));
     } catch { /* private mode: the order lasts the run */ }
   }
 
