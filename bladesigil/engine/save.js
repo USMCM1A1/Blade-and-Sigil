@@ -6,6 +6,7 @@
 // The party DEFINITION ('bs_party') is separate and untouched by any of this.
 
 import { groupOfType } from './progression.js';
+import { HERO_FIELDS } from './entities.js';
 
 // Test mode (2026-09-03, after a verification run overwrote the designer's
 // save): open the game as index.html?test and EVERY slot gets a _test
@@ -14,15 +15,8 @@ export const TEST_MODE = typeof location !== 'undefined' && /[?&]test\b/.test(lo
 const RUN_KEY = TEST_MODE ? 'bs_run_test' : 'bs_run';
 const SAVE_VERSION = 1;
 
-// Everything about a hero that is played, not derived. Derived fields
-// (abilities-with-gear, ac, weapon, maxSp, hitBase…) are recomputed by
-// refreshDerived on load; battle-scoped fields are rebuilt by every fight.
-const HERO_FIELDS = ['name', 'level', 'row', 'xp', 'hp', 'maxHp', 'sp', 'alive',
-  'look', 'lane', 'focusType', 'focusTypes', 'abilityBoosts', 'growth', 'gift', 'bonusAbility', 'favored', 'favoredPicks',
-  'timedBuffs', 'counters', 'rite', 'spellbook', 'prepared', 'knownSpells',
-  'formerBook', 'studyOwed', 'bonusPicksTaken', 'spentRest', 'prepFresh',
-  'equipment', 'quiver', 'conditions', 'drained'];
-
+// HERO_FIELDS — everything about a hero that is played, not derived — is
+// derived from the hero shape in entities.js (refactor step 3).
 function classIdOf(data, ch) {
   return Object.keys(data.classes.classes).find(k => data.classes.classes[k] === ch.cls);
 }

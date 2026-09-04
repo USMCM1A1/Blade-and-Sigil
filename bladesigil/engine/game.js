@@ -7,6 +7,7 @@ import { generateFloor } from './dungeon.js';
 import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement, groupOfType, focusGroupOf, focusList, focusName, abilityPicksAllowed, growthPicksAllowed, growthEffect, growthNamed, growthPicks } from './progression.js';
 import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances } from './magic.js';
 import { autosave as autosaveRun, TEST_MODE } from './save.js';
+import { makeHero, makeMonster, rollHp, hpAtLevel } from './entities.js';
 import { VISION_RADIUS, MONSTER_AGGRO_RANGE, BATTLE_RADIUS, CAMP_AMBUSH_TURNS, CAMP_TURNS, AMBUSH_PACK, VAULT_BAND_FLOORS, SCOUT_CAP, LOG_CAP } from './constants.js';
 import { ELEMENTS, FAMILIES, ABILITIES, SAVES, KINDS, isDice, isDiceOrInt, conditionIds as conditionIdList, monsterIds as monsterIdList } from './validate.js';
 import * as audio from './audio.js';
@@ -175,9 +176,14 @@ export class Game {
   // A full night's rest: once-per-rest powers return, and Prepared Mind's
   // re-pick window opens (it closes again when the next battle begins).
   // An AMBUSHED camp grants neither — the night was never finished.
-  afterFullRest() {
-    for (const ch of this.party) {
+  // THE full rest (refactor step 3): inn, camp, temple and bench all come
+  // here. Each hero named is made whole — HP, SP, once-per-rest powers,
+  // drained life, Stances, a spellbook's re-pick window.
+  fullRest(heroes) {
+    for (const ch of heroes) {
       if (!ch.alive) continue;
+      ch.hp = ch.maxHp;
+      ch.sp = ch.maxSp;
       ch.spentRest = {};
       // Drained life (the wight's touch) flows back with a full night's
       // sleep — the designer's ruling: dread in the moment, no permanent
@@ -557,14 +563,9 @@ export class Game {
     if (this.gold < price) { this.log(`A night at the inn costs ${price} gold — the party cannot pay.`, 'info'); return false; }
     this.gold -= price;
     this.refillQuivers();
-    for (const ch of this.party) {
-      if (!ch.alive) continue;
-      ch.hp = ch.maxHp;
-      ch.sp = ch.maxSp;
-    }
     audio.play('inn');
     this.log(`The party sleeps soundly at the inn. Wounds mend and spirits return. (−${price} gold)`, 'good');
-    this.afterFullRest();
+    this.fullRest(this.party);
     return true;
   }
 
@@ -574,13 +575,11 @@ export class Game {
     if (this.gold < price) { this.log(`The offering is ${price} gold — the party cannot pay.`, 'info'); return false; }
     this.gold -= price;
     ch.alive = true;
-    if (ch.drained > 0) { ch.maxHp += ch.drained; ch.drained = 0; } // the altar restores what the undead drank
-    ch.hp = ch.maxHp;
-    ch.sp = ch.maxSp;
     ch.conditions = [];
     ch.timedBuffs = []; // a Stance died with them
     audio.play('temple_revive');
     this.log(`Light floods the altar — ${ch.name} draws breath once more! (−${price} gold)`, 'good');
+    this.fullRest([ch]); // the altar restores what the undead drank, and the day's spent powers
     return true;
   }
 
@@ -671,117 +670,7 @@ export class Game {
     };
   }
 
-  buildCharacter(def) {
-    const cls = this.data.classes.classes[def.class];
-    if (!cls) throw new DataError('data/party.json', `Unknown class "${def.class}" for ${def.name}. Valid: ${Object.keys(this.data.classes.classes).join(', ')}`);
-    const race = this.data.races.races[def.race];
-    if (!race) throw new DataError('data/party.json', `Unknown race "${def.race}" for ${def.name}. Valid: ${Object.keys(this.data.races.races).join(', ')}`);
-    if (!cls.allowed_races.includes(def.race)) {
-      throw new DataError('data/party.json', `${def.name}: a ${race.name} cannot be a ${cls.name}. Allowed races: ${cls.allowed_races.join(', ')}`);
-    }
-    // Apply racial ability bonus to rolled scores.
-    const abilities = { ...def.abilities };
-    for (const [ab, bonus] of Object.entries(race.ability_bonus)) abilities[ab] += bonus;
-    // The Half-Elf's floating +1: party.json "bonus_ability" (default DEX).
-    if (race.floating_bonus) {
-      const ab = def.bonus_ability ?? 'dex';
-      if (!(ab in abilities)) throw new DataError('data/party.json', `${def.name}: bonus_ability "${ab}" — use one of str, int, wis, dex, con, cha.`);
-      abilities[ab] += race.floating_bonus;
-    }
-
-    const lvlIdx = def.level - 1;
-    // The HP rule (designer, 2026-08-22): a hero starts with the MAX of their
-    // hit die at level 1; every level after that is rolled, rerolling ones.
-    // Heroes built above level 1 (premade parties, bench jumps) simulate
-    // those rolls so they match a hero who climbed there.
-    const conMod = abilityMod(abilities.con);
-    let maxHp = Math.max(1, cls.hp_die + conMod);
-    for (let l = 2; l <= def.level; l++) maxHp += this.rollHp(cls, conMod).gain;
-    if (!this.data.items.items[cls.starting_weapon]) {
-      throw new DataError('data/classes.json', `${cls.name}'s starting_weapon "${cls.starting_weapon}" is not in items.json. Valid: ${Object.keys(this.data.items.items).join(', ')}`);
-    }
-    const ch = {
-      name: def.name,
-      race, cls, level: def.level, row: def.row,
-      abilities,
-      hp: maxHp, maxHp,
-      sp: 0, maxSp: 0,
-      xp: 0,
-      // Attack math lives in battle.js: melee uses STR, ranged weapons use DEX
-      // (design doc), and battle buffs stack on top of hitBase.
-      // hitBase/attacks are computed in refreshDerived (lane offsets apply).
-      hitBase: 0,
-      attacks: 1,
-      // Progression v2: the lane walked at the fork (null until chosen), the
-      // Weapon Focus category, timed battle buffs (Rage), and the playstyle
-      // counters that will feed the level-20 Rite's titles.
-      // Appearance (2026-08-26): creation lets each hero pick one of four
-      // race+sex body/portrait variants; null falls back to the class art.
-      // party.json may use the friendly variant key ("m1"/"f2"), expanded here.
-      look: this.resolveLook(def),
-      lane: def.lane ?? null,
-      // Weapon families sworn. party.json may say "focus": "blade" or a
-      // list; a focus saved under the older rules was a raw weapon type
-      // ('med_blade'), which is read as its family ('blade').
-      focusTypes: [def.focus ?? []].flat().map(f => this.data.items.focus_groups?.[f] ? f : groupOfType(this.data, f)).filter(Boolean),
-      abilityBoosts: [],
-      growth: [],
-      // The creation gift (half-casters, companion doc v1): {id, element?}
-      // from classes.json creation_pick — resolved below.
-      gift: this.resolveGift(def, cls),
-      bonusAbility: def.bonus_ability ?? (race.floating_bonus ? 'dex' : null),
-      // Favored enemies (the Ranger): {family: bonus}; picks made so far.
-      favored: this.resolveFavored(def, cls),
-      favoredPicks: 0,
-      timedBuffs: [],
-      counters: Object.fromEntries(TRACKED_STATS.map(k => [k, 0])),
-      rite: null, // filled by the Level 20 Rite: {abilityName, sigil, title, tier}
-      // Magic v2: the Wizard lane's book & daily preparation, the Sorcerer
-      // lane's fixed repertoire, and the once-per-rest powers already spent.
-      spellbook: [],
-      prepared: [],
-      knownSpells: [],
-      formerBook: null, // magic v3: the Raw Gift sets the book aside here (its pages may be picked as bloodline)
-      studyOwed: 0,     // magic v3: free spellbook picks banked from study levels
-      bonusPicksTaken: 0, // magic v3: the Sorcerer's wild picks already made
-      spentRest: {},   // {archmage: true, miracle: true, ...} — cleared by a full rest
-      prepFresh: false, // Prepared Mind: the re-pick window a rest opens
-      // The paper doll: item ids from items.json. Hands hold weapons or a
-      // shield; a hero always keeps at least one weapon in hand.
-      equipment: {
-        hand1: cls.starting_weapon, hand2: null,
-        head: null, necklace: null, armor: null, cloak: null, boots: null,
-        ring1: null, ring2: null,
-      },
-      buffs: { hit: 0, dmg: 0 },
-      quiver: 0, // arrows this hero carries (filled from the pouch; see restockQuiver)
-      conditions: [], // {id, rounds, mapCounter} — see data/conditions.json
-      alive: true,
-    };
-    // The spellbook (magic v3): a wizard opens the class kit at level 1 — or
-    // the pages party.json names ("spells": [...]). A hero built above
-    // level 1 (premade parties, test parties) has studied on the road: the
-    // study credits they are owed are spent automatically so nobody faces
-    // a stack of modals on arrival.
-    if (def.spells) {
-      for (const id of def.spells) {
-        const sd = this.data.spells.spells[id];
-        if (!sd) throw new DataError('data/party.json', `${def.name}'s "spells" names "${id}", which isn't in spells.json.`);
-        if (!sd.classes.includes(def.class)) throw new DataError('data/party.json', `${def.name}'s "spells" names "${id}", which a ${cls.name} cannot cast.`);
-      }
-      ch.spellbook = [...def.spells];
-    }
-    if (Object.keys(ch.favored).length) ch.favoredPicks = 1;
-    refreshSpellbook(this.data, ch);
-    if (magicModel(this.data, ch) === 'spellbook' && def.level > 1) {
-      const kit = (cls.spellbook?.starting_spells ?? []).length;
-      ch.studyOwed = Math.max(0, studiesGrantedBy(ch) - Math.max(0, ch.spellbook.length - kit));
-      autoStudy(this.data, ch);
-    }
-    this.refreshDerived(ch);
-    ch.sp = ch.maxSp;
-    return ch;
-  }
+  buildCharacter(def) { return makeHero(this, def); }
 
   // Recompute everything a hero's gear touches: AC, weapon in hand, max SP.
   // Called at creation and after every equip/unequip. Every worn piece may
@@ -853,12 +742,7 @@ export class Game {
 
   // The HP a new level grants: roll the class hit die (ones are always
   // rerolled — the designer's rule), + CON modifier, minimum 1.
-  rollHp(cls, conMod) {
-    let rolled = roll(`1d${cls.hp_die}`);
-    let rerolled = false;
-    while (rolled === 1 && cls.hp_die > 1) { rerolled = true; rolled = roll(`1d${cls.hp_die}`); }
-    return { rolled, rerolled, gain: Math.max(1, rolled + conMod) };
-  }
+  rollHp(cls, conMod) { return rollHp(cls, conMod); }
 
   // The player takes the level (the button on the inventory screen).
   // New HP is ROLLED — 1d(class hit die) + CON modifier, minimum 1 — the
@@ -995,7 +879,7 @@ export class Game {
           const id = levelData.legend[c];
           const def = this.data.monsters.monsters[id];
           if (!def) throw new DataError(src, `Legend says "${c}" = "${id}" but there is no monster "${id}" in monsters.json. Valid: ${Object.keys(this.data.monsters.monsters).join(', ')}`);
-          this.monsters.push({ ...def, id, x, y, maxHp: def.hp, conditions: [] });
+          this.monsters.push(makeMonster(def, id, x, y));
           this.grid[y][x] = '.';
         } else if (!'#.+>$<S*'.includes(c)) {
           throw new DataError(src, `Unknown map symbol "${c}" at row ${y + 1}, column ${x + 1}. Use # . + > < $ * S @ or a letter from the legend.`);
@@ -1523,17 +1407,11 @@ export class Game {
       }
     }
 
-    const before = this.party.map(ch => ch.hp);
-    for (const ch of this.party) {
-      if (!ch.alive) continue;
-      ch.hp = ch.maxHp;
-      ch.sp = ch.maxSp;
-    }
     audio.play('camp');
-    const healed = this.party.some((ch, i) => ch.hp !== before[i]);
+    const healed = this.party.some(ch => ch.alive && ch.hp !== ch.maxHp);
     this.log(`The party makes camp and rests (−${mouths} rations). ${healed ? 'Wounds mend and spirits return.' : 'Spirits return.'}`, 'good');
     this.refillQuivers();
-    this.afterFullRest();
+    this.fullRest(this.party);
     // A watch of camp time passes AFTER the healing — lingering poison
     // ticks through the night, so cure it before you sleep.
     this.advanceTime(CAMP_TURNS);
@@ -1550,7 +1428,7 @@ export class Game {
     const count = AMBUSH_PACK.min + Math.floor(Math.random() * AMBUSH_PACK.extra);
     const spots = this.openSpotsAround(count);
     if (!spots.length) return null;
-    const pack = spots.map(s => ({ ...def, id, x: s.x, y: s.y, maxHp: def.hp, conditions: [] }));
+    const pack = spots.map(s => makeMonster(def, id, s.x, s.y));
     this.monsters.push(...pack);
     return pack;
   }
@@ -1619,9 +1497,7 @@ export class Game {
       }
       // Same HP rule as real play: max die at level 1, rolled (rerolling
       // ones) for every level after — simulated fresh for the jump.
-      const conMod = abilityMod(ch.abilities.con);
-      ch.maxHp = Math.max(1, ch.cls.hp_die + conMod);
-      for (let l = 2; l <= n; l++) ch.maxHp += this.rollHp(ch.cls, conMod).gain;
+      ch.maxHp = hpAtLevel(ch.cls, abilityMod(ch.abilities.con), n);
       if (ch.alive) ch.hp = ch.maxHp;
       this.refreshDerived(ch);
       if (ch.alive) ch.sp = ch.maxSp;
@@ -1640,7 +1516,7 @@ export class Game {
     for (const ch of this.party) {
       if (!ch.alive || ch.level >= 20) continue;
       let need = 0;
-      for (let i = 0; i < times && ch.level + i < 20; i++) need += 50 * (ch.level + i);
+      for (let i = 0; i < times && ch.level + i < 20; i++) need += this.xpToLevel({ level: ch.level + i });
       ch.xp = Math.max(ch.xp, need);
     }
     this.log(`TEST: the party has earned enough XP to level ${times > 1 ? `${times} times` : 'up'} — the gold ✚ marks who's ready (open I).`, 'info');
@@ -1649,10 +1525,9 @@ export class Game {
   debugHealParty() {
     for (const ch of this.party) {
       ch.alive = true;
-      ch.hp = ch.maxHp;
-      ch.sp = ch.maxSp;
       ch.conditions = [];
     }
+    this.fullRest(this.party);
     this.log('TEST: the party is made whole — wounds, deaths, and ailments erased.', 'good');
   }
 
@@ -1693,7 +1568,7 @@ export class Game {
       this.log('TEST: no open floor beside the party to spawn on.', 'info');
       return false;
     }
-    const pack = spots.map(s => ({ ...def, id, x: s.x, y: s.y, maxHp: def.hp, conditions: [] }));
+    const pack = spots.map(s => makeMonster(def, id, s.x, s.y));
     this.monsters.push(...pack);
     this.updateVision();
     this.log(`TEST: ${pack.length} ${def.name}${pack.length > 1 ? 's' : ''} step${pack.length > 1 ? '' : 's'} out of thin air — and the party has the drop!`, 'info');
@@ -1718,11 +1593,7 @@ export class Game {
       stances: activeStances(ch).map(b => ({ ...b })), // a Stance held going in is held coming out
     }));
     this.arena = true;
-    const dummies = Object.entries(this.data.monsters.monsters).map(([id, def]) => ({
-      ...def, id, x: 0, y: 0,
-      hp: def.hp * 5, maxHp: def.hp * 5,
-      conditions: [],
-    }));
+    const dummies = Object.entries(this.data.monsters.monsters).map(([id, def]) => makeMonster(def, id, 0, 0, { hp: def.hp * 5 }));
     this.log('Training arena: nothing here is real. Spells are free; leave with Esc.', 'info');
     this.battle = new Battle(this, this.data.arenaTemplate, dummies);
   }
