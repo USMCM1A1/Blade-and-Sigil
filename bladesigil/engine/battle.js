@@ -6,6 +6,7 @@ import { roll, d20, maxRoll, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
 import { ELEMENTS } from './validate.js';
 import { HERO_MOVE, MONSTER_MOVE, CHAIN_CAP, TIMING, COLOR } from './constants.js';
+import { MONSTER_ABILITIES } from './monster-abilities.js';
 import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName, focusMatches, groupOfType, focusName, growthEffect, growthNamed, growthPicks, snareGrant, snareKinds, snareDice } from './progression.js';
 import { spellCost, spellBuff, activeStances, unpreparedSpells, knownSpells, scaleSteps, giftOf, scrollGamble } from './magic.js';
 import * as audio from './audio.js';
@@ -2585,59 +2586,13 @@ export class Battle {
     return pool[0];
   }
 
-  abilityViable(c, ab) {
-    // A summoner holds its hand while its court is still standing
-    // (max_allies, default 4 living monsters besides itself).
-    if (ab.type === 'summon') {
-      const others = this.monsters().filter(mc => mc !== c).length;
-      return others < (ab.max_allies ?? 4);
-    }
-    // Blinking away only matters with a hero close (when_within, default 1).
-    if (ab.type === 'blink') {
-      const near = this.heroes().some(h => h.ref.alive && !h.ref.hidden
-        && this.dist(h.x, h.y, c.x, c.y) <= (ab.when_within ?? 1));
-      return near && !!this.farthestOpen(c);
-    }
-    // Vanishing is pointless if already unseen, and impossible while a
-    // Piercing Sight / Light of Truth burns or a seer's eye is on the field.
-    if (ab.type === 'vanish') return !c.unseen && !this.seersEye();
-    if (ab.type === 'haste') {
-      const targets = ab.targets === 'self' ? [c]
-        : this.monsters().filter(mc => mc !== c && mc.ref.hp > 0);
-      return targets.some(t => !t.haste);
-    }
-    if (ab.type === 'afflict' && ab.targets === 'party') {
-      return this.heroes().some(h => h.ref.alive
-        && !h.ref.conditions.some(cd => cd.id === ab.condition));
-    }
-    if (ab.type === 'afflict') {
-      return this.heroesInReach(c, ab.range ?? 6)
-        .some(h => !h.ref.conditions.some(cd => cd.id === ab.condition));
-    }
-    if (ab.type === 'spell') {
-      const s = this.game.data.spells.spells[ab.id];
-      if (!s) return false;
-      if (s.type === 'afflict' && !(s.area === 'all')) {
-        return this.heroesInReach(c, s.range ?? 6)
-          .some(h => !h.ref.conditions.some(cd => cd.id === s.condition.id));
-      }
-      if (s.area === 'all') return this.heroes().some(h => h.ref.alive && !h.ref.hidden);
-      return !!this.abilityTarget(c, { range: s.range ?? 6 });
-    }
-    return !!this.abilityTarget(c, ab); // bolt, breath: someone in reach
-  }
+  abilityViable(c, ab) { return MONSTER_ABILITIES[ab.type].viable(this, c, ab); }
 
   useAbility(c, ab) {
     (c.cds ??= {})[ab.index] = (ab.cooldown ?? 0) + 1; // +1: it ticks down at ITS next turn
     if (ab.uses !== undefined) (c.uses ??= {})[ab.index] = (c.uses?.[ab.index] ?? 0) + 1;
     if (ab.line) this.speak(c.ref, ab.line); // the mocking word comes before the deed
-    if (ab.type === 'summon') return this.monsterSummon(c, ab);
-    if (ab.type === 'blink') return this.monsterBlink(c, ab);
-    if (ab.type === 'vanish') return this.monsterVanish(c, ab);
-    if (ab.type === 'haste') return this.monsterHaste(c, ab);
-    if (ab.type === 'spell') return this.monsterCastSpell(c, ab);
-    if (ab.type === 'afflict') return this.monsterAfflict(c, ab);
-    return this.monsterBlast(c, ab); // bolt & breath share a resolution
+    return MONSTER_ABILITIES[ab.type].act(this, c, ab);
   }
 
   // The ability's save: a hero rolls d20 + ability mod + every named save

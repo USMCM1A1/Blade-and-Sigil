@@ -8,6 +8,7 @@ import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClas
 import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances } from './magic.js';
 import { autosave as autosaveRun, TEST_MODE } from './save.js';
 import { makeHero, makeMonster, rollHp, hpAtLevel } from './entities.js';
+import { MONSTER_ABILITIES, ABILITY_TYPES } from './monster-abilities.js';
 import { VISION_RADIUS, MONSTER_AGGRO_RANGE, BATTLE_RADIUS, CAMP_AMBUSH_TURNS, CAMP_TURNS, AMBUSH_PACK, VAULT_BAND_FLOORS, SCOUT_CAP, LOG_CAP } from './constants.js';
 import { ELEMENTS, FAMILIES, ABILITIES, SAVES, KINDS, isDice, isDiceOrInt, conditionIds as conditionIdList, monsterIds as monsterIdList } from './validate.js';
 import * as audio from './audio.js';
@@ -59,7 +60,6 @@ export function validateItems(data) {
 // resist_physical, touch, bonus_damage, splash), and the active "abilities"
 // list — every mistake named with its valid options.
 export function validateMonsters(data) {
-  const ABILITY_TYPES = ['bolt', 'breath', 'afflict', 'haste', 'spell', 'vanish', 'summon', 'blink'];
   const conditionIds = conditionIdList(data);
   const err = (id, msg) => { throw new DataError('data/monsters.json', `"${id}" ${msg}`); };
   for (const [id, m] of Object.entries(data.monsters.monsters)) {
@@ -88,29 +88,10 @@ export function validateMonsters(data) {
     const checkAbility = (ab, i, prefix = '') => {
       const where = `${prefix}ability ${i + 1}${ab.name ? ` (${ab.name})` : ''}`;
       if (ab.line !== undefined && typeof ab.line !== 'string') err(id, `${where} has a line that is not text — "line" is what the monster says when it uses this.`);
-      if (ab.type === 'summon') {
-        if (!Array.isArray(ab.monsters) || !ab.monsters.length) err(id, `${where} needs monsters: [{id, count}] — what it conjures.`);
-        for (const e of ab.monsters) {
-          if (!monsterIds.includes(e.id)) err(id, `${where} summons unknown monster "${e.id}". Valid: ${monsterIds.join(', ')}.`);
-          if (e.id === id) err(id, `${where} summons itself — that way lies an endless court.`);
-          if (e.count !== undefined && !isDiceOrInt(e.count)) err(id, `${where} count ${JSON.stringify(e.count)} — a whole number or dice like "1d2".`);
-        }
-        if (ab.max_allies !== undefined && (!Number.isInteger(ab.max_allies) || ab.max_allies < 1)) err(id, `${where} max_allies ${JSON.stringify(ab.max_allies)} — how many living allies it tolerates before it stops summoning (a whole number, 1+).`);
-      }
-      if (ab.type === 'blink' && ab.when_within !== undefined && (!Number.isInteger(ab.when_within) || ab.when_within < 0)) err(id, `${where} when_within ${JSON.stringify(ab.when_within)} — blink when a hero is this close (a whole number).`);
       if (!ABILITY_TYPES.includes(ab.type)) err(id, `${where} has type "${ab.type}". Valid: ${ABILITY_TYPES.join(', ')}.`);
+      // The type's own rules live in the registry (engine/monster-abilities.js).
+      MONSTER_ABILITIES[ab.type].validate?.(ab, { err: msg => err(id, msg), where, id, data, conditionIds, monsterIds });
       if (ab.save && !SAVES.includes(ab.save)) err(id, `${where} saves with "${ab.save}". Valid: ${SAVES.join(', ')}.`);
-      if ((ab.type === 'bolt' || ab.type === 'breath') && !isDice(ab.dice)) err(id, `${where} needs dice like "3d6".`);
-      if (ab.type === 'afflict') {
-        if (!conditionIds.includes(ab.condition)) err(id, `${where} inflicts "${ab.condition}". Valid conditions: ${conditionIds.join(', ')}.`);
-        if (ab.targets && ab.targets !== 'party') err(id, `${where} targets "${ab.targets}" — an afflict aims at one hero unless targets is "party".`);
-      }
-      if (ab.type === 'haste' && ab.targets && !['self', 'allies'].includes(ab.targets)) err(id, `${where} targets "${ab.targets}". A haste targets "self" or "allies".`);
-      if (ab.type === 'spell') {
-        const s = data.spells.spells[ab.id];
-        if (!s) err(id, `${where} casts unknown spell "${ab.id}" — check data/spells.json.`);
-        if (!['damage', 'afflict'].includes(s.type)) err(id, `${where} casts "${ab.id}" (a ${s.type} spell) — monsters cast only damage and afflict spells for now.`);
-      }
       if (ab.element && !ELEMENTS.includes(ab.element)) err(id, `${where} uses element "${ab.element}". Valid: ${ELEMENTS.join(', ')}.`);
       for (const [k, v] of Object.entries({ range: ab.range, area: ab.area, cooldown: ab.cooldown, uses: ab.uses, rounds: ab.rounds })) {
         if (v !== undefined && (!Number.isInteger(v) || v < 0)) err(id, `${where} has ${k} ${JSON.stringify(v)} — a whole number.`);
