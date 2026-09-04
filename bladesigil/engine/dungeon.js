@@ -7,6 +7,7 @@
 
 import { roll } from './rules.js';
 import { DataError } from './loader.js';
+import { isDiceOrInt } from './validate.js';
 
 const rint = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
@@ -65,7 +66,7 @@ function validateTier(tier, data) {
     for (const entry of e.group) {
       const id = typeof entry === 'string' ? entry : entry?.id;
       if (!id || !data.monsters.monsters[id]) throw new DataError('data/dungeon.json', `${where} names monster "${id ?? JSON.stringify(entry)}" but monsters.json has no such monster.`);
-      if (typeof entry === 'object' && entry.count !== undefined && typeof entry.count !== 'number' && !/^\d+d\d+([+-]\d+)?$/.test(entry.count)) {
+      if (typeof entry === 'object' && entry.count !== undefined && !isDiceOrInt(entry.count)) {
         throw new DataError('data/dungeon.json', `${where}: "count" must be a number or dice (e.g. "1d2" or "1d2-1").`);
       }
     }

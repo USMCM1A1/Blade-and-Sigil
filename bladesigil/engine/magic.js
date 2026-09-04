@@ -39,10 +39,9 @@
 
 import { laneOf, passiveOf } from './progression.js';
 import { DataError } from './loader.js';
+import { ELEMENTS, FAMILIES, ABILITIES, isDice, conditionIds, classIds as classIdList } from './validate.js';
 
-const DICE_RE = /^\d+d\d+([+-]\d+)?$|^\d+$/;
-const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
-export const FAMILIES = ['undead', 'outsider', 'beast', 'vermin', 'humanoid', 'construct', 'ooze', 'aberration', 'dragon', 'elemental'];
+export { FAMILIES }; // older importers still take it from here
 const UNLOCK = [0, 1, 4, 8, 12, 16]; // spell level → character level it opens at
 
 // ---- Scroll synthesis (runs BEFORE validation, from main.js) ----
@@ -80,17 +79,17 @@ export function deriveScrollItems(data) {
 // blocks, conditions.json effects, and the scrolls that point into spells —
 // file, what's wrong, and the valid options.
 export function validateMagic(data) {
-  const classIds = Object.keys(data.classes.classes);
-  const condIds = Object.keys(data.conditions.conditions);
+  const classIds = classIdList(data);
+  const condIds = conditionIds(data);
   const spells = data.spells.spells;
-  const ABILITIES = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
 
   for (const [id, c] of Object.entries(data.conditions.conditions)) {
+    if (id.startsWith('_')) continue;
     const where = `data/conditions.json ("${id}")`;
     if (!['damage', 'skip', 'stat', 'slow'].includes(c.effect)) {
       throw new DataError(where, `Unknown effect "${c.effect}". Use damage (lose dice HP each tick), skip (lose the turn), stat (hit/dmg/ac/saves modifiers while it lasts), or slow (acts on even rounds only).`);
     }
-    if (c.effect === 'damage' && !DICE_RE.test(c.dice ?? '')) throw new DataError(where, `A damage condition needs "dice" (e.g. "1d4").`);
+    if (c.effect === 'damage' && !isDice(c.dice)) throw new DataError(where, `A damage condition needs "dice" (e.g. "1d4").`);
     if (c.effect === 'stat' && !['hit', 'dmg', 'ac', 'saves'].some(k => typeof c[k] === 'number')) {
       throw new DataError(where, `A stat condition needs at least one of "hit", "dmg", "ac", "saves" (negative numbers weaken, e.g. "hit": -2; "save" alone names the resisting ability).`);
     }
@@ -113,7 +112,7 @@ export function validateMagic(data) {
     }
     if (s.stat && !ABILITIES.includes(s.stat)) throw new DataError(where, `"stat" must be an ability: ${ABILITIES.join(', ')}.`);
     if (s.school && !['arcane', 'divine'].includes(s.school)) throw new DataError(where, `"school" must be arcane or divine.`);
-    if ((s.type === 'damage' || s.type === 'heal') && !DICE_RE.test(s.dice ?? '')) {
+    if ((s.type === 'damage' || s.type === 'heal') && !isDice(s.dice)) {
       throw new DataError(where, `A ${s.type} spell needs "dice" (e.g. "${s.level * 2}d6").`);
     }
     if (s.type === 'afflict' && !s.condition) {
@@ -163,8 +162,8 @@ export function validateMagic(data) {
       for (const c of Array.isArray(s.immune_conditions) ? s.immune_conditions : []) {
         if (!condIds.includes(c)) throw new DataError(where, `immune_conditions "${c}" isn't in conditions.json. Valid: ${condIds.join(', ')}`);
       }
-      if (s.absorb !== undefined && !DICE_RE.test(s.absorb)) throw new DataError(where, `"absorb" must be dice (e.g. "1d8") — a shield that drinks that much damage.`);
-      if (s.bonus_damage && (!DICE_RE.test(s.bonus_damage.dice ?? '') || !ELEMENTS.includes(s.bonus_damage.element))) {
+      if (s.absorb !== undefined && !isDice(s.absorb)) throw new DataError(where, `"absorb" must be dice (e.g. "1d8") — a shield that drinks that much damage.`);
+      if (s.bonus_damage && (!isDice(s.bonus_damage.dice) || !ELEMENTS.includes(s.bonus_damage.element))) {
         throw new DataError(where, `"bonus_damage" needs {dice, element}: dice like "1d6", element from: ${ELEMENTS.join(', ')}.`);
       }
       if (s.resist !== undefined) {
@@ -193,7 +192,7 @@ export function validateMagic(data) {
       const sc = s.scale;
       if (typeof sc.per_levels !== 'number' || sc.per_levels < 1) throw new DataError(where, `"scale" needs "per_levels" (e.g. 2 = one step every 2 caster levels past the spell's unlock).`);
       if (sc.max !== undefined && (typeof sc.max !== 'number' || sc.max < 1)) throw new DataError(where, `scale "max" is the most steps it can grow (1 or more).`);
-      if (sc.dice !== undefined && !DICE_RE.test(sc.dice)) throw new DataError(where, `scale "dice" must be dice (e.g. "1d6") added per step.`);
+      if (sc.dice !== undefined && !isDice(sc.dice)) throw new DataError(where, `scale "dice" must be dice (e.g. "1d6") added per step.`);
       if (!['dice', 'flat', 'rounds', 'extra_targets', 'ac', 'area'].some(k => sc[k] !== undefined)) {
         throw new DataError(where, `"scale" needs something to grow: dice, flat, rounds, extra_targets, ac, or area (per step).`);
       }

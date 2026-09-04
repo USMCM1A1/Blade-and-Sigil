@@ -2,6 +2,7 @@
 
 // Parse and roll dice strings like "1d8", "2d6+1", "3d20+20".
 export function roll(diceStr) {
+  if (/^\d+$/.test(String(diceStr).trim())) return parseInt(diceStr, 10); // a flat amount
   const m = /^(\d+)d(\d+)([+-]\d+)?$/.exec(diceStr.trim());
   if (!m) throw new Error(`Bad dice string: "${diceStr}"`);
   const [, count, sides, mod] = m;
@@ -14,6 +15,7 @@ export const d20 = () => 1 + Math.floor(Math.random() * 20);
 
 // The biggest a dice string can roll — a natural 20 deals this (crits).
 export function maxRoll(diceStr) {
+  if (/^\d+$/.test(String(diceStr).trim())) return parseInt(diceStr, 10);
   const m = /^(\d+)d(\d+)([+-]\d+)?$/.exec(diceStr.trim());
   if (!m) throw new Error(`Bad dice string: "${diceStr}"`);
   const [, count, sides, mod] = m;

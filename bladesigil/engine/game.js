@@ -5,8 +5,9 @@ import { DataError } from './loader.js';
 import { Battle } from './battle.js';
 import { generateFloor } from './dungeon.js';
 import { laneOf, passiveOf, classProg, pendingChoices, focusOptions, displayClass, riteTier, TRACKED_STATS, hasRefinement, groupOfType, focusGroupOf, focusList, focusName, abilityPicksAllowed, growthPicksAllowed, growthEffect, growthNamed, growthPicks } from './progression.js';
-import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances, FAMILIES } from './magic.js';
+import { maxSpellLevel, spellPointsFor, spellCost, magicModel, refreshSpellbook, autoPrepare, castableSpells, knownSpells, preparedSlots, studiesGrantedBy, autoStudy, scrollReadable, revelationsAt, spellSchool, laneSpellsAt, laneSpells, giftOf, heroMaxSpellLevel, spellBuff, activeStances } from './magic.js';
 import { autosave as autosaveRun, TEST_MODE } from './save.js';
+import { ELEMENTS, FAMILIES, ABILITIES, SAVES, KINDS, isDice, isDiceOrInt, conditionIds as conditionIdList, monsterIds as monsterIdList } from './validate.js';
 import * as audio from './audio.js';
 
 // "a, b and c" — for lists spoken in the log.
@@ -16,10 +17,7 @@ function listWords(words) {
 
 // Itemization v2: friendly boot-time validation for the new item fields.
 export function validateItems(data) {
-  const ABILITIES = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
   const EFFECTS = ['heal', 'cure', 'mana', 'invisibility', 'portal'];
-  const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
-  const FAMILIES = ['undead', 'outsider', 'beast', 'vermin', 'humanoid', 'construct', 'ooze', 'aberration', 'dragon', 'elemental'];
   for (const [id, d] of Object.entries(data.items.items)) {
     if (d.tier !== undefined && ![1, 2, 3, 4, 5].includes(d.tier)) {
       throw new DataError('data/items.json', `"${id}" has tier ${JSON.stringify(d.tier)} — tiers run 1 (regular) to 5 (unique).`);
@@ -40,7 +38,7 @@ export function validateItems(data) {
         throw new DataError('data/items.json', `"${id}" resists "${e}". Valid elements: ${ELEMENTS.join(', ')}.`);
       }
     }
-    if (d.bonus_damage && (!/^\d+(d\d+([+-]\d+)?)?$/.test(d.bonus_damage.dice ?? '') || !ELEMENTS.includes(d.bonus_damage.element))) {
+    if (d.bonus_damage && (!isDice(d.bonus_damage.dice) || !ELEMENTS.includes(d.bonus_damage.element))) {
       throw new DataError('data/items.json', `"${id}" bonus_damage needs {dice, element}: dice like "1d6" (or a flat "1"), element from: ${ELEMENTS.join(', ')}.`);
     }
     if (d.double_vs && !FAMILIES.includes(d.double_vs)) {
@@ -59,13 +57,8 @@ export function validateItems(data) {
 // resist_physical, touch, bonus_damage, splash), and the active "abilities"
 // list — every mistake named with its valid options.
 export function validateMonsters(data) {
-  const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
-  const FAMILIES = ['undead', 'outsider', 'beast', 'vermin', 'humanoid', 'construct', 'ooze', 'aberration', 'dragon', 'elemental'];
-  const KINDS = ['edged', 'piercing', 'blunt'];
   const ABILITY_TYPES = ['bolt', 'breath', 'afflict', 'haste', 'spell', 'vanish', 'summon', 'blink'];
-  const SAVES = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
-  const DICE = /^\d+d\d+([+-]\d+)?$/;
-  const conditionIds = Object.keys(data.conditions.conditions).filter(k => !k.startsWith('_'));
+  const conditionIds = conditionIdList(data);
   const err = (id, msg) => { throw new DataError('data/monsters.json', `"${id}" ${msg}`); };
   for (const [id, m] of Object.entries(data.monsters.monsters)) {
     if (id.startsWith('_')) continue;
@@ -83,13 +76,13 @@ export function validateMonsters(data) {
     }
     if (m.drains) {
       const a = m.drains.amount;
-      if (a !== 'level' && a !== 'damage' && !DICE.test(a ?? '')) err(id, `drains amount ${JSON.stringify(a)} — use dice ("1d4"), "level" (a level's worth of HP), or "damage" (what the blow dealt).`);
+      if (a !== 'level' && a !== 'damage' && !isDice(a)) err(id, `drains amount ${JSON.stringify(a)} — use dice ("1d4"), "level" (a level's worth of HP), or "damage" (what the blow dealt).`);
     }
-    if (m.bonus_damage && (!DICE.test(m.bonus_damage.dice ?? '') || !ELEMENTS.includes(m.bonus_damage.element))) err(id, `bonus_damage needs {dice, element} — dice like "2d6", element from: ${ELEMENTS.join(', ')}.`);
-    if (m.splash && (!DICE.test(m.splash.dice ?? '') || !ELEMENTS.includes(m.splash.element))) err(id, `splash needs {dice, element} — dice like "1d6", element from: ${ELEMENTS.join(', ')}.`);
-    if (m.death_burst && (!DICE.test(m.death_burst.dice ?? '') || (m.death_burst.element && !ELEMENTS.includes(m.death_burst.element)))) err(id, `death_burst needs {dice, element?, area?, save?, dc?} — dice like "3d6", element from: ${ELEMENTS.join(', ')}.`);
+    if (m.bonus_damage && (!isDice(m.bonus_damage.dice) || !ELEMENTS.includes(m.bonus_damage.element))) err(id, `bonus_damage needs {dice, element} — dice like "2d6", element from: ${ELEMENTS.join(', ')}.`);
+    if (m.splash && (!isDice(m.splash.dice) || !ELEMENTS.includes(m.splash.element))) err(id, `splash needs {dice, element} — dice like "1d6", element from: ${ELEMENTS.join(', ')}.`);
+    if (m.death_burst && (!isDice(m.death_burst.dice) || (m.death_burst.element && !ELEMENTS.includes(m.death_burst.element)))) err(id, `death_burst needs {dice, element?, area?, save?, dc?} — dice like "3d6", element from: ${ELEMENTS.join(', ')}.`);
     if (m.fear_aura && (!Number.isInteger(m.fear_aura.dc) || !Number.isInteger(m.fear_aura.rounds) || m.fear_aura.rounds < 1)) err(id, `fear_aura needs {dc: N, rounds: N} — a WIS save DC to close with or stand beside it, and how long the fright lasts.`);
-    const monsterIds = Object.keys(data.monsters.monsters).filter(k => !k.startsWith('_'));
+    const monsterIds = monsterIdList(data);
     const checkAbility = (ab, i, prefix = '') => {
       const where = `${prefix}ability ${i + 1}${ab.name ? ` (${ab.name})` : ''}`;
       if (ab.line !== undefined && typeof ab.line !== 'string') err(id, `${where} has a line that is not text — "line" is what the monster says when it uses this.`);
@@ -98,14 +91,14 @@ export function validateMonsters(data) {
         for (const e of ab.monsters) {
           if (!monsterIds.includes(e.id)) err(id, `${where} summons unknown monster "${e.id}". Valid: ${monsterIds.join(', ')}.`);
           if (e.id === id) err(id, `${where} summons itself — that way lies an endless court.`);
-          if (e.count !== undefined && !(Number.isInteger(e.count) && e.count >= 1) && !DICE.test(String(e.count))) err(id, `${where} count ${JSON.stringify(e.count)} — a whole number or dice like "1d2".`);
+          if (e.count !== undefined && !isDiceOrInt(e.count)) err(id, `${where} count ${JSON.stringify(e.count)} — a whole number or dice like "1d2".`);
         }
         if (ab.max_allies !== undefined && (!Number.isInteger(ab.max_allies) || ab.max_allies < 1)) err(id, `${where} max_allies ${JSON.stringify(ab.max_allies)} — how many living allies it tolerates before it stops summoning (a whole number, 1+).`);
       }
       if (ab.type === 'blink' && ab.when_within !== undefined && (!Number.isInteger(ab.when_within) || ab.when_within < 0)) err(id, `${where} when_within ${JSON.stringify(ab.when_within)} — blink when a hero is this close (a whole number).`);
       if (!ABILITY_TYPES.includes(ab.type)) err(id, `${where} has type "${ab.type}". Valid: ${ABILITY_TYPES.join(', ')}.`);
       if (ab.save && !SAVES.includes(ab.save)) err(id, `${where} saves with "${ab.save}". Valid: ${SAVES.join(', ')}.`);
-      if ((ab.type === 'bolt' || ab.type === 'breath') && !DICE.test(ab.dice ?? '')) err(id, `${where} needs dice like "3d6".`);
+      if ((ab.type === 'bolt' || ab.type === 'breath') && !isDice(ab.dice)) err(id, `${where} needs dice like "3d6".`);
       if (ab.type === 'afflict') {
         if (!conditionIds.includes(ab.condition)) err(id, `${where} inflicts "${ab.condition}". Valid conditions: ${conditionIds.join(', ')}.`);
         if (ab.targets && ab.targets !== 'party') err(id, `${where} targets "${ab.targets}" — an afflict aims at one hero unless targets is "party".`);
@@ -650,7 +643,6 @@ export class Game {
     const raw = def.gift == null ? { id: pick.options[0].id } : typeof def.gift === 'string' ? { id: def.gift } : def.gift;
     const opt = pick.options.find(o => o.id === raw.id);
     if (!opt) throw new DataError('data/party.json', `${def.name}: unknown gift "${raw.id}" for a ${cls.name}. Valid: ${pick.options.map(o => o.id).join(', ')}`);
-    const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
     if (opt.ac_vs_element !== undefined) {
       const el = raw.element ?? ELEMENTS[0];
       if (!ELEMENTS.includes(el)) throw new DataError('data/party.json', `${def.name}: gift "${opt.id}" needs an "element" from: ${ELEMENTS.join(', ')}`);

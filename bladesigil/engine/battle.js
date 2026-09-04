@@ -4,6 +4,7 @@
 
 import { roll, d20, maxRoll, abilityMod } from './rules.js';
 import { DataError } from './loader.js';
+import { ELEMENTS } from './validate.js';
 import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName, focusMatches, groupOfType, focusName, growthEffect, growthNamed, growthPicks, snareGrant, snareKinds, snareDice } from './progression.js';
 import { spellCost, spellBuff, activeStances, unpreparedSpells, knownSpells, scaleSteps, giftOf, scrollGamble } from './magic.js';
 import * as audio from './audio.js';
@@ -2269,7 +2270,7 @@ export class Battle {
     targets = targets.filter(t => !spared.includes(t));
     if (!s.auto && s.save && targets.length) this.game.log(`Save DC ${m.dc} (${m.dcMath}).`, 'info');
     let dealt = 0;
-    const spellElem = ['fire', 'frost', 'lightning', 'poison'].includes(s.fx?.sound) ? s.fx.sound : null;
+    const spellElem = ELEMENTS.includes(s.fx?.sound) ? s.fx.sound : null;
     for (const t of targets) {
       const ref = t.ref;
       if (t.kind === 'monster' && ref.hp <= 0) continue; // an earlier dart already finished it
@@ -2869,7 +2870,7 @@ export class Battle {
             this.game.log(`${hc.ref.name} shrugs off the ${s.name.toLowerCase()} (${text}).`);
             return;
           }
-          const elem = ['fire', 'frost', 'lightning', 'poison'].includes(s.fx?.sound) ? s.fx.sound : null;
+          const elem = ELEMENTS.includes(s.fx?.sound) ? s.fx.sound : null;
           const bits = [`${s.name} ${math}${saved ? `, halved — ${text}` : text ? ` · ${text}` : ''}`];
           const before = hc.ref.hp;
           this.abilityHit(m, hc, dmg, elem, bits);

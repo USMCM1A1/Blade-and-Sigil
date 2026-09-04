@@ -4,6 +4,7 @@
 // shape as data/party.json; created parties are saved in the browser.
 
 import { abilityMod } from './rules.js';
+import { ABILITIES, ELEMENTS, FAMILIES } from './validate.js';
 import { spellPointsFor } from './magic.js';
 
 import { peekRun } from './save.js';
@@ -11,7 +12,6 @@ import { peekRun } from './save.js';
 import { TEST_MODE } from './save.js';
 const SAVE_KEY = TEST_MODE ? 'bs_party_test' : 'bs_party';
 const PARTY_SIZE = 4;
-const ABILITIES = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
 const ABILITY_NAMES = {
   str: 'Strength', int: 'Intelligence', wis: 'Wisdom',
   dex: 'Dexterity', con: 'Constitution', cha: 'Charisma',
@@ -178,8 +178,6 @@ export function choosePartyDef(data) {
         // ---- Step 1 of 2: the mechanics ----
         function renderBuild() {
           const { race, allowed, cls, bonus, final, hp, ac, weap, hit, pick, giftOpt } = derive();
-          const ELEMENTS = ['fire', 'frost', 'lightning', 'poison'];
-          const FAMILIES = ['undead', 'outsider', 'beast', 'vermin', 'humanoid', 'construct', 'ooze', 'aberration', 'dragon', 'elemental'];
           const favoredHtml = cls.favored_enemy ? `
                   <label class="cr-label">Favored enemy <span class="cr-dim">(+1 to hit and damage against one kind of monster; more picks at levels ${cls.favored_enemy.levels.slice(1).join('/')})</span></label>
                   <div class="cr-grid">

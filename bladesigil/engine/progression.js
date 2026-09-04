@@ -6,6 +6,7 @@
 // themselves are applied in game.js (stat offsets) and battle.js (abilities).
 
 import { DataError } from './loader.js';
+import { conditionIds } from './validate.js';
 import { spellPicksOwed, studiesOwed, bonusPicksOwed } from './magic.js';
 
 // The half-caster classes (Spellblade, Stoneshaper — companion doc v1,
@@ -247,7 +248,7 @@ export function validateProgression(data) {
     'chest_safe', 'find_sure', 'saves', 'snare', 'see_hidden', 'watch'];
   const VITAL_WHEN = ['poisoned', 'wounded', 'held', 'frightened', 'alone', 'bigger'];
   const BRACE_VS = ['spell', 'trap', 'ranged'];
-  const condIds = Object.keys(data.conditions.conditions).filter(k => !k.startsWith('_'));
+  const condIds = conditionIds(data);
   for (const [cid, c] of Object.entries(data.progression.classes ?? {})) {
     for (const lane of c.lanes ?? []) {
       const g = lane.growth;
