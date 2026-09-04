@@ -40,6 +40,7 @@
 import { laneOf, passiveOf } from './progression.js';
 import { DataError } from './loader.js';
 import { ELEMENTS, FAMILIES, ABILITIES, isDice, conditionIds, classIds as classIdList } from './validate.js';
+import { SPELL_TYPES } from './spell-effects.js';
 
 export { FAMILIES }; // older importers still take it from here
 const UNLOCK = [0, 1, 4, 8, 12, 16]; // spell level → character level it opens at
@@ -107,7 +108,7 @@ export function validateMagic(data) {
     if (!Array.isArray(s.classes) || !s.classes.length || s.classes.some(c => !classIds.includes(c))) {
       throw new DataError(where, `"classes" must list who casts it. Valid: ${classIds.join(', ')}`);
     }
-    if (!['damage', 'heal', 'buff', 'afflict', 'cure', 'raise'].includes(s.type)) {
+    if (!SPELL_TYPES.includes(s.type)) {
       throw new DataError(where, `Unknown type "${s.type}". Use damage, heal, buff, afflict, cure, or raise.`);
     }
     if (s.stat && !ABILITIES.includes(s.stat)) throw new DataError(where, `"stat" must be an ability: ${ABILITIES.join(', ')}.`);

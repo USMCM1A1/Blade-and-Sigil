@@ -8,6 +8,7 @@ import { ELEMENTS } from './validate.js';
 import { HERO_MOVE, MONSTER_MOVE, CHAIN_CAP, TIMING, COLOR } from './constants.js';
 import { MONSTER_ABILITIES } from './monster-abilities.js';
 import { CLASS_ACTIVES, BATTLE_FLAGS, LAPSES, SNARE_RIDERS } from './class-actives.js';
+import { SPELL_EFFECTS } from './spell-effects.js';
 import { laneOf, passiveOf, hasVerb, hasCapstone, hasRefinement, riteOf, passiveName, focusMatches, groupOfType, focusName, growthEffect, growthNamed, growthPicks, snareGrant, snareKinds, snareDice } from './progression.js';
 import { spellCost, spellBuff, activeStances, unpreparedSpells, knownSpells, scaleSteps, giftOf, scrollGamble } from './magic.js';
 import * as audio from './audio.js';
@@ -1078,7 +1079,7 @@ export class Battle {
   dist(ax, ay, bx, by) { return Math.max(Math.abs(ax - bx), Math.abs(ay - by)); }
 
   // Overcast can boost any spell that rolls dice (damage or healing).
-  overcastable(s) { return s.type === 'damage' || s.type === 'heal'; }
+  overcastable(s) { return !!SPELL_EFFECTS[s.type].overcast; }
 
   overcastCost(ch, base) {
     return hasRefinement(this.game.data, ch, 'overcast_cheap') ? Math.ceil(base * 1.5) : base * 2;
@@ -1195,7 +1196,7 @@ export class Battle {
       || ((s.range ?? 0) === 0 && (s.area ?? 0) > 0);
     if (selfCentered) { this.mode = 'move'; this.castAt(c, s, c.x, c.y); return; }
     this.pending = { kind: 'spell', spell: s, range: s.range ?? 0 };
-    this.beginTargeting(['heal', 'cure', 'raise', 'buff'].includes(s.type), s);
+    this.beginTargeting(!!SPELL_EFFECTS[s.type].friendly, s);
   }
 
   // Capstone actives. Like a swing or a spell, using one ends the turn.
@@ -1367,11 +1368,8 @@ export class Battle {
   // OTHER living ally for a single-ally buff — then anyone living.
   friendlyCandidates(s) {
     const alive = this.heroes().filter(h => h.ref.alive);
-    if (s?.type === 'raise') return this.heroes().filter(h => !h.ref.alive);
-    let pick = [];
-    if (s?.type === 'cure') pick = alive.filter(h => h.ref.conditions.some(cd => s.cures === 'all' || s.cures?.includes(cd.id)));
-    else if (s?.type === 'buff') pick = alive.filter(h => h !== this.active());
-    else pick = alive.filter(h => h.ref.hp < h.ref.maxHp);
+    if (s?.type === 'raise') return SPELL_EFFECTS.raise.candidates(this, s, alive);
+    const pick = SPELL_EFFECTS[s?.type]?.candidates?.(this, s, alive) ?? alive.filter(h => h.ref.hp < h.ref.maxHp);
     return pick.length ? pick : alive;
   }
 
@@ -1535,16 +1533,8 @@ export class Battle {
   // Cast (or read) a spell at a square. Returns false — crosshair stays up —
   // when the square is no legal target for it.
   castAt(c, s, x, y) {
-    // Legal-target checks first.
-    if (s.type === 'heal' || s.type === 'cure' || (s.type === 'buff' && s.targets === 'ally')) {
-      if (s.targets !== 'allies' && s.targets !== 'self' && !this.heroAt(x, y)) return false;
-    } else if (s.type === 'raise') {
-      const fallen = this.heroes().find(h => !h.ref.alive && h.x === x && h.y === y);
-      if (!fallen) return false;
-    } else if (s.type === 'afflict' || s.type === 'damage') {
-      const aimed = s.area === 'all' || (c.ref.maelstromArmed && s.type === 'damage' && !fromScroll(s));
-      if (!aimed && !(s.area > 0) && !this.monsterAt(x, y)) return false;
-    }
+    // Legal-target checks first (per effect type — engine/spell-effects.js).
+    if (!SPELL_EFFECTS[s.type].legal(this, c, s, x, y)) return false;
     if (this.mode === 'target') this.cancelTargeting();
     c.ref.hidden = false; // spellwork glows — the shadows can't keep you
     this.spendSpell(c.ref, s);
@@ -1573,13 +1563,11 @@ export class Battle {
   // A spell's voice: its element class from spells.json fx.sound
   // (fire/frost/lightning/light/arcane), or heal/buff/arcane by type.
   spellSound(s) {
-    // Designer rule (2026-08-26): level-5 healing is a MIRACLE and sounds like
-    // one — its own id, ahead of everything else.
-    if (s.type === 'heal' && s.level >= 5) return 'spell_heal_major';
+    const e = SPELL_EFFECTS[s.type];
+    const first = e.soundFirst?.(s); // the L5 miracle speaks ahead of everything else
+    if (first) return first;
     if (s.fx?.sound) return `spell_${s.fx.sound}`;
-    if (s.type === 'heal') return 'spell_heal';
-    if (s.type === 'buff') return 'spell_buff';
-    return 'spell_arcane';
+    return e.sound ?? 'spell_arcane';
   }
 
   // ---- Spell visuals ----
@@ -1590,10 +1578,7 @@ export class Battle {
   // without one. Returns the milliseconds until IMPACT so the numbers can
   // arrive with the blow.
   defaultFx(s) {
-    if (s.type === 'heal') return { kind: 'sparkle', color: COLOR.green };
-    if (s.type === 'buff') return { kind: 'sparkle', color: COLOR.amber };
-    if (s.type === 'afflict') return { kind: 'wisp', color: COLOR.shadow };
-    return s.area ? { kind: 'bolt', color: '#ff9a3a', burst: 'fire' } : { kind: 'bolt', color: '#ffb04a' };
+    return SPELL_EFFECTS[s.type]?.fx?.(s) ?? SPELL_EFFECTS.damage.fx(s); // monster abilities pass type 'damage'
   }
 
   emitSpellFx(c, s, x, y) {
@@ -1716,12 +1701,7 @@ export class Battle {
     const m = this.spellMath(c, s);
     // The spell's geometry plays out; numbers wait for the moment of impact.
     const impact = this.emitSpellFx(c, s, x, y);
-    if (s.type === 'buff') return this.resolveBuff(c, s, x, y, m);
-    if (s.type === 'heal') return this.resolveHeal(c, s, x, y, m, impact);
-    if (s.type === 'cure') return this.resolveCure(c, s, x, y, m, impact);
-    if (s.type === 'raise') return this.resolveRaise(c, s, x, y, m, impact);
-    if (s.type === 'afflict') return this.resolveAfflict(c, s, x, y, m, impact);
-    return this.resolveDamage(c, s, x, y, m, impact);
+    return SPELL_EFFECTS[s.type].resolve(this, c, s, x, y, m, impact);
   }
 
   // Strip the conditions a spell cures from one hero; returns the names.
