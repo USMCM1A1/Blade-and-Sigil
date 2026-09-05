@@ -1535,8 +1535,27 @@ export class Game {
   // that is the thief's job). For "I can't find the stairs" moments.
   debugRevealFloor() {
     if (this.mode !== 'dungeon' || !this.seen) return false;
-    for (const row of this.seen) row.fill(true);
-    this.log('TEST: the fog lifts from the whole floor — every hall and stair is on the map.', 'info');
+    // Everything the party could WALK to is shown (through doors, over
+    // traps, past chests) plus the rock around it. A vault behind an
+    // unfound secret door stays dark, so the reveal never shows a room
+    // that has no visible way in — that is the thief's discovery to make.
+    const W = this.grid[0].length, H = this.grid.length;
+    const walk = (x, y) => { const c = this.grid[y]?.[x]; return c !== undefined && c !== '#' && (c !== 'S' || this.revealed.has(`${x},${y}`)); };
+    const reach = new Set([`${this.partyPos.x},${this.partyPos.y}`]);
+    const q = [{ x: this.partyPos.x, y: this.partyPos.y }];
+    while (q.length) {
+      const p = q.shift();
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = p.x + dx, y = p.y + dy;
+        if (walk(x, y) && !reach.has(`${x},${y}`)) { reach.add(`${x},${y}`); q.push({ x, y }); }
+      }
+    }
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (reach.has(`${x},${y}`)) {
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (this.seen[y + dy]?.[x + dx] !== undefined) this.seen[y + dy][x + dx] = true;
+      }
+    }
+    this.log('TEST: the fog lifts from every hall the party can walk to — the stairs are on the map. A sealed vault stays dark until its secret door is found.', 'info');
     return true;
   }
 
