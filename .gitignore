@@ -8,3 +8,82 @@ bladesigil/assets/BIF-sounds/*
 bladesigil/NearInfinity-*.jar
 # Designer's scratch screenshots and reference material
 bladesigil/debugging-screenshots/
+
+# ---- Only the game itself goes to GitHub (designer ruling 2026-09-05) ----
+# Design docs, plans, project notes: on the designer's machine only.
+*.md
+!README.md
+# The legacy pygame prototype and the earlier fantasygame attempt.
+/*.py
+/fantasygame/
+# Designer/Claude workshop: review boards, art & playtest tools, the share zip.
+bladesigil/bestiary.html
+bladesigil/biffboard.html
+bladesigil/heroes.html
+bladesigil/soundboard.html
+bladesigil/tools/
+bladesigil/Share.command
+bladesigil/playtest_run.log
+# Raw art originals (the game loads the processed copies).
+bladesigil/assets/_originals/
+# Sound libraries: only the files data/sounds.json actually plays are tracked.
+bladesigil/assets/BIF-sounds/extracted/**/*.*
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/ACT_06.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_03.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_05.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_07.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_09.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_12B.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_12D1.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_17A.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_18A.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_23A.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_28A.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_29A.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_36A.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_37A.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/GAM_44.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/REPDOWN.m4a
+!bladesigil/assets/BIF-sounds/extracted/SFXSOUND/SWI_01B.m4a
+bladesigil/assets/New-Spell-Sounds/override/*
+!bladesigil/assets/New-Spell-Sounds/override/sdr_invisible.wav
+!bladesigil/assets/New-Spell-Sounds/override/sdr_web.wav
+!bladesigil/assets/New-Spell-Sounds/override/sff_explsonic.wav
+!bladesigil/assets/New-Spell-Sounds/override/sff_gasgreas.wav
+!bladesigil/assets/New-Spell-Sounds/override/sff_summevil.wav
+!bladesigil/assets/New-Spell-Sounds/override/sim_explcold.wav
+!bladesigil/assets/New-Spell-Sounds/override/sim_explflame.wav
+!bladesigil/assets/New-Spell-Sounds/override/sim_explight.wav
+!bladesigil/assets/New-Spell-Sounds/override/sim_explsun.wav
+!bladesigil/assets/New-Spell-Sounds/override/sim_heal05.wav
+!bladesigil/assets/New-Spell-Sounds/override/sim_healdead.wav
+!bladesigil/assets/New-Spell-Sounds/override/sim_magknock.wav
+!bladesigil/assets/New-Spell-Sounds/override/sim_negdeath.wav
+!bladesigil/assets/New-Spell-Sounds/override/sim_spike.wav
+!bladesigil/assets/New-Spell-Sounds/override/spr_magicmissle.wav
+# Retired art and sounds no data file points at any more.
+bladesigil/assets/enemies/gen/elemental_large.png
+bladesigil/assets/enemies/gen/elemental_large_dead.png
+bladesigil/assets/enemies/gen/elemental_medium.png
+bladesigil/assets/enemies/gen/elemental_medium_dead.png
+bladesigil/assets/enemies/gen/elemental_small.png
+bladesigil/assets/enemies/gen/elemental_small_dead.png
+bladesigil/assets/enemies/giant_rat.jpg
+bladesigil/assets/enemies/giant_rat_dead.png
+bladesigil/assets/enemies/goblin.png
+bladesigil/assets/enemies/goblin_dead.png
+bladesigil/assets/enemies/skel_01.png
+bladesigil/assets/enemies/skel_01_dead.png
+bladesigil/assets/heroes/archer.png
+bladesigil/assets/heroes/portraits/archer_portrait.png
+bladesigil/assets/misc/loot_drop_open.jpg
+bladesigil/assets/sfx/arrow_shot.mp3
+bladesigil/assets/sfx/basic_melee_strike.mp3
+bladesigil/assets/sfx/buff-spell.mp3
+bladesigil/assets/sfx/fire-spell-impact.mp3
+bladesigil/assets/sfx/frost-don't-use.flac
+bladesigil/assets/sfx/frost-spell.mp3
+bladesigil/assets/sfx/heal-spell.mp3
+bladesigil/assets/sfx/light-spell.mp3
+bladesigil/assets/sfx/lightning-spell.mp3
+bladesigil/assets/sfx/magic-missile-spell.mp3
