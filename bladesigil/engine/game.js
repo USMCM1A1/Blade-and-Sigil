@@ -1531,6 +1531,15 @@ export class Game {
     this.log('TEST: the party is made whole — wounds, deaths, and ailments erased.', 'good');
   }
 
+  // TEST: lift the fog from the whole floor (secret doors stay hidden —
+  // that is the thief's job). For "I can't find the stairs" moments.
+  debugRevealFloor() {
+    if (this.mode !== 'dungeon' || !this.seen) return false;
+    for (const row of this.seen) row.fill(true);
+    this.log('TEST: the fog lifts from the whole floor — every hall and stair is on the map.', 'info');
+    return true;
+  }
+
   debugGold(amount) {
     this.gold += amount;
     this.log(`TEST: ${amount} gold appears in the purse.`, 'gold');
