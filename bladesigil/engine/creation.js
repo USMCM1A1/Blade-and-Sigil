@@ -47,11 +47,12 @@ export function choosePartyDef(data) {
     showTitle();
 
     // ---- Title screen ----
-    // Two choices only: make a party, or play one — your saved party if you
-    // have one, otherwise the premade party from data/party.json.
+    // Make a party, or play the one you saved (designer ruling 2026-09-04:
+    // the premade data/party.json party is no longer offered — it stays
+    // only as the playtest bot's party). A saved run offers to continue.
     function showTitle() {
       const saved = loadSavedParty(data);
-      const play = saved ?? data.party.party;
+      const play = saved;
       const run = peekRun(data); // a saved run offers to continue (engine/save.js)
       root.style.display = 'flex';
       root.innerHTML = `
@@ -60,13 +61,13 @@ export function choosePartyDef(data) {
           <p class="cr-sub">An old-school party dungeon crawl</p>
           <div class="cr-title-buttons">
             ${run ? `<button id="cr-continue">Continue the Descent (${run.partyDef.map(h => h.name).join(', ')} &middot; ${run.mode === 'town' ? 'in town' : run.depth === 'boss' ? 'the final floor' : `floor ${run.depth}`} &middot; turn ${run.turn})</button>` : ''}
+            ${play ? `<button id="cr-play">Play Your Party (${play.map(h => h.name).join(', ')})${run ? ' — a fresh run' : ''}</button>` : ''}
             <button id="cr-new">Create New Party</button>
-            <button id="cr-play">${saved ? 'Play Your Party' : 'Quick Start'} (${play.map(h => h.name).join(', ')})${run ? ' — a fresh run' : ''}</button>
           </div>
         </div>`;
       if (run) root.querySelector('#cr-continue').onclick = () => finish(run.partyDef, run);
       root.querySelector('#cr-new').onclick = () => startWizard();
-      root.querySelector('#cr-play').onclick = () => finish(play);
+      if (play) root.querySelector('#cr-play').onclick = () => finish(play);
     }
 
     // ---- The wizard: one hero at a time ----

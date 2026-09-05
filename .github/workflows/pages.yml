@@ -1,0 +1,47 @@
+# Publishes the game folder (bladesigil/) to GitHub Pages on every push to
+# master. Only what a player needs ships: the raw art originals, the
+# workshop tools, the design docs and the raw Infinity Engine archives stay
+# home (same exclusions as Share.command).
+name: Deploy Blade & Sigil to GitHub Pages
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage the player's copy
+        run: |
+          mkdir -p site
+          rsync -a \
+            --exclude '.DS_Store' \
+            --exclude 'assets/_originals' \
+            --exclude 'assets/BIF-sounds' \
+            --exclude 'debugging-screenshots' \
+            --exclude 'tools' \
+            --exclude 'NearInfinity-*.jar' \
+            --exclude 'Share.command' --exclude 'Play.command' --exclude 'Play.bat' \
+            --exclude '*.md' --exclude 'playtest_run.log' \
+            bladesigil/ site/
+          # The BIF picks the sound map uses live in extracted/ — those ship.
+          mkdir -p site/assets/BIF-sounds
+          rsync -a bladesigil/assets/BIF-sounds/extracted/ site/assets/BIF-sounds/extracted/
+          du -sh site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
