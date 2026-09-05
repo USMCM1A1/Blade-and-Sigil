@@ -1178,7 +1178,7 @@
       ]
     },
     "ranger": {
-      "_comment": "Half-Elven Ranger (companion doc v1): Way of the Wolf (two blades) vs Way of the Hawk (the bow). The lean lives in the style PENALTIES, not the stat tables (doc's deliberate deviation): no 'offsets'. PASSIVES: ambidexterity (off-hand penalty 4 → 'penalty' 2; +'dmg' with one-handed melee weapons), snap_shot (point-blank penalty → 'point_blank' 0; +'dmg' with bows). VERBS: hunters_surge (a stance: while ON each attack action spends 'cost' SP so the off-hand matches the main hand blow for blow), volley (a bow kill grants a free shot at another foe in range — chains while kills and arrows last). CAPSTONES: storm_of_blades (ALL remaining SP, min 1: 'rounds' rounds of a free off-hand strike after every main-hand hit at no penalty, +'dmg' on every attack), rain_of_arrows ('rounds' rounds: every shot also strikes every foe within 'spread' squares of the target, one arrow per foe struck; you cannot move). REFINEMENTS: offhand_free (no off-hand penalty at all), hawk_on_the_move (steady bows shoot after moving). Tracked: surgeKills (kills during Hunter's Surge / Storm of Blades) / volleyKills. Titles: the 1e ladder Scout / Pathfinder / Ranger Lord, shared by both lanes.",
+      "_comment": "Half-Elven Ranger (companion doc v1): Way of the Wolf (two blades) vs Way of the Hawk (the bow). The lean lives in the style PENALTIES, not the stat tables (doc's deliberate deviation): no 'offsets'. PASSIVES: ambidexterity (off-hand penalty 4 → 'penalty' 2; +'dmg' with one-handed melee weapons), snap_shot (point-blank penalty → 'point_blank' 0; +'dmg' with bows). VERBS: hunters_surge (a stance: while ON each attack action spends 'cost' SP so the off-hand matches the main hand blow for blow), volley (a bow kill grants a free shot at another foe in range — chains while kills and arrows last). CAPSTONES: storm_of_blades (ALL remaining SP, min 1: 'rounds' rounds of a free off-hand strike after every main-hand hit at no penalty, +'dmg' on every attack), rain_of_arrows ('rounds' rounds: every shot also strikes every foe within 'spread' squares of the target, one arrow per foe struck; you cannot move). REFINEMENTS: offhand_free (no off-hand penalty at all), hawk_on_the_move (steady bows shoot after moving; carries 'into_melee': 0 — the shooting-into-melee penalty from items.json ranged.into_melee_penalty is erased; any rung may carry 'into_melee' to set its own number, the deepest reached wins). Tracked: surgeKills (kills during Hunter's Surge / Storm of Blades) / volleyKills. Titles: the 1e ladder Scout / Pathfinder / Ranger Lord, shared by both lanes.",
       "fork_level": 5,
       "lanes": [
         {
@@ -1278,7 +1278,8 @@
           "refinement": {
             "id": "hawk_on_the_move",
             "level": 18,
-            "blurb": "Longbow and crossbow shoot after moving — the only archer who kites with a war bow."
+            "into_melee": 0,
+            "blurb": "Longbow and crossbow shoot after moving — the only archer who kites with a war bow — and your arrows thread the press: no penalty for shooting into melee."
           },
           "rite": {
             "ability": {

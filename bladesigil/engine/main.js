@@ -99,6 +99,30 @@ async function boot() {
     w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0],
     W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0],
   };
+  // Diagonals (battle only, designer ruling 2026-09-05): Q/E above, Z/X
+  // below the WASD cluster — plus the numpad corners. The map stays
+  // four-way: its monsters, fog and doors all think in four directions.
+  const DIAG = {
+    q: [-1, -1], e: [1, -1], z: [-1, 1], x: [1, 1],
+    Q: [-1, -1], E: [1, -1], Z: [-1, 1], X: [1, 1],
+    Numpad7: [-1, -1], Numpad9: [1, -1], Numpad1: [-1, 1], Numpad3: [1, 1],
+    Numpad8: [0, -1], Numpad2: [0, 1], Numpad4: [-1, 0], Numpad6: [1, 0],
+  };
+  const battleStep = e => MOVES[e.key] ?? DIAG[e.key] ?? DIAG[e.code] ?? null;
+
+  // Mouse on the battle grid: click a neighbour to bump it, a highlighted
+  // square to walk there, a target to aim, the crosshair to fire.
+  canvas.addEventListener('click', ev => {
+    const b = game.battle;
+    if (!b) return;
+    const r = canvas.getBoundingClientRect();
+    const sx = canvas.width / r.width, sy = canvas.height / r.height;
+    const L = renderer.battleLayout();
+    const x = Math.floor(((ev.clientX - r.left) * sx - L.ox) / L.CELL);
+    const y = Math.floor(((ev.clientY - r.top) * sy - L.oy) / L.CELL);
+    if (x < 0 || y < 0 || x >= L.gw || y >= L.gh) return;
+    b.clickCell(x, y);
+  });
 
   // Help (H) and the guide (G) are panels too — mutually exclusive.
   registerPanel('help', { onOpen: () => closePanel('guide') });
@@ -141,12 +165,12 @@ async function boot() {
       else if (isEsc(e) || is(e, 'wW')) b.mode = 'move';
     },
     target: (e, b) => {
-      if (MOVES[e.key]) { stop(e); b.moveCursor(...MOVES[e.key]); }
+      if (battleStep(e)) { stop(e); b.moveCursor(...battleStep(e)); }
       else if (isGo(e)) { stop(e); b.confirm(); }
       else if (isEsc(e)) b.cancelTargeting();
     },
     move: (e, b) => {
-      if (MOVES[e.key]) { stop(e); b.heroMove(...MOVES[e.key]); }
+      if (battleStep(e)) { stop(e); b.heroMove(...battleStep(e)); }
       else if (isGo(e)) { stop(e); b.endHeroTurn(); }
       else if (is(e, 'cC')) b.openMenu();
       else if (is(e, 'fF')) b.beginShoot();

@@ -586,7 +586,7 @@ export class Renderer {
       pw.line(`${a.ref.name}'s turn — ${b.movesLeft} move${b.movesLeft === 1 ? '' : 's'} left`, 'bold 14px Georgia', COLORS.stairs);
       // Bump preview: a foe in reach shows the odds — and why (stealth tags).
       const foe = b.monsters()
-        .filter(mc => Math.abs(mc.x - a.x) + Math.abs(mc.y - a.y) === 1)
+        .filter(mc => b.adjacent(mc, a))
         .sort((p, q) => (b.assassinateTriggers(a, q) ? 2 : b.isUnaware(q, a.ref) ? 1 : 0)
           - (b.assassinateTriggers(a, p) ? 2 : b.isUnaware(p, a.ref) ? 1 : 0))[0];
       if (foe) {
@@ -621,7 +621,7 @@ export class Renderer {
         if (p.kind === 'shoot') {
           odds = tgt.ref.magic_to_hit && !a.ref.weapon.enchanted
             ? ' · NO EFFECT — it needs magic to hit!'
-            : ` · ${pct(hitChance(b.attackBonus(a.ref, tgt.ref), tgt.ref.ac))} to hit${tgt.ref.resist_physical?.includes(b.weaponKind(a.ref.weapon)) ? ` (resists ${b.weaponKind(a.ref.weapon)} — half damage)` : ''}`;
+            : ` · ${pct(hitChance(b.attackBonus(a.ref, tgt.ref), tgt.ref.ac))} to hit${b.intoMelee(a.ref, tgt.ref) ? ` (−${b.intoMelee(a.ref, tgt.ref)} shooting into melee)` : ''}${tgt.ref.resist_physical?.includes(b.weaponKind(a.ref.weapon)) ? ` (resists ${b.weaponKind(a.ref.weapon)} — half damage)` : ''}`;
         } else if (p.kind === 'deathblow') {
           odds = ' · an automatic critical — it cannot miss';
         } else if (p.spell) {

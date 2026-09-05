@@ -393,6 +393,14 @@ export function validateProgression(data) {
       if (lane.refinement && !REFINEMENTS.includes(lane.refinement.id)) {
         throw new DataError(laneWhere, `Unknown refinement "${lane.refinement.id}". The engine knows: ${REFINEMENTS.join(', ')}`);
       }
+      // 'into_melee' on any rung overrides items.json ranged.into_melee_penalty
+      // for shots at a foe a friend is fighting (0 = the penalty is erased).
+      for (const key of ['passive', 'verb', 'capstone', 'refinement']) {
+        const v = lane[key]?.into_melee;
+        if (v !== undefined && !(Number.isInteger(v) && v >= 0)) {
+          throw new DataError(laneWhere, `${key}.into_melee must be a whole number of to-hit points (0 erases the shooting-into-melee penalty), not ${JSON.stringify(v)}.`);
+        }
+      }
       if (lane.rite) {
         const r = lane.rite;
         if (!r.ability || !RITE_ABILITIES.includes(r.ability.id)) {

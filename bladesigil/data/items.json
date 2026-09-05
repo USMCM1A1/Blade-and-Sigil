@@ -10,6 +10,8 @@
   "rare_multiplier": 1.5,
   "ranged": {
     "point_blank_penalty": 4,
+    "into_melee_penalty": 4,
+    "_into_melee_comment": "SHOOTING INTO MELEE (designer ruling 2026-09-05, playtest: bows too strong): a shot at a foe that any OTHER living party member or summoned creature stands beside takes this to-hit penalty, named in the roll. Stacks with point-blank when the shooter is ALSO adjacent. A lane rung may carry 'into_melee': N to override it (the Hawk's level-18 refinement sets 0).",
     "ammo": "arrows",
     "recover_misses": 0.5,
     "quiver_capacity": 20,

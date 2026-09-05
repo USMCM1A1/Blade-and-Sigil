@@ -21,6 +21,13 @@ function listWords(words) {
 // Itemization v2: friendly boot-time validation for the new item fields.
 export function validateItems(data) {
   const EFFECTS = ['heal', 'cure', 'mana', 'invisibility', 'portal'];
+  // The ranged rules block: the two to-hit penalties must be whole numbers.
+  for (const k of ['point_blank_penalty', 'into_melee_penalty']) {
+    const v = data.items.ranged?.[k];
+    if (v !== undefined && !(Number.isInteger(v) && v >= 0)) {
+      throw new DataError('data/items.json', `ranged.${k} must be a whole number of to-hit points (0 or more), not ${JSON.stringify(v)}.`);
+    }
+  }
   for (const [id, d] of Object.entries(data.items.items)) {
     if (d.sellable !== undefined && typeof d.sellable !== 'boolean') {
       throw new DataError('data/items.json', `"${id}": "sellable" must be true or false (false = the shop will not buy it back).`);

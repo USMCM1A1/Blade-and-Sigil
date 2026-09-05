@@ -16,7 +16,8 @@ import * as audio from './audio.js';
 // Sum of a field across a hero's timed buffs (Rage etc.).
 const timedSum = (ref, key) => (ref.timedBuffs ?? []).reduce((s, b) => s + (b[key] || 0), 0);
 
-export const GRID_W = 13, GRID_H = 8;
+export const DIRS8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+const GRID_W = 13, GRID_H = 8;
 const hpMax = ref => ref.maxHp ?? ref.hp; // monsters built before maxHp existed
 const monsterMove = m => (m.speed > 1 ? MONSTER_MOVE.slow : MONSTER_MOVE.normal); // map-slow monsters are battle-slow too
 
@@ -228,8 +229,20 @@ export class Battle {
   // ---- Shared helpers (refactor step 4, 2026-09-03) ----
   // The combatant standing for a hero or monster object (undefined if not on the field).
   combatantOf(ref) { return this.combatants.find(cc => cc.ref === ref); }
-  // Orthogonally adjacent (a bump, a flank, an aura's reach).
-  adjacent(a, b) { return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1; }
+  // Adjacent in any of the EIGHT directions (designer ruling 2026-09-05:
+  // diagonals count — a bump, a flank, an aura's reach, a monster's claws).
+  adjacent(a, b) { return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) === 1; }
+  // Can a body at (x,y) step to (nx,ny)? Diagonal steps may not squeeze
+  // between two WALL corners; bodies never block a corner, only stone does.
+  canStep(x, y, nx, ny) {
+    if (!this.open(nx, ny)) return false;
+    const dx = nx - x, dy = ny - y;
+    if (dx && dy) {
+      const wall = (wx, wy) => this.grid[wy]?.[wx] !== '.';
+      if (wall(x + dx, y) && wall(x, y + dy)) return false;
+    }
+    return true;
+  }
 
   // A timed buff on a hero: every field the combat math reads is present,
   // zeroed unless given, so no reader has to guard against undefined.
@@ -558,9 +571,9 @@ export class Battle {
     for (let step = 0; step < this.movesLeft; step++) {
       const next = [];
       for (const [x, y] of frontier) {
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        for (const [dx, dy] of DIRS8) {
           const nx = x + dx, ny = y + dy, k = ny * GRID_W + nx;
-          if (!seen.has(k) && this.open(nx, ny) && !this.fearBlock(c.ref, x, y, nx, ny)) {
+          if (!seen.has(k) && this.canStep(x, y, nx, ny) && !this.fearBlock(c.ref, x, y, nx, ny)) {
             seen.add(k); out.add(k); next.push([nx, ny]);
           }
         }
@@ -583,8 +596,9 @@ export class Battle {
       return;
     }
     if (foe) { this.heroAttack(c, foe); return; }
-    if (this.movesLeft <= 0 || !this.open(nx, ny)) {
+    if (this.movesLeft <= 0 || !this.canStep(c.x, c.y, nx, ny)) {
       const root = this.movesLeft <= 0 ? this.rootedBy(c.ref) : null;
+      if (this.movesLeft > 0 && dx && dy && this.open(nx, ny)) this.addFx(c.x, c.y, 'too tight', COLOR.dim); // a wall corner blocks the diagonal
       if (root) { this.addFx(c.x, c.y, 'rooted', COLOR.dim); this.game.log(`${c.ref.name} is rooted by ${root.name}.`, 'info'); }
       return;
     }
@@ -600,11 +614,59 @@ export class Battle {
     for (const mc of this.monsters()) {
       if (!mc.ref.fear_aura) continue;
       const wasAdj = this.adjacent(c, mc);
-      const nowAdj = Math.abs(nx - mc.x) + Math.abs(ny - mc.y) === 1;
+      const nowAdj = this.adjacent({ x: nx, y: ny }, mc);
       if (nowAdj && !wasAdj && !this.fearAuraCheck(c, mc, true)) return;
     }
     c.x = nx; c.y = ny;
     this.movesLeft--;
+  }
+
+  // Mouse (2026-09-05): walk the active hero to a reachable square along
+  // the shortest legal path, one heroMove per step so every rule (fear,
+  // corners, rooting) still applies. Stops early if a step is refused.
+  walkTo(tx, ty) {
+    const c = this.active();
+    if (!c || c.kind !== 'hero') return;
+    if (!this.reachable().has(ty * GRID_W + tx)) return;
+    const prev = new Map([[c.y * GRID_W + c.x, null]]);
+    const q = [[c.x, c.y]];
+    let found = false;
+    while (q.length && !found) {
+      const [x, y] = q.shift();
+      for (const [dx, dy] of DIRS8) {
+        const nx = x + dx, ny = y + dy, k = ny * GRID_W + nx;
+        if (prev.has(k) || !this.canStep(x, y, nx, ny) || this.fearBlock(c.ref, x, y, nx, ny)) continue;
+        prev.set(k, y * GRID_W + x);
+        if (nx === tx && ny === ty) { found = true; break; }
+        q.push([nx, ny]);
+      }
+    }
+    if (!found) return;
+    const path = [];
+    for (let k = ty * GRID_W + tx; prev.get(k) !== null; k = prev.get(k)) path.unshift(k);
+    for (const k of path) {
+      const nx = k % GRID_W, ny = Math.floor(k / GRID_W);
+      const before = this.movesLeft;
+      this.heroMove(nx - c.x, ny - c.y);
+      if (this.movesLeft === before) break; // refused — stop where we stand
+    }
+  }
+
+  // A click on a battle square. Move mode: a bump on any of the eight
+  // neighbours, or a walk to a highlighted square. Aiming: the first click
+  // moves the crosshair, a click on the crosshair fires.
+  clickCell(x, y) {
+    if (this.busy || this.pendingAction || this.pendingReaction) return;
+    const c = this.active();
+    if (!c || c.kind !== 'hero') return;
+    if (this.mode === 'target') {
+      if (this.cursor.x === x && this.cursor.y === y) { this.confirm(); return; }
+      if (this.targetable(x, y)) { this.cursor.x = x; this.cursor.y = y; }
+      return;
+    }
+    if (this.mode !== 'move') return;
+    if (this.adjacent(c, { x, y })) { this.heroMove(x - c.x, y - c.y); return; }
+    this.walkTo(x, y);
   }
 
   // Floating combat text, drawn by the renderer right on the battlefield.
@@ -666,7 +728,44 @@ export class Battle {
     // Point-blank (ranged rules): loosing an arrow with a foe at your elbow.
     const pb = this.pointBlank(ch);
     if (pb) parts.push([-pb, 'point-blank']);
+    // Shooting into melee (designer ruling 2026-09-05, "bows are too
+    // strong"): an arrow loosed at a foe one of your OWN is fighting.
+    const im = this.intoMelee(ch, foe);
+    if (im) parts.push([-im, 'shooting into melee']);
     return parts;
+  }
+
+  // The into-melee penalty for THIS shot: items.json ranged.into_melee_penalty
+  // when any OTHER living friend (hero or summoned creature) stands beside
+  // the target. A lane rung may set 'into_melee' to override it — the Hawk's
+  // level-18 refinement sets 0, the archer who has learned to thread the
+  // press. 0 when it doesn't apply.
+  intoMelee(ch, foe) {
+    if (!ch.weapon?.range || !foe) return 0;
+    const c = this.combatantOf(ch);
+    const foeC = this.combatantOf(foe);
+    if (!c || !foeC) return 0;
+    const pressed = this.friendlySide().some(h => h !== c && h.ref.alive !== false && this.adjacent(h, foeC));
+    if (!pressed) return 0;
+    const own = this.laneRungValue(ch, 'into_melee');
+    if (own !== null) return own;
+    return this.game.rangedRules().into_melee_penalty ?? 0;
+  }
+
+  // The latest lane rung (passive → verb → capstone → refinement) the hero
+  // has reached that names `field` — so a designer can hang an override on
+  // whichever rung they like and the deepest one wins.
+  laneRungValue(ch, field) {
+    const lane = laneOf(this.game.data, ch);
+    if (!lane) return null;
+    let v = null;
+    for (const key of ['passive', 'verb', 'capstone', 'refinement']) {
+      const rung = lane[key];
+      if (!rung || rung[field] === undefined) continue;
+      if (key !== 'passive' && ch.level < (rung.level ?? 99)) continue;
+      v = rung[field];
+    }
+    return v;
   }
 
   // A bow-wielder with a living foe adjacent shoots at a penalty
@@ -2518,7 +2617,7 @@ export class Battle {
     const targets = new Set();
     for (const h of pool) {
       if (h.kind === 'hero' && !h.ref.alive) continue;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      for (const [dx, dy] of DIRS8) {
         const x = h.x + dx, y = h.y + dy;
         if (this.open(x, y) || (x === c.x && y === c.y)) targets.add(y * GRID_W + x);
       }
@@ -2529,9 +2628,9 @@ export class Battle {
     let found = null;
     while (q.length && found === null) {
       const [x, y] = q.shift();
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      for (const [dx, dy] of DIRS8) {
         const nx = x + dx, ny = y + dy, k = ny * GRID_W + nx;
-        if (prev.has(k) || !this.open(nx, ny)) continue;
+        if (prev.has(k) || !this.canStep(x, y, nx, ny)) continue;
         if (this.fearBlock(c.ref, x, y, nx, ny)) continue; // cowed — no path leads toward the terror
         prev.set(k, y * GRID_W + x);
         if (targets.has(k)) { found = k; break; }
