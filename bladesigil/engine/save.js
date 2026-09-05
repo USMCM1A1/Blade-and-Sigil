@@ -1,6 +1,6 @@
 // The run save (Phase 6, designer session 2026-08-30): one autosave slot in
 // the browser's localStorage ('bs_run'), written quietly at map moments —
-// never mid-battle, never in the arena. Death or victory ends the run and
+// never mid-battle. Death or victory ends the run and
 // deletes the save (the crawl keeps its teeth); refreshing or pressing R
 // lands on the title screen, where a valid save offers "Continue".
 // The party DEFINITION ('bs_party') is separate and untouched by any of this.
@@ -61,7 +61,7 @@ function buildPayload(game) {
 // ---- The autosave: debounced, guarded, silent ----
 let timer = null;
 export function autosave(game, flush = false) {
-  if (game.arena || game.battle) return; // battle state is never serialized
+  if (game.battle) return; // battle state is never serialized
   if (game.over || game.victory) {       // the run is finished — death is death
     clearTimeout(timer); timer = null;
     clearRun();
@@ -74,7 +74,7 @@ export function autosave(game, flush = false) {
   }
   if (timer) return;
   timer = setTimeout(() => { timer = null;
-    if (!game.battle && !game.arena && !game.over && !game.victory) writeRun(game);
+    if (!game.battle && !game.over && !game.victory) writeRun(game);
   }, 400);
 }
 

@@ -9,7 +9,8 @@
     "hero_portrait": "A fantasy RPG character PORTRAIT: an EXTREME CLOSE-UP of the head and shoulders ONLY — the face fills most of the frame, cropped at the upper chest. NO waist, NO hands, NO weapons in frame. Dark painted card style: dramatic lighting, muted palette, painterly detail, simple dark background, no text, no border, square composition. The character:",
     "hero_cutout": "A paperdoll cutout sprite for a fantasy RPG: ONE character, FULL BODY from the top of the head to the soles of the boots, standing in a relaxed heroic pose. The figure is ISOLATED on a plain flat PURE WHITE background — no scene, no floor, no shadow, no glow, no vignette, nothing but the figure. Painterly detail, dramatic lighting on the figure itself, no text, no border. Paint the SAME character as the reference portrait — same face, same hair, same armor. The character:",
     "prop_cutout": "A dungeon-prop cutout sprite for a fantasy RPG, seen from a high three-quarter angle as if resting on a dungeon floor: ONE object, ISOLATED on a plain flat PURE WHITE background — no scene, no floor, no shadow, no glow, no text, no border, nothing but the object. Painterly detail, dramatic lighting on the object itself, a bold silhouette that stays readable at very small size. The object:",
-    "dungeon_tile": "A single square dungeon map tile for a fantasy RPG, in crisp 16-bit pixel-art style, seen from the same straight-on or top-down angle as the reference image when one is given. The subject fills the ENTIRE square frame edge to edge — no white mat, no border, no text, muted dungeon stone palette. The tile:"
+    "dungeon_tile": "A single square dungeon map tile for a fantasy RPG, in crisp 16-bit pixel-art style, seen from the same straight-on or top-down angle as the reference image when one is given. The subject fills the ENTIRE square frame edge to edge — no white mat, no border, no text, muted dungeon stone palette. The tile:",
+    "camp_scene": "A painted fantasy RPG scene, the style of a dark illustrated storybook plate: an adventuring party resting around a campfire at night under a wide starry sky, warm firelight on faces and gear against cool blue-black night, painterly detail, no text, no border, square composition. The scene:"
   },
   "assets": [
     {
@@ -2031,6 +2032,30 @@
       "prompt": "the same faint translucent air-spirit now destroyed — its outline collapsed into a dissipating heap of dust and fading mist on the dungeon floor, the two pale eyes dark and gone out, the shape barely there. Clearly slain, lying down, not standing.",
       "reference": "assets/enemies/gen/invisible_stalker.png",
       "out": "assets/enemies/gen/invisible_stalker_dead.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "camp_1",
+      "style": "camp_scene",
+      "prompt": "four adventurers around the fire — a bearded dwarf warrior in mail polishing an axe, a slender high-elf woman in wizard's robes reading a small book by firelight, a halfling man in dark leathers roasting something on a stick, and a human woman priest in white and gold vestments tending the flames; bedrolls and packs nearby.",
+      "out": "assets/misc/camp_1.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "camp_2",
+      "style": "camp_scene",
+      "prompt": "four adventurers around the fire — a tall human woman warrior with a shield propped beside her, a young human man in wizard's robes with a staff across his knees, a half-elf woman ranger with a longbow and a wolf-pelt cloak, and a halfling woman thief counting coins; a small pot over the flames.",
+      "out": "assets/misc/camp_2.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "camp_3",
+      "style": "camp_scene",
+      "prompt": "four adventurers around the fire — a dwarf woman in stone-grey robes with a rune-carved hammer, a high-elf man in silver mail with a slim sword laid beside him, a human man priest with a holy symbol, and a halfling man thief asleep against a pack; a cold moon and many stars above.",
+      "out": "assets/misc/camp_3.png",
       "size": 1024,
       "post": "trim"
     }

@@ -27,9 +27,9 @@ export function hpAtLevel(cls, conMod, level) {
 }
 
 // ---- Monsters ----
-// A monster on the map (or the arena): its monsters.json definition spread
+// A monster on the map: its monsters.json definition spread
 // flat, plus the fields play adds. opts.hp overrides the definition's HP
-// (the arena's 5× dummies).
+// (the bench's shrunken bosses).
 export function makeMonster(def, id, x, y, opts = {}) {
   const hp = opts.hp ?? def.hp;
   return {

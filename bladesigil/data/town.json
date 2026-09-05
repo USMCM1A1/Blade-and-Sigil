@@ -171,5 +171,10 @@
   },
   "stairs": {
     "welcome": "The stairs climb into the dark above. Every floor between here and the daylight is one you have already bled for."
-  }
+  },
+  "camp_scenes": [
+    "assets/misc/camp_1.png",
+    "assets/misc/camp_2.png",
+    "assets/misc/camp_3.png"
+  ]
 }

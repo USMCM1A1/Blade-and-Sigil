@@ -136,6 +136,7 @@ export class Game {
     const goldDice = data.party.starting_gold || '4d6+200';
     for (const ch of this.party) this.gold += roll(goldDice);
     this.onBuilding = null; // main.js hooks this to open the shop/inn/temple panels
+    this.onCamp = null;     // main.js hooks this to show the campfire picture (caption, then?)
     this.choiceQueue = [];  // progression choices owed (lane forks etc.) — shown on the map
     this.refreshChoices();  // pre-leveled heroes (party.json test path) owe theirs at once
     this.enterTown(true);   // Novamagus is home: every run starts here
@@ -886,7 +887,7 @@ export class Game {
     this.messageSeq++;
     if (this.messages.length > LOG_CAP) this.messages.shift();
     // Nearly every state change speaks — so every message quietly refreshes
-    // the run autosave (debounced; never in battle/arena; a wipe clears it).
+    // the run autosave (debounced; never in battle; a wipe clears it).
     this.autosave();
   }
 
@@ -1262,8 +1263,10 @@ export class Game {
 
   springTrap(def, victim) {
     audio.play('trap_springs');
+    // The LEAD hero — first in marching order — is the one who steps on it
+    // (designer ruling 2026-09-04: marching order must mean something).
     const living = this.party.filter(ch => ch.alive);
-    const ch = victim && victim.alive ? victim : living[Math.floor(Math.random() * living.length)];
+    const ch = victim && victim.alive ? victim : living[0];
     let dmg = Math.max(1, roll(def.dice));
     const saved = d20() + abilityMod(ch.abilities[def.save ?? 'dex']) + this.heroSaveBonus(ch) >= def.dc;
     if (saved) dmg = Math.floor(dmg / 2);
@@ -1381,11 +1384,15 @@ export class Game {
           ch.hp += Math.ceil((ch.maxHp - ch.hp) / 2);
           ch.sp += Math.ceil((ch.maxSp - ch.sp) / 2);
         }
+        audio.play('camp');
         this.log(`The party makes camp (−${mouths} rations)... but in the dead of night, something finds the fire!`, 'death');
         this.advanceTime(CAMP_AMBUSH_TURNS); // half a watch passes before the attack
         if (this.over) return;
         this.updateVision();
-        this.startBattle(pack[0], true);
+        // The campfire picture shows first; the fight begins when it fades.
+        const attack = () => { if (!this.battle && !this.over) this.startBattle(pack[0], true); };
+        if (this.onCamp) this.onCamp('…but in the dead of night, something finds the fire!', attack);
+        else attack();
         return;
       }
     }
@@ -1393,6 +1400,7 @@ export class Game {
     audio.play('camp');
     const healed = this.party.some(ch => ch.alive && ch.hp !== ch.maxHp);
     this.log(`The party makes camp and rests (−${mouths} rations). ${healed ? 'Wounds mend and spirits return.' : 'Spirits return.'}`, 'good');
+    this.onCamp?.(healed ? 'The party makes camp. Wounds mend and spirits return.' : 'The party makes camp. Spirits return.');
     this.refillQuivers();
     this.fullRest(this.party);
     // A watch of camp time passes AFTER the healing — lingering poison
@@ -1561,41 +1569,6 @@ export class Game {
     return true;
   }
 
-  // ---- Training arena (debug/design sandbox) ----
-  // One of every monster at 5x HP, spells cost nothing, and the party's real
-  // state is snapshotted on entry and restored on exit: nothing that happens
-  // in the arena is real — no XP, no lasting wounds, no lasting cures.
-  startArena() {
-    if (this.over || this.victory || this.battle) return;
-    this.arenaSnapshot = this.party.map(ch => ({
-      hp: ch.hp, sp: ch.sp, xp: ch.xp, alive: ch.alive,
-      buffs: { ...ch.buffs },
-      conditions: ch.conditions.map(c => ({ ...c })),
-      counters: { ...ch.counters }, // sparring feats don't count toward titles
-      spentRest: { ...ch.spentRest }, // arena previews of once-per-rest powers are free
-      stances: activeStances(ch).map(b => ({ ...b })), // a Stance held going in is held coming out
-    }));
-    this.arena = true;
-    const dummies = Object.entries(this.data.monsters.monsters).map(([id, def]) => makeMonster(def, id, 0, 0, { hp: def.hp * 5 }));
-    this.log('Training arena: nothing here is real. Spells are free; leave with Esc.', 'info');
-    this.battle = new Battle(this, this.data.arenaTemplate, dummies);
-  }
-
-  endArena() {
-    this.party.forEach((ch, i) => {
-      const s = this.arenaSnapshot[i];
-      ch.hp = s.hp; ch.sp = s.sp; ch.xp = s.xp; ch.alive = s.alive;
-      ch.buffs = s.buffs;
-      ch.conditions = s.conditions;
-      ch.timedBuffs = s.stances; // Rage and its kin are battle-scoped — only the Stances held before leave the ring
-      ch.counters = s.counters;
-      ch.spentRest = s.spentRest;
-      ch.insight = null; // Arcane Insight is battle-scoped
-    });
-    this.arena = false;
-    this.arenaSnapshot = null;
-    this.log('The party steps out of the training arena, unharmed and unchanged.', 'info');
-  }
 
   // ---- Tactical battle ----
   // Bumping a monster (or being caught by one) pulls every visible monster in
@@ -1690,9 +1663,9 @@ export class Game {
     return (ch.weapon.quiver ?? this.rangedRules().quiver_capacity ?? 20) + (giftOf(ch)?.quiver_bonus ?? 0);
   }
   quiverCount(ch) { return this.ammoId() ? Math.min(ch.quiver ?? 0, this.quiverCap(ch) || Infinity) : Infinity; }
-  // A shot spends one arrow from the shooter's quiver (the arena's is bottomless).
+  // A shot spends one arrow from the shooter's quiver.
   spendAmmo(ch) {
-    if (!this.ammoId() || this.arena) return;
+    if (!this.ammoId()) return;
     if (ch && ch.quiver > 0) ch.quiver--;
   }
   // Move spare arrows from the pouch into a hero's quiver, up to its cap.
@@ -1710,7 +1683,7 @@ export class Game {
   // Out of battle every bow-wielder tops up quietly (battle's end, camp,
   // the inn, arrows found or bought, a bow strung). Logs only when it moved.
   refillQuivers(quiet = false) {
-    if (this.battle && !this.arena) return;
+    if (this.battle) return;
     for (const ch of this.party) {
       if (!ch.alive || !ch.weapon?.range) continue;
       const moved = this.restockQuiver(ch);
@@ -1728,9 +1701,8 @@ export class Game {
       .map(it => ({ ...it, reason: this.gearBlockReason(it.def, ch) }));
   }
 
-  // The words burn off the page (the arena keeps its scrolls).
+  // The words burn off the page.
   consumeScroll(id) {
-    if (this.arena) return;
     if (this.inventory[id] > 0) this.inventory[id]--;
   }
 
@@ -1892,21 +1864,20 @@ export class Game {
     if (def.effect === 'portal') {
       if (this.battle) return 'The sigil takes a quiet moment to draw — not in the middle of a fight.';
       if (this.mode === 'town') return 'You are already home. A portal opened below stays open at the gate.';
-      if (this.arena) return 'The arena has no outside.';
       if (this.depth === 'boss') return 'Nothing leaves the Hollow Throne but its master or its victors.';
       if (typeof this.depth === 'number' && this.depth > def.portal_depth) return `The ${def.name} reaches only to depth ${def.portal_depth} — this is depth ${this.depth}. A stronger scroll is needed.`;
     }
     return null;
   }
 
-  // Drink: applies the effect and consumes the item (the arena refunds it).
+  // Drink: applies the effect and consumes the item.
   // Returns {ok, fxText, fxColor} so battles can float the result.
   useItem(id, ch) {
     const def = this.itemDef(id);
     if (!def || !(this.inventory[id] > 0)) return { ok: false };
     const reason = this.itemBlockReason(def, ch);
     if (reason) { this.log(reason, 'info'); return { ok: false }; }
-    if (!this.arena) this.inventory[id]--;
+    this.inventory[id]--;
     audio.play('potion_drink');
     if (def.effect === 'portal') {
       // Home in a breath; the way back waits at the gate (one portal at a time).
@@ -1920,19 +1891,19 @@ export class Game {
     if (def.effect === 'heal') {
       const healed = Math.min(roll(def.dice), ch.maxHp - ch.hp);
       ch.hp += healed;
-      this.log(`${ch.name} drinks the ${def.name} — ${healed} HP restored.${this.arena ? ' (arena: not consumed)' : ''}`, 'good');
+      this.log(`${ch.name} drinks the ${def.name} — ${healed} HP restored.`, 'good');
       return { ok: true, fxText: `+${healed}`, fxColor: '#6ad46a' };
     }
     if (def.effect === 'cure') {
       ch.conditions = ch.conditions.filter(c => c.id !== def.cures);
       const cond = this.conditionDef(def.cures);
-      this.log(`${ch.name} drinks the ${def.name} — ${cond.name.toLowerCase()} no more.${this.arena ? ' (arena: not consumed)' : ''}`, 'good');
+      this.log(`${ch.name} drinks the ${def.name} — ${cond.name.toLowerCase()} no more.`, 'good');
       return { ok: true, fxText: 'cured!', fxColor: '#6ad46a' };
     }
     if (def.effect === 'mana') {
       const restored = Math.min(roll(def.dice), ch.maxSp - ch.sp);
       ch.sp += restored;
-      this.log(`${ch.name} drinks the ${def.name} — ${restored} spell points return.${this.arena ? ' (arena: not consumed)' : ''}`, 'good');
+      this.log(`${ch.name} drinks the ${def.name} — ${restored} spell points return.`, 'good');
       return { ok: true, fxText: `+${restored} SP`, fxColor: '#6a9ad4' };
     }
     if (def.effect === 'invisibility') {

@@ -30,7 +30,8 @@ export const TIMING = {                  // milliseconds; the player must SEE ea
   partingLead: 400,   // before the first parting blow on a fleeing party
   partingBlow: 600,   // between parting blows
   fleeExit: 900,      // after the last parting blow, the party is away
-  endBeat: 2000,      // victory / arena ending beat before the map returns
+  endBeat: 2000,      // victory ending beat before the map returns
+  campBeat: 3200,     // the campfire picture lingers this long (any key hurries it)
   wipeBeat: 2400,     // the fallen party's beat
 };
 

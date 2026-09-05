@@ -7,6 +7,7 @@ import { classProg, laneOf, passiveOf, riteTier, passiveBlurb, powerHow, tracked
 import { unlockLevel, magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, activeStances, spellSchool, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
 import { registerPanel, isOpen, openPanel, closePanel, togglePanel } from './panel.js';
+import { TIMING } from './constants.js';
 
 // The panels this module owns (engine/panel.js): how each shows, what
 // renders when it opens, what clears when it closes.
@@ -20,6 +21,7 @@ registerPanel('building', { onOpen: (game, kind) => {
 registerPanel('equipment', { onOpen: game => renderEquipment(game) });
 registerPanel('spellbook', { onOpen: game => renderSpellbook(game) });
 registerPanel('marching', { onOpen: game => renderMarching(game) });
+registerPanel('camp', { display: 'flex', onOpen: (game, caption, then) => renderCamp(game, caption, then), onClose: el => { el.innerHTML = ''; } });
 
 // Every UI button clicks (designer's pick 2026-08-26: GAM_09) — except where
 // the moment already has its own voice (one sound means one thing): the
@@ -1409,3 +1411,28 @@ export function updateUI(game) {
   }
 }
 let logGame = null, logShown = 0;
+
+
+// ---- The campfire (2026-09-04, designer's ask: a picture for the rest) ----
+// A short beat: one of the camp scenes over a dark screen with the night's
+// line beneath. It fades on its own (TIMING.campBeat) or on any key; when
+// the night went wrong the ambush waits for it (`then`).
+export function campOpen() { return isOpen('camp'); }
+export function openCamp(game, caption, then) { openPanel('camp', game, caption, then); }
+let campTimer = null, campThen = null;
+export function closeCamp() {
+  if (!campOpen()) return;
+  clearTimeout(campTimer); campTimer = null;
+  closePanel('camp');
+  const then = campThen; campThen = null;
+  then?.();
+}
+function renderCamp(game, caption, then) {
+  const root = document.getElementById('camp');
+  const scenes = game.data.town.camp_scenes ?? ['assets/misc/camp_1.png'];
+  const src = scenes[Math.floor(Math.random() * scenes.length)];
+  root.innerHTML = `<div class="camp-card"><img src="${src}" alt="The party camps"><div class="camp-caption">${caption}</div></div>`;
+  campThen = then ?? null;
+  clearTimeout(campTimer);
+  campTimer = setTimeout(closeCamp, TIMING.campBeat);
+}

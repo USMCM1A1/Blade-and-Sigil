@@ -143,7 +143,7 @@ export const CLASS_ACTIVES = [
       if (hasVerb(D, ref, 'shared_fortitude')) {
         const v = lane.verb;
         const two = hasRefinement(D, ref, 'fortitude_two');
-        out.push({ kind: 'active', id: 'fortify', name: v.name ?? 'Shared Fortitude', cost: v.cost ?? 3, affordable: b.game.arena || ref.sp >= (v.cost ?? 3),
+        out.push({ kind: 'active', id: 'fortify', name: v.name ?? 'Shared Fortitude', cost: v.cost ?? 3, affordable: ref.sp >= (v.cost ?? 3),
           targeted: { kind: 'fortify', range: 6 },
           description: `${v.cost ?? 3} SP: an ally gains ${v.dice ?? '2d8'} + your CON of absorbed damage for the battle${two ? ' — and the most wounded other ally beside them shares it' : ''}.` });
       }
@@ -156,15 +156,15 @@ export const CLASS_ACTIVES = [
 
         if (cap.id === 'storm_of_blades') {
           const minSp = cap.min_sp ?? 1;
-          out.push({ kind: 'active', id: 'storm_of_blades', name: cap.name ?? 'Storm of Blades', cost: Math.max(minSp, ref.sp), affordable: b.game.arena || ref.sp >= minSp,
+          out.push({ kind: 'active', id: 'storm_of_blades', name: cap.name ?? 'Storm of Blades', cost: Math.max(minSp, ref.sp), affordable: ref.sp >= minSp,
             description: `ALL remaining SP (${ref.sp}; needs ${minSp}+): for ${cap.rounds ?? 3} rounds every main-hand hit earns a free off-hand strike at no penalty, and every attack lands +${cap.dmg ?? 2} harder.` });
         }
       }
     },
     use: (b, c, entry, { D, ref, lane, cap }) => {
 
-        const spent = b.game.arena ? Math.max(cap.min_sp ?? 1, ref.sp) : ref.sp;
-        if (!b.game.arena) ref.sp = 0;
+        const spent = ref.sp;
+        ref.sp = 0;
         audio.play('spell_buff');
         ref.timedBuffs = ref.timedBuffs.filter(b => !b.storm);
         b.addTimedBuff(ref, { name: cap.name ?? 'Storm of Blades', dmg: cap.dmg ?? 2, rounds: cap.rounds ?? 3, storm: true });
@@ -203,7 +203,7 @@ export const CLASS_ACTIVES = [
         if (cap.id === 'whirling_verse') {
           const minSp = cap.min_sp ?? 1;
           const stance = activeStances(ref).map(b => b.name).join(' & ');
-          out.push({ kind: 'active', id: 'whirling_verse', name: cap.name ?? 'Whirling Verse', cost: Math.max(minSp, ref.sp), affordable: b.game.arena || ref.sp >= minSp,
+          out.push({ kind: 'active', id: 'whirling_verse', name: cap.name ?? 'Whirling Verse', cost: Math.max(minSp, ref.sp), affordable: ref.sp >= minSp,
             description: `ALL remaining SP (${ref.sp}; needs ${minSp}+)${stance ? ` and ${stance} falls silent` : ''}: for ${cap.rounds ?? 3} rounds every landed hit grants a free extra strike. When it ends you have nothing left.` });
         }
       }
@@ -211,8 +211,8 @@ export const CLASS_ACTIVES = [
     use: (b, c, entry, { D, ref, lane, cap }) => {
 
         // v1.1: the all-in gamble — every spell point, and the Stance with it.
-        const spent = b.game.arena ? 0 : ref.sp;
-        if (!b.game.arena) ref.sp = 0;
+        const spent = ref.sp;
+        ref.sp = 0;
         const silenced = activeStances(ref).map(b => b.name);
         ref.timedBuffs = ref.timedBuffs.filter(b => !b.verse && !b.stance);
         b.addTimedBuff(ref, { name: cap.name ?? 'Whirling Verse', rounds: cap.rounds ?? 3, verse: true });
@@ -272,7 +272,7 @@ export const CLASS_ACTIVES = [
         if (cap.id === 'deep_roots' && !ref.spentRest?.deep_roots) {
           const minSp = cap.min_sp ?? 3;
           const wards = b.shareableWards(ref);
-          out.push({ kind: 'active', id: 'deep_roots', name: cap.name ?? 'Aegis of the Deep Roots', cost: Math.max(minSp, ref.sp), affordable: wards.length > 0 && (b.game.arena || ref.sp >= minSp),
+          out.push({ kind: 'active', id: 'deep_roots', name: cap.name ?? 'Aegis of the Deep Roots', cost: Math.max(minSp, ref.sp), affordable: wards.length > 0 && (ref.sp >= minSp),
             description: wards.length
               ? `Once per rest — ALL remaining SP (${ref.sp}; needs ${minSp}+): ${wards.map(b => b.name).join(', ')} spread to the whole party for ${cap.rounds ?? 3} rounds.`
               : `Once per rest — ALL remaining SP: every AC/save/resist ward on you spreads to the party. Nothing to share yet — raise a ward first.` });
@@ -289,7 +289,7 @@ export const CLASS_ACTIVES = [
         }
         ref.spentRest.deep_roots = true;
         const spent = ref.sp;
-        if (!b.game.arena) ref.sp = 0;
+        ref.sp = 0;
         audio.play('spell_buff');
         let n = 0;
         for (const hc of b.heroes()) {
@@ -380,15 +380,15 @@ export const CLASS_ACTIVES = [
       if (cap && ref.level >= cap.level) {
         if (cap.id === 'divine_inspiration') {
           const minSp = cap.min_sp ?? 5;
-          out.push({ kind: 'active', id: 'divine_inspiration', name: cap.name ?? 'Divine Inspiration', cost: Math.max(minSp, ref.sp), affordable: b.game.arena || ref.sp >= minSp,
+          out.push({ kind: 'active', id: 'divine_inspiration', name: cap.name ?? 'Divine Inspiration', cost: Math.max(minSp, ref.sp), affordable: ref.sp >= minSp,
             description: `ALL remaining SP (${ref.sp}; needs ${minSp}+): +${cap.hit ?? 3} hit, +${cap.dmg ?? 3} damage, +${cap.ac ?? 3} AC for ${cap.rounds ?? 3} rounds.` });
         }
       }
     },
     use: (b, c, entry, { D, ref, lane, cap }) => {
 
-        const spent = b.game.arena ? Math.max(cap.min_sp ?? 5, ref.sp) : ref.sp;
-        if (!b.game.arena) ref.sp = 0;
+        const spent = ref.sp;
+        ref.sp = 0;
         ref.timedBuffs = ref.timedBuffs.filter(b => b.name !== (cap.name ?? 'Divine Inspiration'));
         audio.play('spell_light');
         b.addTimedBuff(ref, {
@@ -407,7 +407,7 @@ export const CLASS_ACTIVES = [
       if (cap && ref.level >= cap.level) {
         if (cap.id === 'miracle' && !ref.spentRest?.miracle) {
           const minSp = cap.min_sp ?? 5;
-          out.push({ kind: 'active', id: 'miracle', name: cap.name ?? 'Miracle', cost: Math.max(minSp, ref.sp), affordable: b.game.arena || ref.sp >= minSp,
+          out.push({ kind: 'active', id: 'miracle', name: cap.name ?? 'Miracle', cost: Math.max(minSp, ref.sp), affordable: ref.sp >= minSp,
             description: `Once per rest — ALL remaining SP (${ref.sp}; needs ${minSp}+): the living are healed to full, the fallen rise at half.` });
         }
       }
@@ -418,7 +418,7 @@ export const CLASS_ACTIVES = [
         audio.play('spell_heal');
         ref.spentRest.miracle = true;
         const spent = ref.sp;
-        if (!b.game.arena) ref.sp = 0;
+        ref.sp = 0;
         b.addFx(c.x, c.y, `${(cap.name ?? 'MIRACLE').toUpperCase()}!`, COLOR.gold);
         b.game.log(`${ref.name} spends everything at once (${spent} SP) — a ${cap.name ?? 'Miracle'}!`, 'good');
         for (const hc of b.heroes()) {

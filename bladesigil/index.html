@@ -321,6 +321,17 @@
   .eq-pool-item button:disabled { opacity: 0.4; cursor: default; }
   #equipment .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 10px; }
   #inventory .dismiss { text-align: center; color: var(--dim); font-style: italic; margin-top: 12px; }
+  /* ---- The campfire beat ---- */
+  #camp {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(4,4,8,0.86);
+    z-index: 59;
+    align-items: center; justify-content: center;
+  }
+  .camp-card { text-align: center; }
+  .camp-card img { width: min(64vw, 640px); max-height: 72vh; object-fit: contain; border: 2px solid var(--gold); border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+  .camp-caption { color: var(--gold); font-style: italic; font-size: 18px; margin-top: 12px; }
   /* ---- Level-up summary ---- */
   #levelup {
     display: none;
@@ -684,7 +695,6 @@
       <tr><td>T</td><td>make camp (1 ration per living hero)</td></tr>
       <tr><td>I, C, or E</td><td>character sheet — stats, gear, XP &amp; leveling up</td></tr>
       <tr><td>B</td><td>spellbook — a caster's pages by level, the day's prepared spells, scrolls to copy</td></tr>
-      <tr><td>` (backtick)</td><td>training arena</td></tr>
       <tr><td>O</td><td>marching order — reorder the party, set front/back rows (town or map, never mid-battle)</td></tr>
       <tr><td>P</td><td>playtest bench — set party level, summon test fights</td></tr>
       <tr><td colspan="2" class="key-group">In battle</td></tr>
@@ -808,12 +818,9 @@
     and though the foes regroup for a few turns while you run, wounded
     monsters remember: if they catch you again, the rematch starts with them
     <i>right on top of you</i>.</p>
-    <h3>The training arena</h3>
-    <p>The backtick door leads to a sparring hall: one of every monster at
-    5× health, free spells and potions, no experience, no consequences.
-    Everything is exactly as it was when you step back out.</p>
     <p class="dismiss">Press G to close &middot; H shows the controls</p>
   </div>
+  <div id="camp"></div>
   <div id="choice"></div>
   <div id="levelup"></div>
   <div id="creation"></div>

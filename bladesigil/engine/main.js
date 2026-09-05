@@ -3,7 +3,7 @@
 import { loadJSON, showFatal } from './loader.js';
 import { Game, validateItems, validateMonsters } from './game.js';
 import { Renderer, preloadImages } from './render.js';
-import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding, maybeOpenChoice, choiceOpen, choicePick, togglePlaytest, playtestOpen, levelupOpen, dismissLevelup, toggleSpellbook, spellbookOpen, flipToSheet, flipToBook, toggleMarching, marchingOpen } from './ui.js';
+import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding, maybeOpenChoice, choiceOpen, choicePick, togglePlaytest, playtestOpen, levelupOpen, dismissLevelup, toggleSpellbook, spellbookOpen, flipToSheet, flipToBook, toggleMarching, marchingOpen, campOpen, openCamp, closeCamp } from './ui.js';
 import { validateProgression } from './progression.js';
 import { validateDungeon } from './dungeon.js';
 import { validateMagic, deriveScrollItems } from './magic.js';
@@ -33,9 +33,8 @@ async function boot() {
   const tacticsNames = level.tactics ?? ['room'];
   const tactics = {};
   for (const n of tacticsNames) tactics[n] = await loadJSON(`data/tactics/${n}.json`);
-  const arenaTemplate = await loadJSON('data/tactics/arena.json');
 
-  const data = { classes, races, monsters, party, level, tactics, spells, conditions, items, town, dungeon, progression, arenaTemplate };
+  const data = { classes, races, monsters, party, level, tactics, spells, conditions, items, town, dungeon, progression };
   deriveScrollItems(data);   // magic v3: spells flagged "scroll" become scroll_<id> items
   validateProgression(data); // friendly errors for progression.json typos
   validateMagic(data);       // …and for spells.json / scroll items
@@ -59,6 +58,7 @@ async function boot() {
   const renderer = new Renderer(canvas, game, images);
   window.game = game; // console access for debugging/playtesting
   game.onBuilding = kind => openBuilding(game, kind);
+  game.onCamp = (caption, then) => openCamp(game, caption, then);
   // Continue (Phase 6): overlay the saved run onto the freshly built party.
   // A save that names retired things steps aside with a message, not a crash.
   if (run) {
@@ -158,6 +158,7 @@ async function boot() {
   // Map-side modals, highest priority first: the first one open owns the key.
   const MODALS = [
     // A fork in the road: number keys (or clicks) decide. No backing out.
+    [campOpen, e => { stop(e); closeCamp(); }], // the campfire picture: any key hurries the night along
     [choiceOpen, e => { if (digit(e)) choicePick(digit(e)); }],
     [buildingOpen, e => { if (isEsc(e)) closeBuilding(); }],
     // The level-up summary (or a milestone card) sits on top of the
@@ -180,7 +181,6 @@ async function boot() {
     e: () => playing() && toggleEquipment(game), E: () => playing() && toggleEquipment(game),
     c: () => playing() && toggleEquipment(game), C: () => playing() && toggleEquipment(game),
     b: () => playing() && toggleSpellbook(game), B: () => playing() && toggleSpellbook(game),
-    '`': () => game.startArena(), '~': () => game.startArena(),
     o: () => playing() && toggleMarching(game), O: () => playing() && toggleMarching(game),
     p: () => playing() && togglePlaytest(game), P: () => playing() && togglePlaytest(game),
     m: mute, M: mute,

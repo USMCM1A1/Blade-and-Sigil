@@ -127,9 +127,13 @@ export class Battle {
     // Ambushed (the monsters caught the party): they pour in right on top of
     // the front line instead of forming up across the field — fleeing and
     // re-engaging never buys free distance.
+    // The LEAD hero (first in marching order) is anchor one — the ambush
+    // lands on them first — then the rest of the front row, then the back.
+    const lead = this.combatants.find(c => c.ref.alive);
+    const rank = c => c === lead ? 0 : c.ref.row === 'front' ? 1 : 2;
     const anchors = this.combatants
       .filter(c => c.ref.alive)
-      .sort((a, b) => (a.ref.row === 'front' ? 0 : 1) - (b.ref.row === 'front' ? 0 : 1));
+      .sort((a, b) => rank(a) - rank(b));
     foes.forEach((m, i) => {
       const spot = this.ambush && anchors.length
         ? (() => { const a = anchors[i % anchors.length]; return this.nearestOpen(a.x + 1, a.y); })()
@@ -809,10 +813,10 @@ export class Battle {
       // Zealous Strike: the stance pays its SP the instant a melee blow lands.
       const zVerb = ch.zealousOn && !ch.weapon.range && hasVerb(this.game.data, ch, 'zealous_strike')
         ? laneOf(this.game.data, ch).verb : null;
-      const zeal = zVerb && (this.game.arena || ch.sp >= (zVerb.cost ?? 3));
+      const zeal = zVerb && (ch.sp >= (zVerb.cost ?? 3));
       if (zVerb && !zeal) this.addFx(foeC.x, foeC.y, 'zeal falters — no SP', COLOR.dim);
       if (zeal) {
-        if (!this.game.arena) ch.sp -= zVerb.cost ?? 3;
+        ch.sp -= zVerb.cost ?? 3;
         dmgParts.push([Math.max(1, roll(zVerb.dice ?? '2d6')), `${zVerb.name ?? 'Zealous Strike'} (${zVerb.dice ?? '2d6'})`]);
       }
       // Elemental weapons (tier abilities): the blade's own extra elemental
@@ -886,7 +890,7 @@ export class Battle {
         if (heal > 0) { ch.hp += heal; this.fxOn(ch, `+${heal}`, COLOR.green); }
         const immune = hasRefinement(this.game.data, ch, 'zealous_immunity');
         if (immune) ch.zealousImmune = true;
-        this.game.log(`${zVerb.name ?? 'Zealous Strike'}! ${ch.name} burns ${this.game.arena ? 0 : zVerb.cost ?? 3} SP${heal > 0 ? ` — ${heal} HP returns` : ''}${immune ? ' — and no affliction can touch them until their next turn' : ''}.`, 'good');
+        this.game.log(`${zVerb.name ?? 'Zealous Strike'}! ${ch.name} burns ${zVerb.cost ?? 3} SP${heal > 0 ? ` — ${heal} HP returns` : ''}${immune ? ' — and no affliction can touch them until their next turn' : ''}.`, 'good');
       }
       // Deathless Fury: a share of the wound flows back as the singer's blood.
       const steal = (ch.timedBuffs ?? []).filter(b => b.lifesteal).reduce((m, b) => Math.max(m, b.lifesteal), 0);
@@ -1005,10 +1009,10 @@ export class Battle {
     // off-hand matches the main hand blow for blow this turn.
     const surgeVerb = ch.surgeOn && ch.offhand && !shooting && hasVerb(this.game.data, ch, 'hunters_surge') ? laneOf(this.game.data, ch).verb : null;
     const surgeCost = ch.packArmed ? 0 : (surgeVerb?.cost ?? 2);
-    const surging = surgeVerb && (this.game.arena || ch.sp >= surgeCost);
+    const surging = surgeVerb && (ch.sp >= surgeCost);
     if (surgeVerb && !surging) this.addFx(c.x, c.y, 'surge falters — no SP', COLOR.dim);
     if (surging) {
-      if (!this.game.arena) ch.sp -= surgeCost;
+      ch.sp -= surgeCost;
       this.addFx(c.x, c.y, `${(surgeVerb.name ?? 'SURGE').toUpperCase()}!`, COLOR.sun);
       this.game.log(`${surgeVerb.name ?? "Hunter's Surge"}! ${ch.name} spends ${surgeCost} SP — both blades, blow for blow.`, 'good');
     }
@@ -1108,13 +1112,13 @@ export class Battle {
       const v = overcast ? laneOf(data, ch).verb : null;
       const spent = !!s.once_per_rest && !!ch.spentRest?.[s.id];
       return { ...s, cost, overcast, dc_bonus: v ? (v.dc_bonus ?? 1) : 0,
-        affordable: !spent && (this.game.arena || ch.sp >= cost),
+        affordable: !spent && (ch.sp >= cost),
         description: spent ? `${s.description} (once per rest — spent; a night's rest returns it)` : s.once_per_rest ? `${s.description} (once per rest)` : s.description };
     });
     if (hasCapstone(data, ch, 'archmage') && !ch.spentRest?.archmage) {
       const capName = laneOf(data, ch).capstone.name ?? 'Archmage';
       for (const s of unpreparedSpells(data, ch)) {
-        list.push({ ...s, cost: Math.max(1, ch.sp), archmage: true, affordable: this.game.arena || ch.sp >= 1,
+        list.push({ ...s, cost: Math.max(1, ch.sp), archmage: true, affordable: ch.sp >= 1,
           description: `${s.description} (${capName}: unprepared — costs ALL ${ch.sp} SP, once per rest)` });
       }
     }
@@ -1231,11 +1235,11 @@ export class Battle {
     // Scrolls (magic v3): an arcane caster reads the words off the page —
     // one cast, no SP, the scroll burns. Others see why they can't.
     const scrolls = this.game.readableScrolls(c.ref).map(sc => ({ ...sc, kind: 'scroll', usable: !sc.reason }));
-    // Restocking the quiver mid-fight: a full turn's work (the arena's is bottomless).
+    // Restocking the quiver mid-fight: a full turn's work.
     const out = [...potions, ...scrolls];
     const ch = c.ref;
     const ammo = this.game.ammoId();
-    if (ammo && ch.weapon?.range && !this.game.arena) {
+    if (ammo && ch.weapon?.range) {
       const cap = this.game.quiverCap(ch), have = this.game.quiverCount(ch), spare = this.game.ammoCount();
       const room = cap - have;
       const usable = room > 0 && spare > 0;
@@ -1445,7 +1449,7 @@ export class Battle {
       this.cancelTargeting();
       const v = laneOf(this.game.data, c.ref).verb;
       const cost = v.cost ?? 3;
-      if (!this.game.arena) c.ref.sp = Math.max(0, c.ref.sp - cost);
+      c.ref.sp = Math.max(0, c.ref.sp - cost);
       audio.play('spell_buff');
       const targets = [hc];
       if (hasRefinement(this.game.data, c.ref, 'fortitude_two')) {
@@ -1464,7 +1468,7 @@ export class Battle {
         this.particleFx(t.x, t.y, 'sparkle', COLOR.ember);
         this.game.log(`${v.name ?? 'Shared Fortitude'}: ${t.ref.name} gains ${pool} absorbed damage (${v.dice ?? '2d8'} → ${base}${con ? ` ${con > 0 ? '+' : '−'}${Math.abs(con)} CON` : ''}) for the battle${targets.length > 1 && t === targets[1] ? ' — sheltered too' : ''}.`, 'good');
       }
-      this.game.log(`${c.ref.name} spends ${this.game.arena ? 0 : cost} SP on ${v.name ?? 'Shared Fortitude'}.`, 'info');
+      this.game.log(`${c.ref.name} spends ${cost} SP on ${v.name ?? 'Shared Fortitude'}.`, 'info');
       this.endHeroTurn();
       return;
     }
@@ -1540,7 +1544,7 @@ export class Battle {
     this.spendSpell(c.ref, s);
     audio.play(this.spellSound(s));
     if (fromScroll(s)) {
-      this.game.log(`${c.ref.name} unrolls the ${s.scrollName} and reads ${s.name} — the words burn off the page${this.game.arena ? ' (arena: the scroll survives)' : ''}.`, 'info');
+      this.game.log(`${c.ref.name} unrolls the ${s.scrollName} and reads ${s.name} — the words burn off the page.`, 'info');
     } else {
       this.game.log(`${c.ref.name} casts ${s.name}${s.overcast ? ' — OVERCAST' : ''}${s.archmage ? ` — ${laneOf(this.game.data, c.ref).capstone.name ?? 'the Archmage\'s reach'}, every point spent` : ''}${s.free ? ` — by ${c.ref.rite?.abilityName ?? 'the Final Word'}, freely` : ''}!`, 'info');
     }
@@ -1646,7 +1650,6 @@ export class Battle {
     if ((s.archmage || s.free) && !(ref.prepared ?? []).includes(s.id)) {
       ref.counters.bookCasts++; // a page read outside today's preparation
     }
-    if (this.game.arena) return; // training is free
     if (s.archmage) { ref.spentRest.archmage = true; ref.sp = 0; return; }
     if (!s.free) ref.sp = Math.max(0, ref.sp - (s.cost ?? 0));
   }
@@ -2580,7 +2583,7 @@ export class Battle {
       if (hc !== tc && !hasRefinement(this.game.data, s, 'ward_surge_allies')) continue;
       const v = laneOf(this.game.data, s).verb;
       const cost = s.chordArmed ? 0 : (v.cost ?? 2);
-      if (!this.game.arena && s.sp < cost) continue;
+      if (s.sp < cost) continue;
       return { singer: s, cost, ac: v.ac ?? 4, name: v.name ?? 'Ward Surge' };
     }
     return null;
@@ -2870,7 +2873,7 @@ export class Battle {
     this.mode = 'move';
     if (r.kind === 'ward') {
       if (accept) {
-        if (!this.game.arena) r.singer.sp = Math.max(0, r.singer.sp - r.cost);
+        r.singer.sp = Math.max(0, r.singer.sp - r.cost);
         this.wardBonus = { target: r.target, ac: r.ac, name: r.name, singer: r.singer };
         audio.play('spell_buff');
         this.fxOn(r.target, `${r.name}! +${r.ac} AC`, '#9fc8ff');
@@ -2976,10 +2979,6 @@ export class Battle {
       }
       this.breakBindings(c); // its conjured court dissolves with it
     }
-    if (this.game.arena) {
-      this.game.log(`The ${monster.name} collapses. (No XP in the training arena.)`, 'good');
-      return;
-    }
     if (monster.summoned !== undefined) {
       this.game.log(`The conjured ${monster.name} is destroyed — it unravels into nothing (no XP for a summoning).`, 'good');
       return;
@@ -3028,22 +3027,6 @@ export class Battle {
     const game = this.game;
     if (this.ending) return true;
     this.checkPhases(); // a wounded boss may change its game before anything else happens
-    if (game.arena) {
-      // Arena endings never touch the real game: win or wipe, the party is
-      // restored from the entry snapshot and steps back onto the map.
-      const wipe = game.party.every(ch => !ch.alive);
-      if (!wipe && this.monsters().length) return false;
-      this.ending = wipe ? 'defeat' : 'victory';
-      this.endedAt = performance.now();
-      this.busy = true;
-      if (!wipe) audio.play('battle_victory');
-      setTimeout(() => {
-        if (game.battle !== this) return;
-        game.battle = null;
-        game.endArena();
-      }, TIMING.endBeat);
-      return true;
-    }
     if (game.party.every(ch => !ch.alive)) {
       this.ending = 'defeat';
       this.endedAt = performance.now();
@@ -3105,11 +3088,6 @@ export class Battle {
 
   flee() {
     this.fleeing = true; // no Guardian's Stand for backs that are turned
-    if (this.game.arena) {
-      this.game.battle = null;
-      this.game.endArena();
-      return;
-    }
     if (this.ending) return;
     const exit = () => {
       if (this.game.battle !== this) return;
