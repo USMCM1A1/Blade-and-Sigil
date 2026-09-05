@@ -22,6 +22,9 @@ function listWords(words) {
 export function validateItems(data) {
   const EFFECTS = ['heal', 'cure', 'mana', 'invisibility', 'portal'];
   for (const [id, d] of Object.entries(data.items.items)) {
+    if (d.sellable !== undefined && typeof d.sellable !== 'boolean') {
+      throw new DataError('data/items.json', `"${id}": "sellable" must be true or false (false = the shop will not buy it back).`);
+    }
     if (d.tier !== undefined && ![1, 2, 3, 4, 5].includes(d.tier)) {
       throw new DataError('data/items.json', `"${id}" has tier ${JSON.stringify(d.tier)} — tiers run 1 (regular) to 5 (unique).`);
     }
@@ -596,6 +599,8 @@ export class Game {
   shopSell(id) {
     if (!(this.inventory[id] > 0)) return false;
     const def = this.itemDef(id);
+    if (def.sellable === false) { this.log(`The shop does not buy ${def.name.toLowerCase()} — spend them, don't sell them.`, 'info'); return false; }
+    if (def.sellable === false) { this.log(`The shop does not buy ${def.name.toLowerCase()} — spend them, don't sell them.`, 'info'); return false; }
     const price = Math.floor((def.value ?? 0) * (this.data.town.shop.sell_rate ?? 0.5));
     this.inventory[id]--;
     this.gold += price;

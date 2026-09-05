@@ -739,7 +739,8 @@ function renderBuilding(game, kind) {
       const def = game.itemDef(id);
       const price = Math.floor((def.value ?? 0) * (conf.sell_rate ?? 0.5));
       row(`${def.name} ×${n}`, itemStats(def),
-        `Sell — ${price} gold`, null, () => game.shopSell(id));
+        def.sellable === false ? 'Not bought here' : `Sell — ${price} gold`,
+        def.sellable === false ? 'the shop does not buy these back' : null, () => game.shopSell(id));
     }
   }
 }

@@ -1,5 +1,5 @@
 {
-  "_comment": "Itemization v2 (2026-08-27, designer's five-tier model). Every item has a 'tier' 1-5: T1 regular gear + Mastersmith weapons (+1 damage, mundane); T2 Enchanted +1 (weapons get 'hit': 1 and 'enchanted': true — ONLY enchanted weapons can strike monsters marked 'magic_to_hit' in monsters.json; armor +1 AC) plus minor trinkets; T3 enchanted with a minor ability/benefit/protection; T4 major; T5 unique named pieces. Vault chests draw gear from the floor's tier band (depth 1-4 -> T1 ... 17-20 -> T5). Supported magic fields on any worn piece: ac, sp, hit, dmg, detect, save_bonus, immune (condition ids), abilities ({str:+1}), enchanted. Weapons: 'finesse' aims with best of STR/DEX, 'hands': 2 claims both hands, 'range' makes it a bow. Potions: effect heal/cure/mana (dice) or invisibility (battle-only: the drinker fades until they strike). ALL stats here are Claude PROPOSALS under the designer's model — retune freely. | TIER ABILITIES (2026-08-27 session 2): 'resist': [elements] = HALF damage from that element (designer ruling — damage only); 'immune' also takes elements (zero damage AND blocks the linked condition: fire->burning, poison->poison); weapon 'bonus_damage': {dice, element} adds a named elemental die per hit; weapon 'double_vs': family + 'flavor' word doubles the FINAL damage total vs that monster family (Ancient=undead/holy, Bane=outsider). Elements: fire/frost/lightning/poison (electricity = lightning). | PRINCIPLE (designer, 2026-08-28): WEAPONS carry offensive minor abilities, ARMOR/clothing defensive ones — the T3 elemental blades add flat +1 elemental damage (bonus_damage dice may be a flat number); resist/immune belong on worn pieces. | MAGIC v3 (2026-08-28): scrolls. A spell with 'scroll': true in spells.json becomes the item 'scroll_<spell>' automatically; explicit scroll entries here (type 'scroll' + 'spell') override that. 'scroll_values' = the price ladder by spell level, x 'rare_multiplier' for rare lore; tier defaults to the spell level. Any arcane caster reads a scroll once in battle; only a spellbook copies it. | RANGED (2026-08-29): the 'ranged' block below — 'point_blank_penalty' = to-hit penalty for shooting with a foe adjacent, 'ammo' = the item every shot spends (none in the pouch = no shot), 'recover_misses' = the share of MISSED shots' arrows picked up after a won battle. Bows: 'range' in squares; 'steady': true = the bow needs a planted stance — no shot on a turn the hero has moved (longbow, crossbow); the short bow shoots on the move. 'bundle': N = shops sell and chests drop N at a time (arrows). | AXES (2026-08-29, companion doc v1): 'weapon_axe' is its own category now (battle/great/hand axes, Frostbite, Fiendcleaver, Worldsplitter) — the Stoneshaper's kit alongside blunt weapons; warriors and archers ('any') still swing them. | FOCUS GROUPS (2026-09-02, designer ruling after the 'medium blades feels harsh' session): Weapon Focus is chosen by GROUP, not by the narrow item 'type'. 'focus_groups' maps each group to the item types it covers — so a warrior who swears to Blades gets the +1 with a dagger, a longsword, OR a two-handed sword, and a great find is never wasted. Item 'type' is UNCHANGED and still governs class restrictions and equip slots (a wizard limited to light_blade still cannot lift a greatsword). Every weapon type must belong to exactly one group; boot validation enforces it. Rename the groups or re-sort the types freely. | NO GEAR GIVES ABILITY SCORES (designer ruling 2026-09-02): stat-boosting items were deleted (Ring of Strength, Ring of Dexterity, Necklace of Intelligence, Amulet of the Titan) and the two T5 uniques that carried a stat rider lost it (Duskfang, Crown of the Hierophant — the crown gained +6 SP and +1 saves instead). Reason: if gear hands out ability scores, the race you chose at creation stops mattering. The ONE way to raise an ability after creation is the level-10 choice (progression.json 'ability_boost'). The 'abilities' item field still WORKS if you ever want it back.",
+  "_comment": "Itemization v2 (2026-08-27, designer's five-tier model). Every item has a 'tier' 1-5: T1 regular gear + Mastersmith weapons (+1 damage, mundane); T2 Enchanted +1 (weapons get 'hit': 1 and 'enchanted': true — ONLY enchanted weapons can strike monsters marked 'magic_to_hit' in monsters.json; armor +1 AC) plus minor trinkets; T3 enchanted with a minor ability/benefit/protection; T4 major; T5 unique named pieces. Vault chests draw gear from the floor's tier band (depth 1-4 -> T1 ... 17-20 -> T5). Supported magic fields on any worn piece: ac, sp, hit, dmg, detect, save_bonus, immune (condition ids), abilities ({str:+1}), enchanted. Weapons: 'finesse' aims with best of STR/DEX, 'hands': 2 claims both hands, 'range' makes it a bow. Potions: effect heal/cure/mana (dice) or invisibility (battle-only: the drinker fades until they strike). ALL stats here are Claude PROPOSALS under the designer's model — retune freely. | TIER ABILITIES (2026-08-27 session 2): 'resist': [elements] = HALF damage from that element (designer ruling — damage only); 'immune' also takes elements (zero damage AND blocks the linked condition: fire->burning, poison->poison); weapon 'bonus_damage': {dice, element} adds a named elemental die per hit; weapon 'double_vs': family + 'flavor' word doubles the FINAL damage total vs that monster family (Ancient=undead/holy, Bane=outsider). Elements: fire/frost/lightning/poison (electricity = lightning). | PRINCIPLE (designer, 2026-08-28): WEAPONS carry offensive minor abilities, ARMOR/clothing defensive ones — the T3 elemental blades add flat +1 elemental damage (bonus_damage dice may be a flat number); resist/immune belong on worn pieces. | MAGIC v3 (2026-08-28): scrolls. A spell with 'scroll': true in spells.json becomes the item 'scroll_<spell>' automatically; explicit scroll entries here (type 'scroll' + 'spell') override that. 'scroll_values' = the price ladder by spell level, x 'rare_multiplier' for rare lore; tier defaults to the spell level. Any arcane caster reads a scroll once in battle; only a spellbook copies it. | RANGED (2026-08-29): the 'ranged' block below — 'point_blank_penalty' = to-hit penalty for shooting with a foe adjacent, 'ammo' = the item every shot spends (none in the pouch = no shot), 'recover_misses' = the share of MISSED shots' arrows picked up after a won battle. Bows: 'range' in squares; 'steady': true = the bow needs a planted stance — no shot on a turn the hero has moved (longbow, crossbow); the short bow shoots on the move. 'bundle': N = shops sell and chests drop N at a time (arrows). | AXES (2026-08-29, companion doc v1): 'weapon_axe' is its own category now (battle/great/hand axes, Frostbite, Fiendcleaver, Worldsplitter) — the Stoneshaper's kit alongside blunt weapons; warriors and archers ('any') still swing them. | FOCUS GROUPS (2026-09-02, designer ruling after the 'medium blades feels harsh' session): Weapon Focus is chosen by GROUP, not by the narrow item 'type'. 'focus_groups' maps each group to the item types it covers — so a warrior who swears to Blades gets the +1 with a dagger, a longsword, OR a two-handed sword, and a great find is never wasted. Item 'type' is UNCHANGED and still governs class restrictions and equip slots (a wizard limited to light_blade still cannot lift a greatsword). Every weapon type must belong to exactly one group; boot validation enforces it. Rename the groups or re-sort the types freely. | NO GEAR GIVES ABILITY SCORES (designer ruling 2026-09-02): stat-boosting items were deleted (Ring of Strength, Ring of Dexterity, Necklace of Intelligence, Amulet of the Titan) and the two T5 uniques that carried a stat rider lost it (Duskfang, Crown of the Hierophant — the crown gained +6 SP and +1 saves instead). Reason: if gear hands out ability scores, the race you chose at creation stops mattering. The ONE way to raise an ability after creation is the level-10 choice (progression.json 'ability_boost'). The 'abilities' item field still WORKS if you ever want it back. | 2026-09-05 (designer): hat, travelers_cloak, sturdy_boots REMOVED (no effect, no visual — dead weight) and iron_helm REMOVED (+1 AC for 30g was too cheap a wall). 'sellable': false = the shop will not buy it back (arrows: bought only, never an income).",
   "scroll_values": [
     100,
     250,
@@ -383,35 +383,6 @@
       "value": 60,
       "description": "Layered scholar's robes — any hero may wear them, and casters swear by them."
     },
-    "iron_helm": {
-      "name": "Iron Helm",
-      "type": "helm",
-      "tier": 1,
-      "ac": 1,
-      "value": 30,
-      "description": "A plain iron pot that has saved many a skull."
-    },
-    "hat": {
-      "name": "Hat",
-      "type": "helm",
-      "tier": 1,
-      "value": 10,
-      "description": "A fine hat. It protects your dignity, if nothing else."
-    },
-    "travelers_cloak": {
-      "name": "Traveler's Cloak",
-      "type": "cloak",
-      "tier": 1,
-      "value": 10,
-      "description": "A weather-stained cloak that keeps the dungeon's chill out."
-    },
-    "sturdy_boots": {
-      "name": "Sturdy Boots",
-      "type": "boots",
-      "tier": 1,
-      "value": 15,
-      "description": "Thick-soled boots for bad roads."
-    },
     "health_potion": {
       "name": "Health Potion",
       "type": "consumable",
@@ -498,7 +469,8 @@
       "bundle": 12,
       "max_carry": 36,
       "tier": 1,
-      "description": "A dozen fletched shafts for the pouch — spare stock. Each archer carries their own quiver (20; crossbows 12) and refills it from here: free between fights, a full turn during one."
+      "description": "A dozen fletched shafts for the pouch — spare stock. Each archer carries their own quiver (20; crossbows 12) and refills it from here: free between fights, a full turn during one.",
+      "sellable": false
     },
     "rusty_longsword": {
       "name": "Rusty Longsword",

@@ -109,13 +109,15 @@ export function loadRun(game, p) {
   p.party.forEach((s, i) => {
     const ch = game.party[i];
     if (classIdOf(data, ch) !== s.classId || raceIdOf(data, ch) !== s.raceId) bad(`a changed hero (${s.name})`);
-    for (const id of Object.values(s.equipment ?? {})) if (id && !data.items.items[id]) bad(`item "${id}"`);
+    // Gear that no longer exists (an item retired from items.json) is simply
+    // taken off — the run goes on without it, and says so.
+    for (const [slot, id] of Object.entries(s.equipment ?? {})) if (id && !data.items.items[id]) { s.equipment[slot] = null; (p._dropped ??= []).push(`${s.name}'s ${id.replace(/_/g, ' ')}`); }
     for (const id of [...(s.spellbook ?? []), ...(s.prepared ?? []), ...(s.knownSpells ?? []), ...(s.formerBook ?? [])]) {
       if (!data.spells.spells[id]) bad(`spell "${id}"`);
     }
     for (const c of s.conditions ?? []) if (!data.conditions.conditions[c.id]) bad(`condition "${c.id}"`);
   });
-  for (const id of Object.keys(p.inventory ?? {})) if (!data.items.items[id]) bad(`item "${id}"`);
+  for (const id of Object.keys(p.inventory ?? {})) if (!data.items.items[id]) { delete p.inventory[id]; (p._dropped ??= []).push(id.replace(/_/g, ' ')); }
   for (const f of Object.values(p.floors ?? {})) {
     for (const m of f.monsters ?? []) if (!data.monsters.monsters[m.id]) bad(`monster "${m.id}"`);
     for (const t of [...(f.traps ?? []), ...(f.chestTraps ?? [])]) if (!data.dungeon.traps[t.id]) bad(`trap "${t.id}"`);
@@ -140,6 +142,7 @@ export function loadRun(game, p) {
   });
   game.gold = p.gold;
   game.inventory = p.inventory ?? {};
+  if (p._dropped?.length) game.log(`Some gear from an older version no longer exists and was set aside: ${p._dropped.join(', ')}.`, 'info');
   game.turn = p.turn ?? 0;
   game.preBossDepth = p.preBossDepth ?? null;
   game.deepest = p.deepest ?? (typeof p.depth === 'number' ? p.depth : 20);
