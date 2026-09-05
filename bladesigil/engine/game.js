@@ -833,6 +833,8 @@ export class Game {
     const ctc = this.level.chestTrapChance;
     if (typeof ctc !== 'number' || ctc < 0 || ctc > 1) {
       throw new DataError(src, `"chest_trap_chance" must be a number between 0 and 1 (e.g. 0.25 = one chest in four is rigged).`);
+    if (data.dungeon.chest_item_cap !== undefined && !(Number.isInteger(data.dungeon.chest_item_cap) && data.dungeon.chest_item_cap >= 1))
+      throw new DataError('data/dungeon.json', `"chest_item_cap" must be a whole number of 1 or more (the most items one chest can hold besides gold and a scroll), or be left out for no cap.`);
     }
     for (const id of this.level.chestTrapPool) {
       if (!this.data.dungeon.traps[id]) {
@@ -1136,12 +1138,16 @@ export class Game {
     this.grid[y][x] = '.';
     audio.play('coins');
     const found = [], left = [];
-    for (const entry of this.level.chestItems) {
-      if (Math.random() < entry.chance) {
-        const def = this.itemDef(entry.id);
-        const got = this.addItem(entry.id, def.bundle ?? 1);
-        (got ? found : left).push(`${got > 1 ? `${got} ` : ''}${def.name}`);
-      }
+    // Every chest_items entry rolls; dungeon.json's chest_item_cap (balance
+    // pass 2026-09-04) then keeps at most that many of the successes, drawn
+    // at random — a chest is a find, not a shopping bag.
+    let rolled = this.level.chestItems.filter(entry => Math.random() < entry.chance);
+    const cap = this.data.dungeon.chest_item_cap;
+    if (cap && rolled.length > cap) rolled = rolled.sort(() => Math.random() - 0.5).slice(0, cap);
+    for (const entry of rolled) {
+      const def = this.itemDef(entry.id);
+      const got = this.addItem(entry.id, def.bundle ?? 1);
+      (got ? found : left).push(`${got > 1 ? `${got} ` : ''}${def.name}`);
     }
     // Guaranteed surprises: N items drawn at random from the whole catalog.
     const ids = Object.keys(this.data.items.items);

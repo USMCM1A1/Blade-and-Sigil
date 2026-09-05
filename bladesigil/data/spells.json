@@ -34,7 +34,7 @@
       ],
       "stat": "int",
       "type": "damage",
-      "dice": "3d6",
+      "dice": "2d6",
       "range": 6,
       "area": 1,
       "save": "dex",

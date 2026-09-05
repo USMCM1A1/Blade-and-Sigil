@@ -1,6 +1,7 @@
 {
-  "_comment": "The endless dungeon (Phase 5). Floors are generated from these TIERS (2026-08-26: one per floor 1-20, the designer's monster-by-level list; floors 21+ reuse floor 20's) — each covers a span of floor depths and says what spawns there. 'styles': 'rooms' (halls and corridors) or 'caves' (twisting caverns; caves have no doors). 'monsters': id -> weight (higher = more common; ids from monsters.json). 'monster_count'/'chest_count'/'trap_count'/'secret_doors': dice strings rolled per floor. 'traps': which trap ids (from 'traps' below) this tier uses. 'rest_ambush': camp-attack chance. Floors deeper than the last tier keep using it. TRAPS: 'dice' damage, 'save' ability + 'dc' for half, optional 'condition' on a failed save. The BOSS floor is hand-drawn here — same format as a level file — and unlocks when every hero is level 20. Edit freely! 'chest_trap_chance': chance (0-1) any chest is rigged (a tier may override it; the trap is drawn from that tier's 'traps' list). 'vault_loot': what makes a secret vault's chest (*) rich — gold_multiplier scales the tier's chest_gold roll, gear_pieces = how many pieces of real gear it holds, drawn from the floor's item TIER band (depth 1-4 draws tier 1, 5-8 tier 2, 9-12 tier 3, 13-16 tier 4, 17+ tier 5; an empty tier falls back down). 'search_turns': how many map turns a deliberate Space-search costs — it always finds every adjacent hidden thing (if anyone in the party has any detect skill), but monsters keep moving and poison keeps ticking while you comb the walls. 'scroll_drops' (magic v3, 2026-08-28): scrolls in chests by floor band — 'chance' = odds a regular chest ($) holds ONE scroll, 'levels' = which spell levels it may be, 'rare_chance' = of those, the share that are rare lore; 'vault' = the same knobs for a secret vault's chest (*), rolled IN ADDITION to the vault's gear. A scroll never drops for a spell with no scroll item (rare pools fall back to common, and vice versa). These odds are the lethality dial — proposals, tune freely.",
+  "_comment": "The endless dungeon (Phase 5). Floors are generated from these TIERS (2026-08-26: one per floor 1-20, the designer's monster-by-level list; floors 21+ reuse floor 20's) — each covers a span of floor depths and says what spawns there. 'styles': 'rooms' (halls and corridors) or 'caves' (twisting caverns; caves have no doors). 'monsters': id -> weight (higher = more common; ids from monsters.json). 'monster_count'/'chest_count'/'trap_count'/'secret_doors': dice strings rolled per floor. 'traps': which trap ids (from 'traps' below) this tier uses. 'rest_ambush': camp-attack chance. Floors deeper than the last tier keep using it. TRAPS: 'dice' damage, 'save' ability + 'dc' for half, optional 'condition' on a failed save. The BOSS floor is hand-drawn here — same format as a level file — and unlocks when every hero is level 20. Edit freely! 'chest_trap_chance': chance (0-1) any chest is rigged (a tier may override it; the trap is drawn from that tier's 'traps' list). 'vault_loot': what makes a secret vault's chest (*) rich — gold_multiplier scales the tier's chest_gold roll, gear_pieces = how many pieces of real gear it holds, drawn from the floor's item TIER band (depth 1-4 draws tier 1, 5-8 tier 2, 9-12 tier 3, 13-16 tier 4, 17+ tier 5; an empty tier falls back down). 'search_turns': how many map turns a deliberate Space-search costs — it always finds every adjacent hidden thing (if anyone in the party has any detect skill), but monsters keep moving and poison keeps ticking while you comb the walls. 'scroll_drops' (magic v3, 2026-08-28): scrolls in chests by floor band — 'chance' = odds a regular chest ($) holds ONE scroll, 'levels' = which spell levels it may be, 'rare_chance' = of those, the share that are rare lore; 'vault' = the same knobs for a secret vault's chest (*), rolled IN ADDITION to the vault's gear. A scroll never drops for a spell with no scroll item (rare pools fall back to common, and vice versa). These odds are the lethality dial — proposals, tune freely. | BALANCE PASS 2026-09-04 (designer: 'the loot is too rich'): chest_item_cap 2 (a chest keeps at most two of its rolled items besides gold and a scroll), floors 5+ chest_gold cut ~35%, potion chances ×0.7, scroll chances halved (vault scroll chance ×0.6, rares halved). All numbers proposals.",
   "chest_trap_chance": 0.25,
+  "chest_item_cap": 2,
   "search_turns": 5,
   "vault_loot": {
     "gold_multiplier": 3,
@@ -13,18 +14,18 @@
           1,
           4
         ],
-        "chance": 0.08,
+        "chance": 0.04,
         "levels": [
           1
         ],
         "rare_chance": 0.0,
         "vault": {
-          "chance": 0.3,
+          "chance": 0.18,
           "levels": [
             1,
             2
           ],
-          "rare_chance": 0.15
+          "rare_chance": 0.075
         }
       },
       {
@@ -32,19 +33,19 @@
           5,
           8
         ],
-        "chance": 0.1,
+        "chance": 0.05,
         "levels": [
           1,
           2
         ],
         "rare_chance": 0.0,
         "vault": {
-          "chance": 0.35,
+          "chance": 0.21,
           "levels": [
             2,
             3
           ],
-          "rare_chance": 0.25
+          "rare_chance": 0.125
         }
       },
       {
@@ -52,19 +53,19 @@
           9,
           12
         ],
-        "chance": 0.12,
+        "chance": 0.06,
         "levels": [
           2,
           3
         ],
-        "rare_chance": 0.05,
+        "rare_chance": 0.025,
         "vault": {
-          "chance": 0.4,
+          "chance": 0.24,
           "levels": [
             3,
             4
           ],
-          "rare_chance": 0.3
+          "rare_chance": 0.15
         }
       },
       {
@@ -72,19 +73,19 @@
           13,
           16
         ],
-        "chance": 0.12,
+        "chance": 0.06,
         "levels": [
           3,
           4
         ],
-        "rare_chance": 0.08,
+        "rare_chance": 0.04,
         "vault": {
-          "chance": 0.4,
+          "chance": 0.24,
           "levels": [
             4,
             5
           ],
-          "rare_chance": 0.35
+          "rare_chance": 0.175
         }
       },
       {
@@ -92,18 +93,18 @@
           17,
           99
         ],
-        "chance": 0.15,
+        "chance": 0.075,
         "levels": [
           4,
           5
         ],
-        "rare_chance": 0.1,
+        "rare_chance": 0.05,
         "vault": {
-          "chance": 0.5,
+          "chance": 0.3,
           "levels": [
             5
           ],
-          "rare_chance": 0.4
+          "rare_chance": 0.2
         }
       }
     ]
@@ -139,11 +140,11 @@
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "antidote_potion",
-          "chance": 0.3
+          "chance": 0.21
         },
         {
           "id": "rations",
@@ -217,11 +218,11 @@
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "antidote_potion",
-          "chance": 0.3
+          "chance": 0.21
         },
         {
           "id": "rations",
@@ -297,11 +298,11 @@
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "antidote_potion",
-          "chance": 0.3
+          "chance": 0.21
         },
         {
           "id": "rations",
@@ -309,7 +310,7 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "arrows",
@@ -384,11 +385,11 @@
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "antidote_potion",
-          "chance": 0.3
+          "chance": 0.21
         },
         {
           "id": "rations",
@@ -396,7 +397,7 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "arrows",
@@ -471,15 +472,15 @@
       },
       "monster_count": "2d4+3",
       "chest_count": "1d3",
-      "chest_gold": "5d20+40",
+      "chest_gold": "4d20+25",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.6
+          "chance": 0.42
         },
         {
           "id": "antidote_potion",
-          "chance": 0.35
+          "chance": 0.24
         },
         {
           "id": "rations",
@@ -495,19 +496,19 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "arrows",
@@ -589,15 +590,15 @@
       },
       "monster_count": "2d4+3",
       "chest_count": "1d3",
-      "chest_gold": "5d20+40",
+      "chest_gold": "4d20+25",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.6
+          "chance": 0.42
         },
         {
           "id": "antidote_potion",
-          "chance": 0.35
+          "chance": 0.24
         },
         {
           "id": "rations",
@@ -613,19 +614,19 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "arrows",
@@ -713,15 +714,15 @@
       },
       "monster_count": "2d4+3",
       "chest_count": "1d3",
-      "chest_gold": "5d20+40",
+      "chest_gold": "4d20+25",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.6
+          "chance": 0.42
         },
         {
           "id": "antidote_potion",
-          "chance": 0.35
+          "chance": 0.24
         },
         {
           "id": "rations",
@@ -737,19 +738,19 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "arrows",
@@ -847,15 +848,15 @@
       },
       "monster_count": "2d4+3",
       "chest_count": "1d3",
-      "chest_gold": "5d20+40",
+      "chest_gold": "4d20+25",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.6
+          "chance": 0.42
         },
         {
           "id": "antidote_potion",
-          "chance": 0.35
+          "chance": 0.24
         },
         {
           "id": "rations",
@@ -871,19 +872,19 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "arrows",
@@ -983,15 +984,15 @@
       },
       "monster_count": "2d4+5",
       "chest_count": "1d3+1",
-      "chest_gold": "8d20+80",
+      "chest_gold": "5d20+50",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.7
+          "chance": 0.49
         },
         {
           "id": "antidote_potion",
-          "chance": 0.4
+          "chance": 0.28
         },
         {
           "id": "rations",
@@ -1007,27 +1008,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
@@ -1117,15 +1118,15 @@
       },
       "monster_count": "2d4+5",
       "chest_count": "1d3+1",
-      "chest_gold": "8d20+80",
+      "chest_gold": "5d20+50",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.7
+          "chance": 0.49
         },
         {
           "id": "antidote_potion",
-          "chance": 0.4
+          "chance": 0.28
         },
         {
           "id": "rations",
@@ -1141,27 +1142,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
@@ -1246,15 +1247,15 @@
       },
       "monster_count": "2d4+5",
       "chest_count": "1d3+1",
-      "chest_gold": "8d20+80",
+      "chest_gold": "5d20+50",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.7
+          "chance": 0.49
         },
         {
           "id": "antidote_potion",
-          "chance": 0.4
+          "chance": 0.28
         },
         {
           "id": "rations",
@@ -1270,27 +1271,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
@@ -1366,15 +1367,15 @@
       },
       "monster_count": "2d4+5",
       "chest_count": "1d3+1",
-      "chest_gold": "8d20+80",
+      "chest_gold": "5d20+50",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.7
+          "chance": 0.49
         },
         {
           "id": "antidote_potion",
-          "chance": 0.4
+          "chance": 0.28
         },
         {
           "id": "rations",
@@ -1390,27 +1391,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
@@ -1481,15 +1482,15 @@
       },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
-      "chest_gold": "10d20+150",
+      "chest_gold": "7d20+90",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.8
+          "chance": 0.56
         },
         {
           "id": "antidote_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "rations",
@@ -1505,27 +1506,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
@@ -1608,15 +1609,15 @@
       },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
-      "chest_gold": "10d20+150",
+      "chest_gold": "7d20+90",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.8
+          "chance": 0.56
         },
         {
           "id": "antidote_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "rations",
@@ -1632,27 +1633,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
@@ -1734,15 +1735,15 @@
       },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
-      "chest_gold": "10d20+150",
+      "chest_gold": "7d20+90",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.8
+          "chance": 0.56
         },
         {
           "id": "antidote_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "rations",
@@ -1758,27 +1759,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
@@ -1857,15 +1858,15 @@
       },
       "monster_count": "3d4+6",
       "chest_count": "1d3+1",
-      "chest_gold": "10d20+150",
+      "chest_gold": "7d20+90",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.8
+          "chance": 0.56
         },
         {
           "id": "antidote_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "rations",
@@ -1881,27 +1882,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
@@ -1982,15 +1983,15 @@
       },
       "monster_count": "3d4+8",
       "chest_count": "2d3",
-      "chest_gold": "12d20+250",
+      "chest_gold": "8d20+150",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.9
+          "chance": 0.63
         },
         {
           "id": "antidote_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "rations",
@@ -2006,27 +2007,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
@@ -2097,15 +2098,15 @@
       },
       "monster_count": "3d4+8",
       "chest_count": "2d3",
-      "chest_gold": "12d20+250",
+      "chest_gold": "8d20+150",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.9
+          "chance": 0.63
         },
         {
           "id": "antidote_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "rations",
@@ -2121,27 +2122,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
@@ -2210,15 +2211,15 @@
       },
       "monster_count": "3d4+8",
       "chest_count": "2d3",
-      "chest_gold": "12d20+250",
+      "chest_gold": "8d20+150",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.9
+          "chance": 0.63
         },
         {
           "id": "antidote_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "rations",
@@ -2234,27 +2235,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
@@ -2324,15 +2325,15 @@
       },
       "monster_count": "3d4+8",
       "chest_count": "2d3",
-      "chest_gold": "12d20+250",
+      "chest_gold": "8d20+150",
       "chest_items": [
         {
           "id": "health_potion",
-          "chance": 0.9
+          "chance": 0.63
         },
         {
           "id": "antidote_potion",
-          "chance": 0.5
+          "chance": 0.35
         },
         {
           "id": "rations",
@@ -2348,27 +2349,27 @@
         },
         {
           "id": "mana_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_healing_potion",
-          "chance": 0.25
+          "chance": 0.17
         },
         {
           "id": "extra_mana_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "invisibility_potion",
-          "chance": 0.08
+          "chance": 0.06
         },
         {
           "id": "greater_healing_potion",
-          "chance": 0.15
+          "chance": 0.1
         },
         {
           "id": "greater_mana_potion",
-          "chance": 0.1
+          "chance": 0.07
         },
         {
           "id": "arrows",
