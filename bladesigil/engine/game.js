@@ -1559,6 +1559,19 @@ export class Game {
     return true;
   }
 
+  // TEST: the floor as text — the map with the party marked '@', the
+  // fog as it stands, and the floor's name — for pasting into a bug report.
+  debugFloorText() {
+    if (this.mode !== 'dungeon' || !this.grid) return '';
+    const rows = this.grid.map((row, y) => row.map((c, x) => {
+      if (x === this.partyPos.x && y === this.partyPos.y) return '@';
+      if (c === 'S' && !this.revealed.has(`${x},${y}`)) return 'S';
+      return c;
+    }).join(''));
+    const fog = this.seen.map(row => row.map(v => (v ? '.' : ' ')).join(''));
+    return `${this.level.name} — depth ${this.depth}, turn ${this.turn}, party at ${this.partyPos.x},${this.partyPos.y}\nMAP (# rock · . floor · + door · S secret door · $ chest · * vault chest · < up · > down · @ party · letters = monsters)\n${rows.join('\n')}\nSEEN (. = seen)\n${fog.join('\n')}\n`;
+  }
+
   debugGold(amount) {
     this.gold += amount;
     this.log(`TEST: ${amount} gold appears in the purse.`, 'gold');

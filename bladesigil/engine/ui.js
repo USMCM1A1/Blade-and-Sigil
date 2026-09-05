@@ -588,6 +588,7 @@ function renderPlaytest(game) {
     <div class="pt-btnrow">
       <button data-heal>Heal &amp; revive everyone</button>
       <button data-gold>+1000 gold</button>
+      <button data-copymap${game.mode === 'dungeon' ? '' : ' disabled title="dungeon floors only"'}>Copy the floor map (for a bug report)</button>
       <button data-reveal${game.mode === 'dungeon' ? '' : ' disabled title="dungeon floors only"'}>Reveal the floor</button>
       <button data-chest>Open the item chest…</button>
     </div>
@@ -627,6 +628,12 @@ function renderPlaytest(game) {
   body.querySelector('[data-heal]').onclick = () => { game.debugHealParty(); renderPlaytest(game); };
   body.querySelector('[data-chest]').onclick = () => renderItemChest(game);
   body.querySelector('[data-gold]').onclick = () => { game.debugGold(1000); renderPlaytest(game); };
+  body.querySelector('[data-copymap]').onclick = () => {
+    const text = game.debugFloorText();
+    const done = () => { game.log('TEST: the floor map is on the clipboard — paste it into your message.', 'info'); togglePlaytest(game, false); };
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, () => { window.prompt('Copy this floor map:', text); done(); });
+    else { window.prompt('Copy this floor map:', text); done(); }
+  };
   body.querySelector('[data-reveal]').onclick = () => { game.debugRevealFloor(); togglePlaytest(game, false); };
   for (const b of body.querySelectorAll('[data-counters]')) {
     b.onclick = () => { game.debugAddCounters(Number(b.dataset.counters)); renderPlaytest(game); };
