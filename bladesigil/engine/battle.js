@@ -206,6 +206,23 @@ export class Battle {
   }
   heroAt(x, y) { return this.heroes().find(c => c.ref.alive && c.x === x && c.y === y); }
   monsterAt(x, y) { return this.monsters().find(c => c.x === x && c.y === y); }
+
+  // ---- The Summoner's creatures (2026-09-05): kind 'ally' ----
+  // A summoned creature fights FOR the party on its own (monster-style AI,
+  // the other way round), lives only this battle, and counts for neither
+  // victory nor a wipe. Its ref is a data/summons.json stat block: monster
+  // vocabulary (ac is a bonus over 10), `master` = its caller's uid.
+  allies() { return this.combatants.filter(c => c.kind === 'ally' && c.ref.hp > 0); }
+  allyAt(x, y) { return this.allies().find(c => c.x === x && c.y === y); }
+  // A living friend on the square: a hero or a summoned creature.
+  friendAt(x, y) { return this.heroAt(x, y) ?? this.allyAt(x, y); }
+  // The party's whole side, as a MONSTER sees it: living, unhidden heroes and living summons.
+  partySide() { return [...this.heroes().filter(h => h.ref.alive && !h.ref.hidden), ...this.allies()]; }
+  // The party's whole side as a SPELL or a blast sees it (hidden heroes included).
+  friendlySide() { return [...this.heroes().filter(h => h.ref.alive), ...this.allies()]; }
+  kindOf(ref) { return this.combatantOf(ref)?.kind ?? null; }
+  // How a log line names a ref mid-sentence: heroes by name, creatures with an article.
+  nameOf(ref) { return this.kindOf(ref) === 'ally' ? `the ${ref.name}` : ref.name; }
   byUid(uid) { return this.combatants.find(cc => cc.uid === uid); }
 
   // ---- Shared helpers (refactor step 4, 2026-09-03) ----
@@ -258,7 +275,7 @@ export class Battle {
     setTimeout(() => {
       if (this.game.battle !== this) return;
       targets.forEach((t, i) => setTimeout(() => {
-        if (this.game.battle !== this || t.ref.alive === false) return;
+        if (this.game.battle !== this || t.ref.alive === false || (t.kind === 'ally' && t.ref.hp <= 0)) return;
         each(t, i);
       }, i * step));
       setTimeout(() => {
@@ -281,7 +298,7 @@ export class Battle {
       if (cond.source === undefined || !this.game.conditionDef(cond.id)?.fear) continue;
       const src = this.byUid(cond.source);
       if (!src || src.ref === ref) continue;
-      if (src.kind === 'monster' ? src.ref.hp <= 0 : !src.ref.alive) continue; // a dead terror binds no one
+      if (src.kind === 'hero' ? !src.ref.alive : src.ref.hp <= 0) continue; // a dead terror binds no one
       out.push(src);
     }
     return out;
@@ -342,16 +359,7 @@ export class Battle {
           if (c.ref[flag]) { c.ref[flag] = false; this.game.log(`${c.ref.rite?.abilityName ?? what} has run its course.`, 'info'); }
         }
         this.surgeSave = null;
-        // Timed powers (Rage) burn down at the start of their owner's turn.
-        for (const b of [...(c.ref.timedBuffs ?? [])]) {
-          if (b.rounds == null) continue; // a battle-long spell buff (magic v3) fades with the fight
-          b.rounds--;
-          if (b.rounds <= 0) {
-            c.ref.timedBuffs = c.ref.timedBuffs.filter(x => x !== b);
-            this.addFx(c.x, c.y, `${b.name} fades`, COLOR.dim);
-            this.game.log(`${c.ref.name}'s ${b.name.toLowerCase()} fades.`);
-          }
-        }
+        this.tickTimedBuffs(c); // timed powers (Rage) burn down at the start of their owner's turn
         const verdict = this.tickConditions(c); // burn ticks, paralysis check
         if (this.checkEnd()) return;
         if (verdict === 'dead') continue;
@@ -398,8 +406,40 @@ export class Battle {
         }, TIMING.monsterTurn);
         return;
       }
+      if (c.kind === 'ally' && c.ref.hp > 0) {
+        // A summoned creature: paced and locked like a monster's turn, but it
+        // walks toward the enemy and swings for the party.
+        const period = (c.ref.speed > 1 ? c.ref.speed : 1) * (this.isSlowed(c.ref) ? 2 : 1);
+        if (period > 1 && this.round % period !== 0) continue;
+        this.busy = true;
+        setTimeout(() => {
+          if (this.game.battle !== this || c.ref.hp <= 0) return;
+          this.tickTimedBuffs(c);
+          const verdict = this.tickConditions(c);
+          if (this.checkEnd()) return;
+          if (verdict !== 'dead' && verdict !== 'skip') this.allyTurn(c);
+          if (this.pendingReaction || this.pendingAction) return;
+          if (this.checkEnd()) return;
+          this.nextTurn();
+        }, TIMING.monsterTurn);
+        return;
+      }
     }
     this.busy = false;
+  }
+
+  // Timed powers burn down at the start of their owner's turn (heroes and
+  // summoned creatures alike); rounds null = the whole battle.
+  tickTimedBuffs(c) {
+    for (const b of [...(c.ref.timedBuffs ?? [])]) {
+      if (b.rounds == null) continue; // a battle-long spell buff (magic v3) fades with the fight
+      b.rounds--;
+      if (b.rounds <= 0) {
+        c.ref.timedBuffs = c.ref.timedBuffs.filter(x => x !== b);
+        this.addFx(c.x, c.y, `${b.name} fades`, COLOR.dim);
+        this.game.log(`${c.ref.name}'s ${b.name.toLowerCase()} fades.`);
+      }
+    }
   }
 
   // Tick this combatant's conditions at the start of their turn.
@@ -414,11 +454,11 @@ export class Battle {
         const dmg = Math.max(1, roll(def.dice));
         ref.hp -= dmg;
         this.addFx(c.x, c.y, `-${dmg} ${def.name.toLowerCase()}`, def.color);
-        this.game.log(`${ref.name} suffers ${dmg} damage from ${def.name.toLowerCase()}.`);
+        this.game.log(`${this.nameOf(ref)} suffers ${dmg} damage from ${def.name.toLowerCase()}.`);
         this.wake(ref);
       } else if (def.effect === 'skip') {
         this.addFx(c.x, c.y, def.name, def.color);
-        this.game.log(`${ref.name} is ${def.name.toLowerCase()} and cannot act!`);
+        this.game.log(`${this.nameOf(ref)} is ${def.name.toLowerCase()} and cannot act!`);
         verdict = 'skip';
       } else if (def.effect === 'slow' && c.kind === 'hero' && this.round % 2 === 1) {
         // Heroes mired by Slowed lose every odd round (monsters skip theirs in nextTurn).
@@ -431,11 +471,12 @@ export class Battle {
       cond.rounds--;
       if (cond.rounds <= 0) {
         ref.conditions = ref.conditions.filter(x => x !== cond);
-        this.game.log(`${ref.name} recovers from ${def.name.toLowerCase()}.`, 'good');
+        this.game.log(`${this.nameOf(ref)} recovers from ${def.name.toLowerCase()}.`, 'good');
       }
     }
     if (ref.hp <= 0) {
       if (c.kind === 'monster') { this.slay(ref); return 'dead'; }
+      if (c.kind === 'ally') { this.slayAlly(ref); return 'dead'; }
       if (this.downHero(ref)) return 'dead';
       return verdict; // caught at the brink (Sanctuary, Mercy) — the turn goes on
     }
@@ -453,12 +494,12 @@ export class Battle {
       this.game.log(`${ref.name}'s Zealous Strike still burns — no affliction can touch them.`, 'good');
       return;
     }
-    let bonus = targetC.kind === 'monster'
-      ? (ref.save ?? 0)
-      : abilityMod(ref.abilities[def.save ?? 'con']) + this.game.heroSaveBonus(ref);
+    let bonus = targetC.kind === 'hero'
+      ? abilityMod(ref.abilities[def.save ?? 'con']) + this.game.heroSaveBonus(ref)
+      : (ref.save ?? 0); // monsters and summoned creatures carry a flat save
     if (targetC.kind === 'hero' && this.surgeSave?.target === ref) bonus += this.surgeSave.ac; // Ward Surge guards the save too
     if (d20() + bonus >= dc) {
-      this.resisted(ref, `${ref.name} resists — not ${def.name.toLowerCase()}!`);
+      this.resisted(ref, `${targetC.kind === 'ally' ? 'The ' : ''}${ref.name} resists — not ${def.name.toLowerCase()}!`);
       return;
     }
     this.game.applyCondition(ref, condId, rounds, source);
@@ -709,8 +750,7 @@ export class Battle {
   isUnaware(foeC, attackerRef) { return !foeC.aware || !!attackerRef?.hidden; }
   // A foe hemmed in by two or more living heroes is flanked.
   isFlanked(foeC) {
-    return this.heroes().filter(h =>
-      h.ref.alive && this.adjacent(h, foeC)).length >= 2;
+    return this.friendlySide().filter(h => this.adjacent(h, foeC)).length >= 2; // a summoned creature flanks too
   }
   // Blade Work growth: the extra openings a thief learns to read. Returns
   // the name of the first one that fits (it becomes the log's reason), or
@@ -1371,7 +1411,7 @@ export class Battle {
   // a raising, the afflicted for a cure, the wounded for a heal, and any
   // OTHER living ally for a single-ally buff — then anyone living.
   friendlyCandidates(s) {
-    const alive = this.heroes().filter(h => h.ref.alive);
+    const alive = this.friendlySide(); // heroes and summoned creatures alike
     if (s?.type === 'raise') return SPELL_EFFECTS.raise.candidates(this, s, alive);
     const pick = SPELL_EFFECTS[s?.type]?.candidates?.(this, s, alive) ?? alive.filter(h => h.ref.hp < h.ref.maxHp);
     return pick.length ? pick : alive;
@@ -1720,8 +1760,8 @@ export class Battle {
 
   resolveHeal(c, s, x, y, m, impact) {
     const targets = s.targets === 'allies'
-      ? this.heroes().filter(h => h.ref.alive)
-      : [this.heroAt(x, y)].filter(Boolean);
+      ? this.friendlySide()
+      : [this.friendAt(x, y)].filter(Boolean);
     if (!targets.length) return;
     for (const t of targets) {
       const { amount, math } = this.rollSpellAmount(c, s, m, 'heal');
@@ -1735,7 +1775,7 @@ export class Battle {
   }
 
   resolveCure(c, s, x, y, m, impact) {
-    const ally = this.heroAt(x, y);
+    const ally = this.friendAt(x, y);
     if (!ally) return;
     const cured = this.cureConditions(ally.ref, s.cures);
     let healed = 0, math = '';
@@ -1911,8 +1951,8 @@ export class Battle {
   // combat math; rounds null = the whole battle. Recasting refreshes.
   resolveBuff(c, s, x, y, m) {
     const targets = s.targets === 'self' ? [c.ref]
-      : s.targets === 'ally' ? [this.heroAt(x, y)?.ref].filter(Boolean)
-        : this.game.party.filter(ch => ch.alive);
+      : s.targets === 'ally' ? [this.friendAt(x, y)?.ref].filter(Boolean)
+        : this.friendlySide().map(f => f.ref); // the party — and every creature it has called
     if (!targets.length) return;
     const bits = [];
     if (s.hit) bits.push(`${s.hit > 0 ? '+' : ''}${s.hit} hit`);
@@ -1932,6 +1972,7 @@ export class Battle {
     if (s.lifesteal) bits.push(`${Math.round(s.lifesteal * 100)}% of weapon damage heals you`);
     if (s.auto_hit) bits.push('attacks cannot miss');
     if (s.enchant) bits.push('the weapon strikes as enchanted');
+    if (s.thorns) bits.push(`every melee blow that lands tears the attacker for ${s.thorns.dice}${s.thorns.element ? ` ${s.thorns.element}` : ''}`);
     if (s.hidden) bits.push('unseen');
     const rounds = s.rounds && !s.stance ? s.rounds + m.extraRounds : null;
     let absorbText = '';
@@ -1948,7 +1989,7 @@ export class Battle {
       const tc = this.combatantOf(ch);
       if (tc) this.particleFx(tc.x, tc.y, s.fx?.kind === 'wisp' ? 'wisp' : 'sparkle', s.fx?.color ?? COLOR.amber);
     }
-    const who = s.targets === 'self' ? c.ref.name : s.targets === 'ally' ? targets[0].name : 'the party';
+    const who = s.targets === 'self' ? c.ref.name : s.targets === 'ally' ? this.nameOf(targets[0]) : 'the party';
     this.game.log(`${s.name} settles on ${who}: ${bits.join(', ')}${absorbText}${rounds ? ` for ${rounds} round${rounds > 1 ? 's' : ''}${m.extraRounds ? ` (+${m.extraRounds} caster level)` : ''}` : s.stance ? ' — a Stance, held until the next full rest' : ' this battle'}.`, 'good');
   }
 
@@ -2079,8 +2120,8 @@ export class Battle {
 
   // Living heroes this monster can see and reach with a ranged ability.
   heroesInReach(c, range) {
-    return this.heroes().filter(h => h.ref.alive && !h.ref.hidden
-      && this.dist(h.x, h.y, c.x, c.y) <= range && this.losClear(c.x, c.y, h.x, h.y))
+    return this.partySide().filter(h => // heroes and the creatures they called
+      this.dist(h.x, h.y, c.x, c.y) <= range && this.losClear(c.x, c.y, h.x, h.y))
       .sort((a, b) => this.dist(c.x, c.y, a.x, a.y) - this.dist(c.x, c.y, b.x, b.y));
   }
 
@@ -2108,7 +2149,7 @@ export class Battle {
   // bonus vs the ability's DC. Returns {saved, text}.
   abilitySave(hc, save, dc) {
     const ref = hc.ref;
-    let bonus = abilityMod(ref.abilities[save ?? 'dex']) + this.game.heroSaveBonus(ref);
+    let bonus = hc.kind === 'ally' ? (ref.save ?? 0) : abilityMod(ref.abilities[save ?? 'dex']) + this.game.heroSaveBonus(ref);
     if (this.surgeSave?.target === ref) bonus += this.surgeSave.ac;
     const die = d20();
     return {
@@ -2140,7 +2181,7 @@ export class Battle {
     }
     this.wound(target, dmg);
     this.game.log(`${target.name} takes ${dmg} damage (${bits.join(' · ')})!`);
-    if (target.hp <= 0) this.downHero(target); // spellfire, not a blow — Unyielding sleeps
+    if (target.hp <= 0) this.fall(target); // spellfire, not a blow — Unyielding sleeps
   }
 
   // bolt: one hero. breath: every hero within `area` of the chosen one —
@@ -2150,7 +2191,7 @@ export class Battle {
     const primary = this.abilityTarget(c, ab);
     if (!primary) return;
     const targets = ab.type === 'breath'
-      ? this.heroes().filter(h => h.ref.alive && this.dist(h.x, h.y, primary.x, primary.y) <= (ab.area ?? 1))
+      ? this.friendlySide().filter(h => this.dist(h.x, h.y, primary.x, primary.y) <= (ab.area ?? 1))
       : [primary];
     const fxSpell = { area: ab.type === 'breath' ? (ab.area ?? 1) : 0, fx: ab.fx, type: 'damage' };
     const impact = this.emitSpellFx(c, fxSpell, primary.x, primary.y);
@@ -2182,7 +2223,7 @@ export class Battle {
       const primary = this.abilityTarget(c, ab);
       if (!primary) return;
       targets = (ab.area ?? 0) > 0
-        ? this.heroes().filter(h => h.ref.alive && this.dist(h.x, h.y, primary.x, primary.y) <= ab.area)
+        ? this.friendlySide().filter(h => this.dist(h.x, h.y, primary.x, primary.y) <= ab.area)
         : [primary];
     }
     const cdef = this.game.conditionDef(ab.condition);
@@ -2460,20 +2501,23 @@ export class Battle {
   }
 
   adjacentHero(c) {
-    // A hidden hero simply isn't there, as far as any monster knows.
-    const near = this.heroes().filter(h => h.ref.alive && !h.ref.hidden && this.adjacent(h, c));
+    // A hidden hero simply isn't there, as far as any monster knows. A
+    // summoned creature standing beside it is fair game.
+    const near = this.partySide().filter(h => this.adjacent(h, c));
     if (!near.length) return null;
     if (this.tauntActive() && near.includes(this.taunt.c)) return this.taunt.c;
     return near[Math.floor(Math.random() * near.length)];
   }
 
-  stepToward(c) {
-    // BFS to the closest square adjacent to a living hero, then take the first
-    // step. A taunting knight draws every march toward himself.
-    const pool = this.tauntActive() ? [this.taunt.c] : this.heroes().filter(h => !h.ref.hidden);
+  stepToward(c, pool = null) {
+    // BFS to the closest square adjacent to a living hero (or summoned
+    // creature), then take the first step. A taunting knight draws every
+    // march toward himself. A summoned creature passes its own pool: the
+    // monsters it can see.
+    pool ??= this.tauntActive() ? [this.taunt.c] : this.partySide();
     const targets = new Set();
     for (const h of pool) {
-      if (!h.ref.alive) continue;
+      if (h.kind === 'hero' && !h.ref.alive) continue;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const x = h.x + dx, y = h.y + dy;
         if (this.open(x, y) || (x === c.x && y === c.y)) targets.add(y * GRID_W + x);
@@ -2498,7 +2542,7 @@ export class Battle {
     let k = found;
     while (prev.get(k) !== c.y * GRID_W + c.x) k = prev.get(k);
     c.x = k % GRID_W; c.y = Math.floor(k / GRID_W);
-    this.checkBattleTrap(c);
+    if (c.kind === 'monster') this.checkBattleTrap(c); // the party's own snares don't bite its creatures
     return true;
   }
 
@@ -2565,7 +2609,7 @@ export class Battle {
   acExtras(ref, m) {
     const parts = [];
     for (const b of ref.timedBuffs ?? []) if (b.ac) parts.push([b.ac, b.name]); // Aegis of Dawn, Rage's recklessness…
-    const gift = ref.cls.creation_pick?.options.find(o => o.id === ref.gift?.id);
+    const gift = ref.cls?.creation_pick?.options.find(o => o.id === ref.gift?.id);
     if (gift?.ac_vs_element && m?.element && m.element === ref.gift.element) parts.push([gift.ac_vs_element, `${gift.name} vs ${m.element}`]);
     if (this.wardBonus && this.wardBonus.target === ref) parts.push([this.wardBonus.ac, this.wardBonus.name]);
     return parts;
@@ -2609,8 +2653,8 @@ export class Battle {
       }
     }
     this.surgeDone = false;
-    const extras = tc?.kind === 'hero' ? this.acExtras(target, m) : [];
-    const ac = tc?.kind === 'hero' ? this.heroAcOf(tc, m) : target.ac;
+    const extras = tc?.kind === 'hero' ? this.acExtras(target, m) : tc?.kind === 'ally' ? this.allyAcParts(target) : [];
+    const ac = tc?.kind === 'hero' ? this.heroAcOf(tc, m) : tc?.kind === 'ally' ? this.allyAcOf(tc) : 10 + (target.ac ?? 0);
     const surge = this.wardBonus?.target === target ? this.wardBonus : null;
     this.wardBonus = null; // spent on this blow, hit or miss
     if (surge) this.surgeSave = { target, ac: surge.ac }; // the ward guards the save too
@@ -2628,6 +2672,7 @@ export class Battle {
     if (die + toHit >= ac) {
       const dmg = Math.max(1, roll(m.damage) + dmgCond);
       this.lastMonsterRoll = `${hitText}${dmgCond ? ` · ${dmgCond > 0 ? '+' : '−'}${Math.abs(dmgCond)} damage ${condName}` : ''}`;
+      if (tc?.kind === 'ally') { this.applyHitToAlly(m, target, dmg); return; } // a summoned creature takes it plainly
       // Aegis (the Rite): the raised guard takes the blow at half force —
       // no question asked, that's what the round was bought for.
       const aegisC = tc?.kind === 'hero' && !this.fleeing ? this.aegisGuard(target) : null;
@@ -2638,7 +2683,7 @@ export class Battle {
         return;
       }
       // Guardian's Stand: the blow hangs in the air while the player decides.
-      const guardian = this.fleeing ? null : this.standCandidate(target);
+      const guardian = this.fleeing || tc?.kind !== 'hero' ? null : this.standCandidate(target);
       if (guardian) {
         this.pendingReaction = { m, target, dmg, guardian };
         this.mode = 'reaction';
@@ -2647,7 +2692,7 @@ export class Battle {
       this.applyMonsterHit(m, target, dmg);
     } else {
       this.fxOn(target, 'miss', COLOR.dim);
-      this.game.log(`The ${m.name} lunges at ${target.name} but misses (${hitText}).`);
+      this.game.log(`The ${m.name} lunges at ${this.nameOf(target)} but misses (${hitText}).`);
     }
   }
 
@@ -2707,7 +2752,7 @@ export class Battle {
     // catch the element too, each with their own float and guard.
     if (m.splash && target.alive) {
       const tcS = this.combatantOf(target);
-      const near = tcS ? this.heroes().filter(h => h.ref.alive && h.ref !== target
+      const near = tcS ? this.friendlySide().filter(h => h.ref !== target
         && this.adjacent(h, tcS)) : [];
       for (const h of near) {
         let halved = null;
@@ -2720,7 +2765,7 @@ export class Battle {
         this.particleFx(h.x, h.y, 'wisp', '#ff8c3a');
         this.fxOn(h.ref, `-${sp} splash`, '#e0912f');
         this.game.log(`${m.splash.element} splashes onto ${h.ref.name} for ${sp} (${m.splash.dice} — beside the ${m.name})${halved ? ` — ${halved.name} halves it` : ''}!`);
-        if (h.ref.hp <= 0) this.downHero(h.ref, { attack: true });
+        if (h.ref.hp <= 0) this.fall(h.ref, { attack: true });
       }
     }
     // Mirror Ward / Bastion Veil: a share of the wound flies back at its source.
@@ -2734,6 +2779,7 @@ export class Battle {
       if (laneOf(this.game.data, target)?.rite?.tracked === 'wardDeflects') target.counters.wardDeflects++;
       if (m.hp <= 0) this.slay(m);
     }
+    this.thornsBack(target, m); // Thorn Mantle: the briars answer every blow that lands
     if (target.hp <= 0) {
       this.downHero(target, { attack: true });
     } else {
@@ -2865,6 +2911,303 @@ export class Battle {
     }
   }
 
+  // ---- Summoned creatures: the Summoner's whole trade (2026-09-05) ----
+  // Something has just reached 0 HP: a hero falls (Sanctuary, Unyielding,
+  // Mercy may still catch them), a summoned creature is unmade.
+  fall(ref, opts = {}) {
+    if (this.kindOf(ref) === 'ally') { this.slayAlly(ref); return true; }
+    return this.downHero(ref, opts);
+  }
+
+  // A creature's AC in the moment: 10 + its block, conditions, growth
+  // (Thick Hide), and any buff sung over it — every part named.
+  allyAcParts(ref) {
+    return [...(ref.acParts ?? []), ...(ref.timedBuffs ?? []).filter(b => b.ac).map(b => [b.ac, b.name])];
+  }
+  allyAcOf(ac) {
+    const ref = ac.ref;
+    return 10 + (ref.ac ?? 0) + this.game.condStat(ref, 'ac') + this.sumParts(this.allyAcParts(ref));
+  }
+
+  // Build the creature a hero calls: the summons.json block, plus every
+  // growth pick its master holds, each named so the math can name it.
+  summonRef(masterC, def, id) {
+    const D = this.game.data, ch = masterC.ref;
+    const ref = { ...def, id, x: -1, y: -1, conditions: [], timedBuffs: [], master: masterC.uid, summoned: true,
+      acParts: [], dmgParts: [], hitParts: [] };
+    let hp = def.hp;
+    for (const o of growthPicks(D, ch)) {
+      if (o.summon_ac) ref.acParts.push([o.summon_ac, o.name]);
+      if (o.summon_dmg) ref.dmgParts.push([o.summon_dmg, o.name]);
+      if (o.summon_hp) hp = Math.round(hp * (1 + o.summon_hp));
+      if (o.summon_attacks) ref.attacks = (ref.attacks ?? 1) + o.summon_attacks;
+      if (o.summon_inflict) ref.growthInflict = { ...o.summon_inflict, by: o.name };
+      if (o.summon_immune) ref.timedBuffs.push({ hit: 0, dmg: 0, ac: 0, saves: 0, attacks: 0, name: o.name, immune_conditions: o.summon_immune, rounds: null });
+      if (o.summon_revive) ref.revive = o.name;
+      if (o.summon_first) ref.first = true;
+    }
+    ref.hp = hp; ref.maxHp = hp;
+    return ref;
+  }
+
+  // A hero calls creatures: any it already holds are released first
+  // (designer ruling: recasting replaces), then `count` of `id` step out
+  // beside the caller and join the round right AFTER the caller — or, with
+  // Pack Sense, right BEFORE. Returns how many answered (0 = no room; the
+  // caller spends nothing then).
+  callSummons(masterC, { id, count = 1, name = null, verb = null }) {
+    const def = this.game.data.summons.summons[id];
+    if (!def) throw new Error(`No summon "${id}" in data/summons.json.`);
+    const ch = masterC.ref;
+    const spots = [];
+    for (let i = 0; i < count; i++) {
+      // Reserve the squares first: a released creature's square may open up.
+      const spot = this.nearestOpen(masterC.x, masterC.y);
+      if (!this.open(spot.x, spot.y)) break;
+      spots.push(spot);
+      this.combatants.push({ kind: 'reserve', x: spot.x, y: spot.y, alivePos: () => true, uid: -1 });
+    }
+    this.combatants = this.combatants.filter(c => c.kind !== 'reserve');
+    if (!spots.length) {
+      this.addFx(masterC.x, masterC.y, 'no room!', COLOR.dim);
+      this.game.log(`${ch.name} calls — but there is no room on the field for anything to answer.`, 'info');
+      return 0;
+    }
+    this.dismissSummons(masterC, 'released');
+    let nextUid = Math.max(...this.combatants.map(x => x.uid)) + 1;
+    const made = [];
+    for (const spot of spots) {
+      const ref = this.summonRef(masterC, def, id);
+      const cc = { kind: 'ally', ref, x: spot.x, y: spot.y, aware: true, alivePos: () => ref.hp > 0, uid: nextUid++, init: masterC.init ?? 0 };
+      const at = this.combatants.indexOf(masterC);
+      if (ref.first) {
+        this.combatants.splice(at, 0, cc);
+        if (at <= this.turnIdx) this.turnIdx++; // the caller is still the one acting
+      } else {
+        this.combatants.splice(at + 1 + made.length, 0, cc);
+      }
+      made.push(cc);
+    }
+    audio.play('summon');
+    this.particleFx(masterC.x, masterC.y, 'wisp', COLOR.violet);
+    this.addFx(masterC.x, masterC.y, `${(name ?? def.name).toUpperCase()}!`, COLOR.violet);
+    for (const cc of made) {
+      this.particleFx(cc.x, cc.y, 'sparkle', COLOR.violet);
+      this.addFx(cc.x, cc.y, cc.ref.name + '!', COLOR.violet);
+    }
+    const what = made.length > 1 ? `${made.length} ${def.plural ?? def.name + 's'}` : `${/^[aeiou]/i.test(def.name) ? 'an' : 'a'} ${def.name}`;
+    const mods = [...made[0].ref.acParts.map(([v, n]) => `+${v} AC ${n}`), ...made[0].ref.dmgParts.map(([v, n]) => `+${v} damage ${n}`),
+      made[0].ref.growthInflict ? `${made[0].ref.growthInflict.by} on every bite` : null, made[0].ref.revive ? made[0].ref.revive : null].filter(Boolean);
+    this.game.log(`${ch.name} ${verb ?? 'calls'} — ${what} answer${made.length > 1 ? '' : 's'} and take${made.length > 1 ? '' : 's'} the field beside ${ch.name} (${made[0].ref.hp} HP, AC ${this.allyAcOf(made[0])}${mods.length ? ` — ${mods.join(', ')}` : ''}). ${made[0].ref.first ? 'They act before their caller each round.' : 'They act right after their caller each round.'}`, 'good');
+    this.sweepHidden();
+    return made.length;
+  }
+
+  // Release every creature a hero holds (a recast, or the caller has fallen).
+  dismissSummons(masterC, why = 'released') {
+    const bound = this.allies().filter(a => a.ref.master === masterC.uid);
+    if (!bound.length) return 0;
+    for (const a of bound) {
+      a.ref.hp = 0;
+      a.diedAt = performance.now();
+      this.addFx(a.x, a.y, 'unmade', COLOR.violet);
+    }
+    const names = bound.map(a => `the ${a.ref.name}`).join(', ');
+    this.game.log(why === 'fallen'
+      ? `${masterC.ref.name} falls — ${names} unravel${bound.length > 1 ? '' : 's'} into nothing without a will to hold ${bound.length > 1 ? 'them' : 'it'}.`
+      : `${masterC.ref.name} releases ${names} back into nothing.`, 'info');
+    return bound.length;
+  }
+
+  // A summoned creature is destroyed: it unravels, no XP, nobody falls —
+  // unless its master's Bound Tighter knits it back once.
+  slayAlly(ref) {
+    const c = this.combatantOf(ref);
+    if (!c) return;
+    const master = this.byUid(ref.master);
+    if (ref.revive && !ref.revived) {
+      ref.revived = true;
+      ref.hp = Math.max(1, Math.floor(hpMax(ref) / 2));
+      this.addFx(c.x, c.y, `${ref.revive}!`, COLOR.violet);
+      this.game.log(`The ${ref.name} comes apart — and ${master?.ref.name ?? 'its master'}'s ${ref.revive} knits it back together at ${ref.hp} HP!`, 'good');
+      return;
+    }
+    ref.hp = 0;
+    c.diedAt = performance.now();
+    this.addFx(c.x, c.y, 'unmade!', COLOR.violet);
+    this.game.log(`Your ${ref.name} is destroyed — it unravels back into nothing.`, 'death');
+  }
+
+  // A creature's turn: the monster loop, mirrored — step toward the nearest
+  // foe it can see, swing when adjacent (every attack it has).
+  allyTurn(c) {
+    const ref = c.ref;
+    for (let step = 0; step <= monsterMove(ref); step++) {
+      const target = this.adjacentFoe(c);
+      if (target) { this.allySwings(c, target); return; }
+      if (step === monsterMove(ref)) break;
+      if (!this.stepToward(c, this.visibleMonsters())) break;
+    }
+    const dread = this.fearSources(ref)[0];
+    if (dread) {
+      this.fxOn(ref, 'cowed', '#c8b8e8');
+      this.game.log(`The ${ref.name} cowers — it will not go near the ${dread.ref.name}.`, 'info');
+    }
+  }
+
+  // The visible monster beside this creature it will bite: the weakest.
+  adjacentFoe(c) {
+    const near = this.visibleMonsters().filter(mc => this.adjacent(mc, c));
+    return near.sort((a, b) => a.ref.hp - b.ref.hp)[0] ?? null;
+  }
+
+  allySwings(c, mc) {
+    const n = c.ref.attacks ?? 1;
+    for (let i = 0; i < n && mc.ref.hp > 0 && c.ref.hp > 0; i++) {
+      if (i > 0) this.game.log(`The ${c.ref.name} strikes again (attack ${i + 1})!`, 'combat');
+      this.allyStrike(c, mc, 'strikes');
+    }
+  }
+
+  // One blow from a summoned creature: monster-style math, every part
+  // named (its block, growth, buffs, conditions), the hero-side rules a
+  // monster answers to (magic_to_hit, resist_physical, crits), and a kill
+  // that counts for the party's XP and the master's tally.
+  allyStrike(c, foeC, verb = 'strikes') {
+    const a = c.ref, monster = foeC.ref;
+    if (monster.magic_to_hit && !a.magic && !(a.timedBuffs ?? []).some(b => b.enchant)) {
+      foeC.aware = true;
+      this.addFx(foeC.x, foeC.y, 'needs magic!', COLOR.dim);
+      this.game.log(`The ${a.name}'s blows pass straight through the ${monster.name} — only something enchanted can bite it!`, 'info');
+      return { hit: false, immune: true };
+    }
+    foeC.aware = true;
+    const die = d20();
+    const atkParts = [[a.to_hit ?? 0, a.name], ...(a.hitParts ?? []),
+      ...(a.timedBuffs ?? []).filter(b => b.hit).map(b => [b.hit, b.name]), ...this.game.condParts(a, 'hit')];
+    const atkTotal = die + this.sumParts(atkParts);
+    const acCond = this.game.condStat(monster, 'ac');
+    const ac = 10 + monster.ac + acCond;
+    const acText = `AC ${ac}${acCond ? ` (${acCond > 0 ? '+' : '−'}${Math.abs(acCond)} ${this.game.condParts(monster, 'ac').map(([, n]) => n).join(' & ')})` : ''}`;
+    const crit = die === 20;
+    if (crit || atkTotal >= ac) {
+      const critExtra = crit ? Math.max(0, roll(a.damage)) : 0;
+      const base = crit ? maxRoll(a.damage) + critExtra : roll(a.damage);
+      const dmgParts = [...(a.dmgParts ?? []), ...(a.timedBuffs ?? []).filter(b => b.dmg).map(b => [b.dmg, b.name]), ...this.game.condParts(a, 'dmg')];
+      if (a.bonus_damage) dmgParts.push([Math.max(1, roll(a.bonus_damage.dice)), `${a.bonus_damage.dice} ${a.bonus_damage.element} — the ${a.name}'s touch`]);
+      for (const b of a.timedBuffs ?? []) {
+        if (b.bonus_damage) dmgParts.push([Math.max(1, roll(b.bonus_damage.dice)), `${b.bonus_damage.dice} ${b.bonus_damage.element} — ${b.name}`]);
+      }
+      let dmg = Math.max(1, base + this.sumParts(dmgParts));
+      const preMult = dmg;
+      const kind = a.attack_kind ?? 'blunt';
+      let phys = null;
+      if (monster.resist_physical?.includes(kind) && dmg > 1) {
+        const was = dmg;
+        dmg = Math.max(1, Math.floor(dmg / 2));
+        phys = `½ resists ${kind}: ${was} → ${dmg}`;
+        this.addFx(foeC.x, foeC.y, `resists ${kind}!`, COLOR.dim);
+      }
+      if (a.bonus_damage) this.noteElementHit(foeC, a.bonus_damage.element);
+      for (const b of a.timedBuffs ?? []) if (b.bonus_damage) this.noteElementHit(foeC, b.bonus_damage.element);
+      monster.hp -= dmg;
+      this.wake(monster);
+      audio.play('melee_hit');
+      if (crit) audio.play('crit_strike');
+      this.addFx(foeC.x, foeC.y, crit ? `-${dmg}!!` : `-${dmg}`, crit ? COLOR.gold : '#ff6a4a');
+      const toHit = crit ? 'natural 20!' : `d20 ${die}${this.fmtParts(atkParts)} = ${atkTotal} vs ${acText}`;
+      const dmgMath = `${crit ? `max ${maxRoll(a.damage)} + ${a.damage} → ${critExtra}` : `${a.damage} → ${base}`}${this.fmtParts(dmgParts)}${phys ? ` = ${preMult}, ${phys}` : ''} = ${dmg}`;
+      this.game.log(crit
+        ? `A savage blow! The ${a.name} crits the ${monster.name} (${toHit} · ${dmgMath}) — ${dmg} damage!`
+        : `The ${a.name} ${verb} the ${monster.name} (${toHit} · ${dmgMath}) — ${dmg} damage.`);
+      if (monster.hp > 0) {
+        // Riders: the creature's own bite, and a growth rider (Venom Fang, Chilling Touch).
+        for (const inf of [a.inflicts, a.growthInflict].filter(Boolean)) {
+          this.tryInflict(foeC, inf.condition, inf.rounds, inf.dc, c.uid);
+        }
+      }
+      const kill = monster.hp <= 0;
+      if (kill) {
+        const master = this.byUid(a.master);
+        if (master?.kind === 'hero') master.ref.counters.summonKills = (master.ref.counters.summonKills ?? 0) + 1;
+        this.slay(monster);
+      }
+      return { hit: true, crit, kill, dmg };
+    }
+    this.addFx(foeC.x, foeC.y, 'miss', COLOR.dim);
+    this.game.log(`The ${a.name} ${verb} at the ${monster.name} and misses (d20 ${die}${this.fmtParts(atkParts)} = ${atkTotal} vs ${acText}).`);
+    return { hit: false, crit: false, kill: false, dmg: 0 };
+  }
+
+  // A monster's blow lands on a summoned creature: worn guards it has none
+  // of, but wards sung over it drink first (absorb, reduce, halve), then the
+  // wound, the monster's riders, Thorn Mantle's answer, a fey spirit's
+  // riposte — and unmaking at 0.
+  applyHitToAlly(m, target, dmg) {
+    const tc = this.combatantOf(target);
+    dmg = this.guardElement(target, m.element, dmg, {
+      immune: guard => this.game.log(`The ${m.name} strikes the ${target.name} — ${guard.name} drinks the ${m.element} whole!`, 'good'),
+      resist: guard => this.game.log(`${guard.name} turns half the ${m.element} aside.`, 'good'),
+    });
+    if (dmg === null) return;
+    const soak = [];
+    dmg = this.soakDamage(target, dmg, soak);
+    const bits = [this.lastMonsterRoll, ...soak].filter(Boolean);
+    const rollText = bits.join(' · ');
+    this.lastMonsterRoll = null;
+    audio.play('melee_hit');
+    if (dmg <= 0) {
+      this.fxOn(target, 'blocked', COLOR.dim);
+      this.game.log(`The ${m.name} strikes the ${target.name} — the ward takes it all${rollText ? ` (${rollText})` : ''}.`);
+      this.thornsBack(target, m);
+      this.allyRiposte(target, m);
+      return;
+    }
+    this.wound(target, dmg);
+    this.game.log(`The ${m.name} strikes the ${target.name} for ${dmg} damage${rollText ? ` (${rollText})` : ''}!`);
+    if (m.bonus_damage && target.hp > 0) {
+      const bd = m.bonus_damage;
+      const extra = this.guardElement(target, bd.element, Math.max(1, roll(bd.dice)), {
+        immune: guard => this.game.log(`The ${bd.element} crackles over the ${target.name} — ${guard.name} drinks it whole.`, 'good'),
+      });
+      if (extra !== null) {
+        target.hp -= extra;
+        this.fxOn(target, `-${extra} ${bd.element}`, '#e0912f');
+        this.game.log(`${bd.element} sears the ${target.name} for ${extra} more (${bd.dice} ${bd.element} — the ${m.name}'s touch)!`);
+      }
+    }
+    this.thornsBack(target, m);
+    if (target.hp <= 0) { this.slayAlly(target); return; }
+    if (tc && m.inflicts) this.tryInflict(tc, m.inflicts.condition, m.inflicts.rounds, m.inflicts.dc, this.combatantOf(m)?.uid);
+    this.allyRiposte(target, m);
+  }
+
+  // Thorn Mantle (the Druid's damage shield): every melee blow that lands on
+  // the bearer tears the attacker for the dice, by name.
+  thornsBack(victim, m) {
+    if (m.hp <= 0) return;
+    const mc = this.combatantOf(m);
+    for (const b of (victim.timedBuffs ?? []).filter(b => b.thorns)) {
+      if (m.hp <= 0) return;
+      const back = Math.max(1, roll(b.thorns.dice));
+      this.wound(m, back, '#7ec850');
+      if (b.thorns.element) this.noteElementHit(mc, b.thorns.element);
+      this.game.log(`${b.name} tears the ${m.name} for ${back}${b.thorns.element ? ` ${b.thorns.element}` : ''} (${b.thorns.dice}) as it strikes ${this.nameOf(victim)}!`, 'good');
+      if (m.hp <= 0) { this.slay(m); return; }
+    }
+  }
+
+  // A fey spirit (summons.json riposte: true) answers every melee blow that
+  // lands on it while the striker stands beside it.
+  allyRiposte(target, m) {
+    if (!target.riposte || target.hp <= 0 || m.hp <= 0 || this.fleeing) return;
+    const tc = this.combatantOf(target), mc = this.combatantOf(m);
+    if (!tc || !mc || !this.adjacent(tc, mc)) return;
+    this.addFx(tc.x, tc.y, 'RIPOSTE!', COLOR.sun);
+    this.game.log(`The ${target.name} answers the ${m.name} in the same breath!`, 'combat');
+    this.allyStrike(tc, mc, 'ripostes');
+  }
+
   // The player answered the Guardian's Stand prompt (Y/N from main.js).
   resolveReaction(accept) {
     const r = this.pendingReaction;
@@ -2959,6 +3302,8 @@ export class Battle {
     }
     ref.alive = false;
     ref.timedBuffs = []; // every verse dies with the singer — a Stance too
+    const hc = this.combatantOf(ref);
+    if (hc) this.dismissSummons(hc, 'fallen'); // the creatures it called unravel without its will
     audio.play('hero_falls'); // silent until the designer maps it
     this.fxOn(ref, 'FALLEN', '#b03535');
     this.game.log(`${ref.name} has fallen!`, 'death');
@@ -3002,8 +3347,8 @@ export class Battle {
     this.emitSpellFx({ x: c.x, y: c.y }, { area: db.area ?? 1, type: 'damage', fx: { kind: 'burst', burst: burstSprite, color } }, c.x, c.y);
     if (db.element) audio.play(`spell_${db.element === 'frost' ? 'frost' : db.element === 'lightning' ? 'lightning' : 'fire'}`);
     this.game.log(`The ${monster.name} BURSTS as it dies${db.element ? ` — ${db.element} washes everything within ${db.area ?? 1}` : ''}!`, 'death');
-    for (const h of this.heroes()) {
-      if (!h.ref.alive || this.dist(h.x, h.y, c.x, c.y) > (db.area ?? 1)) continue;
+    for (const h of this.friendlySide()) {
+      if (this.dist(h.x, h.y, c.x, c.y) > (db.area ?? 1)) continue;
       const raw = Math.max(1, roll(db.dice));
       const { saved, text } = db.save ? this.abilitySave(h, db.save, db.dc ?? 14) : { saved: false, text: '' };
       const dmg = saved ? Math.floor(raw / 2) : raw;

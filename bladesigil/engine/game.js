@@ -62,11 +62,9 @@ export function validateItems(data) {
 // tags, the passive danger fields (attacks, regen, drains, death_burst,
 // resist_physical, touch, bonus_damage, splash), and the active "abilities"
 // list — every mistake named with its valid options.
-export function validateMonsters(data) {
-  const conditionIds = conditionIdList(data);
-  const err = (id, msg) => { throw new DataError('data/monsters.json', `"${id}" ${msg}`); };
-  for (const [id, m] of Object.entries(data.monsters.monsters)) {
-    if (id.startsWith('_')) continue;
+// The stat-block fields a monster AND a summon share (data/summons.json
+// speaks the monster vocabulary, 2026-09-05). `err(id, msg)` names the file.
+function validateCreatureFields(id, m, err, conditionIds) {
     if (m.family && !FAMILIES.includes(m.family)) err(id, `has family "${m.family}". Valid: ${FAMILIES.join(', ')}.`);
     if (m.element && !ELEMENTS.includes(m.element)) err(id, `attacks with element "${m.element}". Valid: ${ELEMENTS.join(', ')}.`);
     if (m.attacks !== undefined && (!Number.isInteger(m.attacks) || m.attacks < 1)) err(id, `has attacks ${JSON.stringify(m.attacks)} — a whole number of swings per turn, 1 or more.`);
@@ -87,6 +85,14 @@ export function validateMonsters(data) {
     if (m.splash && (!isDice(m.splash.dice) || !ELEMENTS.includes(m.splash.element))) err(id, `splash needs {dice, element} — dice like "1d6", element from: ${ELEMENTS.join(', ')}.`);
     if (m.death_burst && (!isDice(m.death_burst.dice) || (m.death_burst.element && !ELEMENTS.includes(m.death_burst.element)))) err(id, `death_burst needs {dice, element?, area?, save?, dc?} — dice like "3d6", element from: ${ELEMENTS.join(', ')}.`);
     if (m.fear_aura && (!Number.isInteger(m.fear_aura.dc) || !Number.isInteger(m.fear_aura.rounds) || m.fear_aura.rounds < 1)) err(id, `fear_aura needs {dc: N, rounds: N} — a WIS save DC to close with or stand beside it, and how long the fright lasts.`);
+}
+
+export function validateMonsters(data) {
+  const conditionIds = conditionIdList(data);
+  const err = (id, msg) => { throw new DataError('data/monsters.json', `"${id}" ${msg}`); };
+  for (const [id, m] of Object.entries(data.monsters.monsters)) {
+    if (id.startsWith('_')) continue;
+    validateCreatureFields(id, m, err, conditionIds);
     const monsterIds = monsterIdList(data);
     const checkAbility = (ab, i, prefix = '') => {
       const where = `${prefix}ability ${i + 1}${ab.name ? ` (${ab.name})` : ''}`;
@@ -119,6 +125,62 @@ export function validateMonsters(data) {
   }
 }
 
+// The Summoner's creatures (data/summons.json) and the ladders that call
+// them (classes.json "summons", progression.json lane "summons", a Rite
+// ability's "summon"). Every mistake named with its valid options.
+export function validateSummons(data) {
+  const conditionIds = conditionIdList(data);
+  const file = 'data/summons.json';
+  const err = (id, msg) => { throw new DataError(file, `"${id}" ${msg}`); };
+  const entries = data.summons?.summons;
+  if (!entries || typeof entries !== 'object') throw new DataError(file, `needs a "summons" object of creature stat blocks.`);
+  const ids = Object.keys(entries).filter(k => !k.startsWith('_'));
+  for (const id of ids) {
+    const m = entries[id];
+    for (const k of ['name', 'sprite', 'damage']) if (typeof m[k] !== 'string') err(id, `needs "${k}" (text).`);
+    for (const k of ['hp', 'ac', 'to_hit']) if (!Number.isInteger(m[k])) err(id, `needs "${k}" — a whole number (ac is a bonus over 10, like a monster's).`);
+    if (m.hp < 1) err(id, `has hp ${m.hp} — 1 or more.`);
+    if (!isDice(m.damage)) err(id, `has damage ${JSON.stringify(m.damage)} — dice like "1d8+1".`);
+    validateCreatureFields(id, m, err, conditionIds);
+    if (m.xp !== undefined) err(id, `carries xp — a summon never awards any. Remove it.`);
+    if (m.abilities !== undefined || m.phases !== undefined) err(id, `has abilities/phases — summons only swing (for now). Remove them.`);
+    for (const k of ['magic', 'riposte']) if (m[k] !== undefined && m[k] !== true) err(id, `has ${k} ${JSON.stringify(m[k])} — use true or leave it out.`);
+    for (const k of ['plural', 'icon']) if (m[k] !== undefined && typeof m[k] !== 'string') err(id, `has ${k} ${JSON.stringify(m[k])} — text.`);
+    if (m.attack_kind !== undefined && !KINDS.includes(m.attack_kind)) err(id, `has attack_kind "${m.attack_kind}". Valid: ${KINDS.join(', ')} (what its blows are for resist_physical).`);
+    if (m.speed !== undefined && (!Number.isInteger(m.speed) || m.speed < 1)) err(id, `has speed ${JSON.stringify(m.speed)} — 1 (every round) or 2 (even rounds only).`);
+    if (m.save !== undefined && !Number.isInteger(m.save)) err(id, `has save ${JSON.stringify(m.save)} — a whole-number save bonus.`);
+  }
+  const checkLadder = (where, list) => {
+    if (!Array.isArray(list) || !list.length) throw new DataError(where, `"summons" is a list of bands: [{from, id, cost, two_from?, choose?}].`);
+    let last = 0;
+    for (const b of list) {
+      if (!Number.isInteger(b.from) || b.from < 1 || b.from > 20) throw new DataError(where, `summons band "${b.id ?? '?'}" needs "from": the character level it opens (1-20).`);
+      if (b.from <= last) throw new DataError(where, `summons bands must climb: "${b.id}" opens at ${b.from}, after a band at ${last}.`);
+      last = b.from;
+      if (!Number.isInteger(b.cost) || b.cost < 0) throw new DataError(where, `summons band "${b.id}" needs "cost": the spell points one call spends.`);
+      if (b.two_from !== undefined && (!Number.isInteger(b.two_from) || b.two_from <= b.from || b.two_from > 20)) throw new DataError(where, `summons band "${b.id}": "two_from" is the level (after ${b.from}) from which one call brings two.`);
+      const creatures = b.choose ?? [b.id];
+      if (b.choose !== undefined && (!Array.isArray(b.choose) || b.choose.length < 2)) throw new DataError(where, `summons band "${b.id}": "choose" lists two or more creatures the caller picks between.`);
+      for (const cId of creatures) {
+        if (!ids.includes(cId)) throw new DataError(where, `summons band "${b.id}" calls "${cId}", which is not in ${file}. Valid: ${ids.join(', ')}.`);
+      }
+    }
+  };
+  for (const [cid, cls] of Object.entries(data.classes.classes)) {
+    if (cls.summons !== undefined) checkLadder(`data/classes.json ("${cid}")`, cls.summons);
+  }
+  for (const [cid, prog] of Object.entries(data.progression.classes ?? {})) {
+    for (const lane of prog.lanes ?? []) {
+      const where = `data/progression.json ("${cid}" lane "${lane.id}")`;
+      if (lane.summons !== undefined) checkLadder(where, lane.summons);
+      const ra = lane.rite?.ability;
+      if (ra?.summon !== undefined) {
+        if (!ids.includes(ra.summon)) throw new DataError(where, `the Rite ability calls "${ra.summon}", which is not in ${file}. Valid: ${ids.join(', ')}.`);
+        if (ra.min_sp !== undefined && (!Number.isInteger(ra.min_sp) || ra.min_sp < 1)) throw new DataError(where, `the Rite ability's "min_sp" is the fewest spell points the call needs (1 or more).`);
+      }
+    }
+  }
+}
 
 export class Game {
   constructor(data) {
@@ -1022,8 +1084,8 @@ export class Game {
   // halves it (designer ruling: half damage only). Returns the guarding
   // piece so every halving can wear its name.
   elementGuard(ch, element) {
-    if (!element || !ch.equipment) return null;
-    const pieces = Object.values(ch.equipment).filter(Boolean).map(id => this.itemDef(id));
+    if (!element) return null;
+    const pieces = ch.equipment ? Object.values(ch.equipment).filter(Boolean).map(id => this.itemDef(id)) : []; // a summoned creature wears nothing
     const immune = pieces.find(d => d.immune?.includes(element));
     if (immune) return { kind: 'immune', name: immune.name };
     const resist = pieces.find(d => d.resist?.includes(element));
@@ -2031,7 +2093,7 @@ export class Game {
       if (source !== undefined) cond.source = source;
       ref.conditions.push(cond);
     }
-    this.log(`${ref.name} is ${def.name.toLowerCase()}!`, 'death');
+    this.log(`${this.battle?.nameOf(ref) ?? ref.name} is ${def.name.toLowerCase()}!`, 'death');
   }
 
   advanceTime(turns) {

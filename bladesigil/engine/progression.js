@@ -14,22 +14,28 @@ import { spellPicksOwed, studiesOwed, bonusPicksOwed } from './magic.js';
 // riposte/ward-surge/unyielding/shared-fortitude verbs, and their kin.
 const PASSIVES = ['weapon_focus', 'braced_stance', 'vital_strike', 'keen_senses',
   'prepared_mind', 'overchannel', 'blessed_hands', 'sacred_weapon',
-  'sundered_calm', 'granite_skin', 'warding_presence', 'ambidexterity', 'snap_shot'];
+  'sundered_calm', 'granite_skin', 'warding_presence', 'ambidexterity', 'snap_shot',
+  'wild_call', 'spirit_call'];
 const VERBS = ['rampage', 'guardians_stand', 'assassinate', 'vanish',
   'arcane_insight', 'overcast', 'mercy', 'zealous_strike',
-  'runic_riposte', 'ward_surge', 'unyielding', 'shared_fortitude', 'hunters_surge', 'volley'];
+  'runic_riposte', 'ward_surge', 'unyielding', 'shared_fortitude', 'hunters_surge', 'volley',
+  'call_of_the_bear', 'spirit_warrior'];
 const CAPSTONES = ['rage', 'bulwark', 'lethality', 'set_trap', 'deadly_webs',
   'archmage', 'twin_surge', 'miracle', 'divine_inspiration',
-  'whirling_verse', 'mirror_ward', 'mountains_heart', 'deep_roots', 'storm_of_blades', 'rain_of_arrows'];
+  'whirling_verse', 'mirror_ward', 'mountains_heart', 'deep_roots', 'storm_of_blades', 'rain_of_arrows',
+  'call_the_elements', 'fey_spirit'];
 const REFINEMENTS = ['rampage_crits', 'stand_half_cost', 'assassinate_low_hp', 'vanish_free',
   'insight_double', 'overcast_cheap', 'mercy_cures', 'zealous_immunity',
-  'riposte_allies', 'ward_surge_allies', 'unyielding_allies', 'fortitude_two', 'offhand_free', 'hawk_on_the_move'];
+  'riposte_allies', 'ward_surge_allies', 'unyielding_allies', 'fortitude_two', 'offhand_free', 'hawk_on_the_move',
+  'twin_call'];
 const RITE_ABILITIES = ['whirlwind', 'aegis', 'deathblow', 'shadowstep',
   'final_word', 'maelstrom', 'sanctuary', 'judgment',
-  'crescendo', 'unbroken_chord', 'bedrock', 'hearthfire', 'pack_instinct', 'true_shot'];
+  'crescendo', 'unbroken_chord', 'bedrock', 'hearthfire', 'pack_instinct', 'true_shot',
+  'spirit_of_elements', 'spirit_of_ancestors'];
 export const TRACKED_STATS = ['rampageKills', 'standSaves', 'assassinateKills', 'shadowFeats',
   'bookCasts', 'overcasts', 'mercySaves', 'zealousStrikes',
-  'riposteKills', 'wardDeflects', 'unyieldingSaves', 'alliesFortified', 'surgeKills', 'volleyKills'];
+  'riposteKills', 'wardDeflects', 'unyieldingSaves', 'alliesFortified', 'surgeKills', 'volleyKills',
+  'summonKills'];
 
 export const WEAPON_CATEGORIES = ['light_blade', 'med_blade', 'heavy_blade', 'axe', 'light_blunt', 'med_blunt', 'heavy_blunt', 'bow'];
 
@@ -115,6 +121,27 @@ export function snareDice(data, ch) {
   const m = /^(\d+)d(\d+)$/.exec(base), e = /^(\d+)d(\d+)$/.exec(g.scale.dice);
   if (!m || !e || m[2] !== e[2]) return { dice: base, steps };
   return { dice: `${Number(m[1]) + steps * Number(e[1])}d${m[2]}`, steps };
+}
+
+// ---- Summons (the Summoner, designer session 2026-09-05) ----
+// A summoning class carries a pre-fork ladder in classes.json ("summons")
+// and each lane its own in progression.json; a ladder is a list of bands
+// [{from, id, cost, two_from?, choose?, name?}]. The band in force is the
+// highest `from` the hero has reached — the lane's ladder takes over at the
+// fork because its bands start there.
+export function summonLadder(data, ch) {
+  return [...(ch.cls.summons ?? []), ...(laneOf(data, ch)?.summons ?? [])];
+}
+export function summonBand(data, ch) {
+  return summonLadder(data, ch).filter(b => ch.level >= b.from).sort((a, b) => b.from - a.from)[0] ?? null;
+}
+// How many creatures one call brings at this level (the band rule: two
+// from `two_from`).
+export function summonCount(band, ch) { return band?.two_from && ch.level >= band.two_from ? 2 : 1; }
+// The Rite's grand summon, if this hero has walked the Rite and its lane has one.
+export function riteSummon(data, ch) {
+  const r = riteOf(data, ch);
+  return r?.ability?.summon && ch.rite ? r.ability : null;
 }
 
 // ---- Lane growth (designer session 2026-09-02) ----
@@ -245,7 +272,8 @@ export function validateProgression(data) {
   const GROWTH_FIELDS = ['id', 'name', 'blurb', 'brace_vs', 'brace_bonus', 'brace_no_shield',
     'brace_allies', 'refuse', 'aura_ac', 'aura_reduce', 'aura_saves', 'aura_party',
     'aura_refuse', 'vital_when', 'skill', 'find_range', 'search_turns', 'disarm_safe',
-    'chest_safe', 'find_sure', 'saves', 'snare', 'see_hidden', 'watch'];
+    'chest_safe', 'find_sure', 'saves', 'snare', 'see_hidden', 'watch',
+    'summon_ac', 'summon_dmg', 'summon_hp', 'summon_attacks', 'summon_first', 'summon_inflict', 'summon_immune', 'summon_revive'];
   const VITAL_WHEN = ['poisoned', 'wounded', 'held', 'frightened', 'alone', 'bigger'];
   const BRACE_VS = ['spell', 'trap', 'ranged'];
   const condIds = conditionIds(data);
@@ -286,6 +314,22 @@ export function validateProgression(data) {
           if (o[f] && !condIds.includes(o[f])) {
             throw new DataError('data/progression.json', `${where}: growth option "${o.id}" names condition "${o[f]}". Valid: ${condIds.join(', ')}.`);
           }
+        }
+        // The Summoner's growth: upgrades to every creature the hero calls.
+        for (const f of ['summon_ac', 'summon_dmg', 'summon_attacks']) {
+          if (o[f] !== undefined && !Number.isInteger(o[f])) throw new DataError('data/progression.json', `${where}: growth option "${o.id}": "${f}" is a whole number added to the summon.`);
+        }
+        if (o.summon_hp !== undefined && (typeof o.summon_hp !== 'number' || o.summon_hp <= 0)) throw new DataError('data/progression.json', `${where}: growth option "${o.id}": "summon_hp" is a fraction more hit points (0.25 = a quarter more).`);
+        for (const f of ['summon_first', 'summon_revive']) {
+          if (o[f] !== undefined && o[f] !== true) throw new DataError('data/progression.json', `${where}: growth option "${o.id}": "${f}" is simply true.`);
+        }
+        if (o.summon_inflict !== undefined) {
+          const si = o.summon_inflict;
+          if (!si || !condIds.includes(si.condition) || !Number.isInteger(si.rounds) || !Number.isInteger(si.dc)) throw new DataError('data/progression.json', `${where}: growth option "${o.id}": "summon_inflict" needs {condition, rounds, dc} — condition from: ${condIds.join(', ')}.`);
+        }
+        if (o.summon_immune !== undefined) {
+          if (!Array.isArray(o.summon_immune) || !o.summon_immune.length) throw new DataError('data/progression.json', `${where}: growth option "${o.id}": "summon_immune" is a list of condition ids the summon refuses.`);
+          for (const cId of o.summon_immune) if (!condIds.includes(cId)) throw new DataError('data/progression.json', `${where}: growth option "${o.id}": summon_immune names "${cId}". Valid: ${condIds.join(', ')}.`);
         }
       }
     }

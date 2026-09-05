@@ -1,0 +1,244 @@
+{
+  "_comment": "The Summoner's creatures (designer session 2026-09-05). Every entry uses the MONSTER vocabulary from monsters.json — hp, ac (a bonus over 10, like a monster's), to_hit, damage (dice), attacks, speed (2 = acts on even rounds only), save, family, element, bonus_damage {dice, element}, inflicts {condition, rounds, dc}, resist_physical — so you tune a summon exactly the way you tune a monster. No xp: a summon never awards any. Summon-only fields: 'magic': true = its blows count as ENCHANTED and bite magic_to_hit monsters (the designer's ruling: druid elementals and shaman spirit warriors and up; wisps, wolves, bears and the first spirit cannot); 'attack_kind': edged | piercing | blunt = what its blows are for resist_physical (a bite is piercing, a paw is blunt); 'riposte': true = whenever a monster's melee blow lands on it, it strikes straight back (the fey spirit — a Bladesinger's trick); 'plural' = how several are named (Wolves); 'icon' = the emoji the sidebar badge wears while it lives. Which creature a hero calls, at what level and cost, lives in classes.json (the pre-fork wisp) and progression.json (each lane's 'summons' ladder). ALL NUMBERS ARE PROPOSALS scaled off the monster curve of the floors the band is met on — retune freely.",
+  "summons": {
+    "wisp": {
+      "name": "Wisp",
+      "icon": "✨",
+      "sprite": "assets/enemies/gen/summon_wisp.png",
+      "hp": 8,
+      "ac": 4,
+      "to_hit": 2,
+      "damage": "1d4",
+      "attacks": 1,
+      "speed": 1,
+      "save": 2,
+      "family": "elemental",
+      "attack_kind": "blunt",
+      "_comment": "Levels 1-4: a floating light with a weak arcane touch. Two of them from level 3."
+    },
+    "wolf": {
+      "name": "Wolf",
+      "icon": "🐺",
+      "sprite": "assets/enemies/gen/summon_wolf.png",
+      "hp": 22,
+      "ac": 5,
+      "to_hit": 5,
+      "damage": "1d8+1",
+      "attacks": 1,
+      "speed": 1,
+      "save": 3,
+      "family": "beast",
+      "attack_kind": "piercing",
+      "_comment": "Druid band 5-9.",
+      "plural": "Wolves"
+    },
+    "bear": {
+      "name": "Bear",
+      "icon": "🐻",
+      "sprite": "assets/enemies/gen/summon_bear.png",
+      "hp": 48,
+      "ac": 6,
+      "to_hit": 8,
+      "damage": "2d6+2",
+      "attacks": 2,
+      "speed": 1,
+      "save": 5,
+      "family": "beast",
+      "attack_kind": "edged",
+      "_comment": "Druid band 10-14: two claws a round."
+    },
+    "elemental_fire": {
+      "name": "Fire Elemental",
+      "icon": "🔥",
+      "sprite": "assets/enemies/gen/elemental_fire_medium.png",
+      "sprite_dead": "assets/enemies/gen/elemental_fire_medium_dead.png",
+      "hp": 46,
+      "ac": 7,
+      "to_hit": 9,
+      "damage": "2d8+4",
+      "attacks": 1,
+      "speed": 1,
+      "save": 5,
+      "family": "elemental",
+      "element": "fire",
+      "magic": true,
+      "attack_kind": "blunt",
+      "bonus_damage": {
+        "dice": "2d6",
+        "element": "fire"
+      },
+      "inflicts": {
+        "condition": "burning",
+        "rounds": 3,
+        "dc": 15
+      },
+      "_comment": "Druid band 15-19, the caller picks the element at each call. Art shared with the monster of the same name."
+    },
+    "elemental_earth": {
+      "name": "Earth Elemental",
+      "icon": "🪨",
+      "sprite": "assets/enemies/gen/elemental_earth_medium.png",
+      "sprite_dead": "assets/enemies/gen/elemental_earth_medium_dead.png",
+      "hp": 60,
+      "ac": 10,
+      "to_hit": 8,
+      "damage": "2d8+2",
+      "attacks": 1,
+      "speed": 1,
+      "save": 6,
+      "family": "elemental",
+      "magic": true,
+      "attack_kind": "blunt",
+      "resist_physical": [
+        "piercing"
+      ],
+      "inflicts": {
+        "condition": "paralysis",
+        "rounds": 1,
+        "dc": 14
+      }
+    },
+    "elemental_water": {
+      "name": "Water Elemental",
+      "icon": "🌊",
+      "sprite": "assets/enemies/gen/elemental_water_medium.png",
+      "sprite_dead": "assets/enemies/gen/elemental_water_medium_dead.png",
+      "hp": 52,
+      "ac": 8,
+      "to_hit": 9,
+      "damage": "2d8+2",
+      "attacks": 1,
+      "speed": 1,
+      "save": 5,
+      "family": "elemental",
+      "element": "frost",
+      "magic": true,
+      "attack_kind": "blunt",
+      "bonus_damage": {
+        "dice": "2d6",
+        "element": "frost"
+      },
+      "inflicts": {
+        "condition": "slowed",
+        "rounds": 2,
+        "dc": 14
+      }
+    },
+    "elemental_air": {
+      "name": "Air Elemental",
+      "icon": "🌪",
+      "sprite": "assets/enemies/gen/elemental_air_medium.png",
+      "sprite_dead": "assets/enemies/gen/elemental_air_medium_dead.png",
+      "hp": 40,
+      "ac": 13,
+      "to_hit": 11,
+      "damage": "2d6+2",
+      "attacks": 1,
+      "speed": 1,
+      "save": 6,
+      "family": "elemental",
+      "element": "lightning",
+      "magic": true,
+      "attack_kind": "blunt",
+      "bonus_damage": {
+        "dice": "3d6",
+        "element": "lightning"
+      }
+    },
+    "spirit_of_the_elements": {
+      "name": "Spirit of the Elements",
+      "icon": "🌀",
+      "sprite": "assets/enemies/gen/summon_spirit_of_the_elements.png",
+      "hp": 90,
+      "ac": 11,
+      "to_hit": 13,
+      "damage": "3d8+4",
+      "attacks": 2,
+      "speed": 1,
+      "save": 8,
+      "family": "elemental",
+      "element": "lightning",
+      "magic": true,
+      "attack_kind": "blunt",
+      "bonus_damage": {
+        "dice": "2d6",
+        "element": "lightning"
+      },
+      "resist_physical": [
+        "piercing",
+        "edged"
+      ],
+      "_comment": "The Druid's Rite summon (level 20): every spell point, once a battle."
+    },
+    "spirit": {
+      "name": "Spirit",
+      "icon": "👻",
+      "sprite": "assets/enemies/gen/summon_spirit.png",
+      "hp": 20,
+      "ac": 6,
+      "to_hit": 5,
+      "damage": "1d8",
+      "attacks": 1,
+      "speed": 1,
+      "save": 4,
+      "family": "outsider",
+      "attack_kind": "blunt",
+      "_comment": "Shaman band 5-9: a bare spirit with a melee blow. Cannot bite magic_to_hit foes — the Spirit Edge verse fixes that."
+    },
+    "spirit_warrior": {
+      "name": "Spirit Warrior",
+      "icon": "⚔",
+      "sprite": "assets/enemies/gen/summon_spirit_warrior.png",
+      "hp": 42,
+      "ac": 8,
+      "to_hit": 8,
+      "damage": "2d6+2",
+      "attacks": 1,
+      "speed": 1,
+      "save": 5,
+      "family": "outsider",
+      "magic": true,
+      "attack_kind": "edged",
+      "_comment": "Shaman band 10-14: its ghost-blade is magic in itself."
+    },
+    "fey_spirit": {
+      "name": "Fey Spirit",
+      "icon": "🧚",
+      "sprite": "assets/enemies/gen/summon_fey_spirit.png",
+      "hp": 55,
+      "ac": 11,
+      "to_hit": 10,
+      "damage": "2d8+2",
+      "attacks": 1,
+      "speed": 1,
+      "save": 7,
+      "family": "outsider",
+      "magic": true,
+      "riposte": true,
+      "attack_kind": "edged",
+      "_comment": "Shaman band 15-19: a bladesinger of the fey court — every blow that lands on it is answered."
+    },
+    "spirit_of_the_ancestors": {
+      "name": "Spirit of the Ancestors",
+      "icon": "🕯",
+      "sprite": "assets/enemies/gen/summon_spirit_of_the_ancestors.png",
+      "hp": 100,
+      "ac": 11,
+      "to_hit": 13,
+      "damage": "3d8+4",
+      "attacks": 2,
+      "speed": 1,
+      "save": 8,
+      "family": "outsider",
+      "magic": true,
+      "riposte": true,
+      "attack_kind": "edged",
+      "inflicts": {
+        "condition": "frightened",
+        "rounds": 2,
+        "dc": 15
+      },
+      "_comment": "The Shaman's Rite summon (level 20): every spell point, once a battle."
+    }
+  }
+}

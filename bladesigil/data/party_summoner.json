@@ -1,0 +1,70 @@
+{
+  "_comment": "The playtest bot's SUMMONER party (2026-09-05): the premade four with the wizard swapped for Thessaly, a wood-elf summoner. Run: node tools/playtest_bot.mjs --party data/party_summoner.json --summoner-lane druid|shaman.",
+  "starting_gold": "3d6+18",
+  "party": [
+    {
+      "name": "Borin",
+      "race": "dwarf",
+      "class": "warrior",
+      "look": "m1",
+      "level": 1,
+      "row": "front",
+      "abilities": {
+        "str": 16,
+        "int": 8,
+        "wis": 12,
+        "dex": 12,
+        "con": 15,
+        "cha": 10
+      }
+    },
+    {
+      "name": "Marcus",
+      "race": "human",
+      "class": "priest",
+      "look": "m2",
+      "level": 1,
+      "row": "front",
+      "abilities": {
+        "str": 13,
+        "int": 10,
+        "wis": 16,
+        "dex": 10,
+        "con": 13,
+        "cha": 12
+      }
+    },
+    {
+      "name": "Thessaly",
+      "race": "wood_elf",
+      "class": "summoner",
+      "look": "f1",
+      "level": 1,
+      "row": "back",
+      "abilities": {
+        "str": 9,
+        "int": 12,
+        "wis": 16,
+        "dex": 13,
+        "con": 11,
+        "cha": 12
+      }
+    },
+    {
+      "name": "Pip",
+      "race": "halfling",
+      "class": "thief",
+      "look": "m1",
+      "level": 1,
+      "row": "back",
+      "abilities": {
+        "str": 10,
+        "int": 12,
+        "wis": 10,
+        "dex": 17,
+        "con": 12,
+        "cha": 14
+      }
+    }
+  ]
+}

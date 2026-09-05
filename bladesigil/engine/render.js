@@ -351,15 +351,15 @@ export class Renderer {
       ctx.fillStyle = '#0a0a0f';
       ctx.fillRect(14, pw.y, CHIP, CHIP);
       if (icon) ctx.drawImage(icon, 14, pw.y, CHIP, CHIP);
-      ctx.strokeStyle = isActive ? COLORS.stairs : (c.kind === 'hero' ? '#3d4d6d' : '#5d3535');
+      ctx.strokeStyle = isActive ? COLORS.stairs : (c.kind === 'hero' ? '#3d4d6d' : c.kind === 'ally' ? '#3d6d4d' : '#5d3535');
       ctx.lineWidth = isActive ? 3 : 1.5;
       ctx.strokeRect(14.5, pw.y + 0.5, CHIP - 1, CHIP - 1);
       ctx.font = `${isActive ? 'bold ' : ''}13px Georgia`;
-      ctx.fillStyle = isActive ? '#ffe9b8' : (c.kind === 'hero' ? '#cfc4a6' : '#c89090');
+      ctx.fillStyle = isActive ? '#ffe9b8' : (c.kind === 'hero' ? '#cfc4a6' : c.kind === 'ally' ? '#a8d8b0' : '#c89090');
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       ctx.fillText((isActive ? '▸ ' : '') + c.ref.name, 62, pw.y + 6, PANEL - 76);
-      this.drawBar(62, pw.y + 26, PANEL - 80, 5, c.ref.hp / c.ref.maxHp, c.kind === 'hero' ? '#5c88d8' : '#c04848');
+      this.drawBar(62, pw.y + 26, PANEL - 80, 5, c.ref.hp / c.ref.maxHp, c.kind === 'hero' ? '#5c88d8' : c.kind === 'ally' ? '#4cc07a' : '#c04848');
       ctx.restore();
       pw.y += ROW;
     }
@@ -423,11 +423,12 @@ export class Renderer {
     // walkable corpses for the rest of the battle. Corpses draw first so
     // anyone stepping onto the square stands on top of the body.
     const nowD = performance.now();
+    const fallen = c => c.kind !== 'hero' && c.ref.hp <= 0; // a slain monster, an unmade summon
     const drawOrder = [...b.combatants].sort((a, z) =>
-      ((a.kind === 'monster' && a.ref.hp <= 0 ? 0 : 1) - (z.kind === 'monster' && z.ref.hp <= 0 ? 0 : 1))
+      ((fallen(a) ? 0 : 1) - (fallen(z) ? 0 : 1))
       || (a.y - z.y)); // sprites overflow their tile upward, so lower rows paint over higher ones
     for (const c of drawOrder) {
-      const dying = c.kind === 'monster' && c.ref.hp <= 0;
+      const dying = fallen(c);
       if (dying && !c.diedAt) continue;
       const px = ox + c.x * CELL, py = oy + c.y * CELL;
       const dead = c.kind === 'hero' && !c.ref.alive;
@@ -458,7 +459,7 @@ export class Renderer {
       }
       if (c === b.active() && !dead) {
         // Gold ring = your hero's turn; red ring = this monster is acting.
-        ctx.strokeStyle = c.kind === 'hero' ? COLORS.stairs : '#c04040';
+        ctx.strokeStyle = c.kind === 'hero' ? COLORS.stairs : c.kind === 'ally' ? '#4cc07a' : '#c04040'; // green ring = a summoned creature acting
         ctx.lineWidth = 3;
         ctx.strokeRect(px + 1.5, py + 1.5, CELL - 3, CELL - 3);
       }
@@ -515,14 +516,14 @@ export class Renderer {
       }
 
       // Name + HP bar in the square's footer.
-      ctx.fillStyle = c.kind === 'hero' ? '#a8c0e8' : '#e8a8a8';
+      ctx.fillStyle = c.kind === 'hero' ? '#a8c0e8' : c.kind === 'ally' ? '#a8e8b8' : '#e8a8a8';
       if (dead) ctx.fillStyle = '#777';
       ctx.font = `${Math.max(10, Math.round(CELL / 6.5))}px Verdana`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'alphabetic';
       ctx.fillText(c.ref.name.slice(0, 9), px + CELL / 2, py + CELL - 12);
       if (!dying) { // corpses keep a faint name but lose the drained HP bar
-        this.drawBar(px + 5, py + CELL - 9, CELL - 10, 5, c.ref.hp / c.ref.maxHp, c.kind === 'hero' ? '#5c88d8' : '#c04848');
+        this.drawBar(px + 5, py + CELL - 9, CELL - 10, 5, c.ref.hp / c.ref.maxHp, c.kind === 'hero' ? '#5c88d8' : c.kind === 'ally' ? '#4cc07a' : '#c04848');
       }
       ctx.restore();
     }
@@ -579,6 +580,8 @@ export class Renderer {
     const a = b.active();
     if (a?.kind === 'monster') {
       pw.line(`The ${a.ref.name} acts…`, 'bold 14px Georgia', '#e08080');
+    } else if (a?.kind === 'ally') {
+      pw.line(`Your ${a.ref.name} acts…`, 'bold 14px Georgia', '#8fd8a0');
     } else if (a?.kind === 'hero' && b.mode === 'move') {
       pw.line(`${a.ref.name}'s turn — ${b.movesLeft} move${b.movesLeft === 1 ? '' : 's'} left`, 'bold 14px Georgia', COLORS.stairs);
       // Bump preview: a foe in reach shows the odds — and why (stealth tags).

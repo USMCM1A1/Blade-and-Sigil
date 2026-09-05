@@ -167,6 +167,11 @@ export function validateMagic(data) {
       if (s.bonus_damage && (!isDice(s.bonus_damage.dice) || !ELEMENTS.includes(s.bonus_damage.element))) {
         throw new DataError(where, `"bonus_damage" needs {dice, element}: dice like "1d6", element from: ${ELEMENTS.join(', ')}.`);
       }
+      // Thorns (the Druid's damage shield, 2026-09-05): every melee blow
+      // that lands on the bearer tears the attacker for the dice.
+      if (s.thorns !== undefined && (!s.thorns || !isDice(s.thorns.dice) || (s.thorns.element !== undefined && !ELEMENTS.includes(s.thorns.element)))) {
+        throw new DataError(where, `"thorns" needs {dice, element?}: dice like "1d6" dealt to any attacker whose melee blow lands, element (optional) from: ${ELEMENTS.join(', ')}.`);
+      }
       if (s.resist !== undefined) {
         const list = s.resist === 'all' ? [] : s.resist;
         if (!Array.isArray(list) && s.resist !== 'all') throw new DataError(where, `"resist" must be a list of elements (${ELEMENTS.join(', ')}) or "all".`);
@@ -392,6 +397,7 @@ export function spellBuff(s, extra = {}) {
     immune_conditions: s.immune_conditions ?? false,
     reduce: s.reduce ?? 0, halve: !!s.halve, reflect: s.reflect ?? 0, lifesteal: s.lifesteal ?? 0, auto_hit: !!s.auto_hit, enchant: !!s.enchant,
     reveal: !!s.reveal,
+    thorns: s.thorns ?? null,
   };
 }
 

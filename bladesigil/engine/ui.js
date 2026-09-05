@@ -3,7 +3,7 @@
 // toggled with I, E, or C).
 
 import { abilityMod } from './rules.js';
-import { classProg, laneOf, passiveOf, riteTier, passiveBlurb, powerHow, trackedLabel, trackedDeed, favoredPicksOwed, groupOfType, focusGroupOf, focusList, focusName, growthOptions, growthPicks } from './progression.js';
+import { classProg, laneOf, passiveOf, riteTier, passiveBlurb, powerHow, trackedLabel, trackedDeed, favoredPicksOwed, groupOfType, focusGroupOf, focusList, focusName, growthOptions, growthPicks, summonLadder, summonBand, summonCount } from './progression.js';
 import { unlockLevel, magicModel, maxSpellLevel, spellCost, knownSpells, castableSpells, preparedSlots, spellPicksOwed, bonusPicksOwed, studiesOwed, describeScale, scrollReadable, giftOf, activeStances, spellSchool, FAMILIES } from './magic.js';
 import * as audio from './audio.js';
 import { registerPanel, isOpen, openPanel, closePanel, togglePanel } from './panel.js';
@@ -1046,6 +1046,17 @@ function renderPath(game, ch) {
     const next = (ch.cls.favored_enemy.levels ?? []).find(l => l > ch.level);
     rows += row(fav.length > 0, 'Favored enemies', fav.length ? fav.map(([f, n]) => `+${n} vs ${f}`).join(', ') : 'none yet',
       favoredPicksOwed(ch) ? 'a pick awaits!' : next ? `next at level ${next}` : '');
+  }
+  // The Summoner's calling ladder: what answers now, and what comes next.
+  const ladder = summonLadder(game.data, ch);
+  if (ladder.length) {
+    const band = summonBand(game.data, ch);
+    const nameOf = b => b.name ?? game.data.summons.summons[b.id]?.name ?? b.id;
+    const next = ladder.find(b => b.from > ch.level);
+    const twoAt = band?.two_from && ch.level < band.two_from ? band.two_from : null;
+    rows += row(!!band, 'Calls', band
+      ? `${summonCount(band, ch) > 1 ? 'Two' : 'One'} ${nameOf(band)}${summonCount(band, ch) > 1 ? 's' : ''} per call, ${band.cost} SP${band.choose ? ' — the element is yours to pick at each call' : ''}.${twoAt ? ` Two per call from level ${twoAt}.` : ''}${next ? ` ${nameOf(next)} answers from level ${next.from}.` : ''}`
+      : 'Nothing answers yet.', 'from the C menu in battle');
   }
   if (!lane) {
     rows = rows + row(false, 'A crossroads', `At level ${prog.fork_level}, the ${ch.cls.name}'s road forks — two paths, one choice, forever.`,

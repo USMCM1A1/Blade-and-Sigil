@@ -9,8 +9,7 @@
       "hp_die": 10,
       "allowed_races": [
         "human",
-        "dwarf",
-        "wood_elf"
+        "dwarf"
       ],
       "starting_weapon": "rusty_longsword",
       "weapon_types": [
@@ -446,13 +445,12 @@
     },
     "summoner": {
       "name": "Summoner",
-      "sprite": "assets/heroes/summoner.png",
+      "sprite": "assets/heroes/gen/wood_elf_summoner_m1.png",
       "sprite_dead": "assets/heroes/summoner_dead.png",
-      "portrait": "assets/heroes/portraits/summoner_portrait.png",
+      "portrait": "assets/heroes/gen/wood_elf_summoner_m1_face.png",
       "hp_die": 4,
       "allowed_races": [
-        "human",
-        "high_elf"
+        "wood_elf"
       ],
       "starting_weapon": "splintered_staff",
       "weapon_types": [
@@ -508,29 +506,47 @@
         1
       ],
       "spell_points": [
+        3,
+        3,
         4,
+        5,
         5,
         6,
         7,
         8,
+        8,
+        9,
         9,
         10,
+        10,
+        11,
         11,
         12,
+        12,
         13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
-        20,
-        21,
-        22,
-        23
+        13,
+        14
       ],
-      "locked": true,
-      "caster": "arcane"
+      "caster": "arcane",
+      "magic": "lane",
+      "spell_unlocks": {
+        "1": 1,
+        "2": 4,
+        "3": 8
+      },
+      "starting_spells": [
+        "mend_the_wild",
+        "spirit_edge"
+      ],
+      "summons": [
+        {
+          "from": 1,
+          "id": "wisp",
+          "cost": 2,
+          "two_from": 3
+        }
+      ],
+      "_comment": "The Summoner (designer session 2026-09-05): a wood-elf-only partial caster whose whole trade is calling creatures that fight for the party. Spells to level 3 only ('spell_unlocks' — levels 4-5 never open), the half-caster SP table, d4 HP, robes, a light blade or staff, and NO attack spells — the summoner's own offense is a weak staff swing. 'summons' = the pre-fork ladder: [{from, id, cost, two_from}] — from the character level 'from' the C menu offers 'id' (a data/summons.json creature) for 'cost' SP; from 'two_from' one call brings TWO. Each lane in progression.json carries its own 'summons' ladder that takes over at the fork (Druid: wolf/bear/elementals; Shaman: spirit/spirit warrior/fey spirit). Before the fork the hero knows both roads' first verses ('starting_spells': the Druid's heal and the Shaman's enchant); the fork keeps only its own lane's. Wood Elf became summoner-only the same day (the Ranger doc's orphaned-Wood-Elf thread, resolved)."
     },
     "stoneshaper": {
       "_comment": "Dwarven Stoneshaper (companion doc v1, 2026-08-29; playtest revision v1.1 2026-08-30). 'starting_spells' = the verses known BEFORE the level-5 fork (Skin of Stone, the self-only Stance, is what every Stoneshaper casts through levels 1-4); at the fork the lane's list takes over — Bulwark keeps Skin of Stone, Hearthstone swaps it (free) for the ally-targeting Stonekin's Blessing. COSTS: the level-1 verse is a STANCE (1 SP flat, until the next full rest); levels 2-5 are SURGES at the standard level x 2 + 1 (5/7/9/11 SP). The creation gift (Stonespeak / Ironward) is a passive, independent of the spells. SP TABLE (designer ruling 2026-08-30): raised from the doc's 2…10 to 3…14 so every Surge is castable the level its tier opens with the Stance still held — 5 SP at level 4 (tier 2), 8 at 8 (tier 3), 10 at 12 (tier 4), 12 at 16 (tier 5), 14 at 20.",

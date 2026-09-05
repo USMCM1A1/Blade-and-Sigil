@@ -1310,6 +1310,291 @@
           }
         }
       ]
+    },
+    "summoner": {
+      "_comment": "The Summoner (designer session 2026-09-05): Druid (animals → elementals, heal/cure/thorns) vs Shaman (spirits, enchant + offensive verses). BOTH lanes' real content is the 'summons' ladder: [{from, id, cost, two_from, choose?, name?}] — from character level 'from' the C menu offers the data/summons.json creature 'id' for 'cost' SP; from 'two_from' one call brings TWO (the designer's band rule: one for the first three levels of a band, two for the last two); 'choose' lists several creatures the caller picks between at each call (the four elementals), 'name' is how the ladder speaks of that band. The lane ladder REPLACES the class's pre-fork wisp ladder in classes.json. PASSIVES wild_call / spirit_call are the ladders' names — no numbers. VERB (10) and CAPSTONE (15) are the ladder's second and third bands, narrated; REFINEMENT twin_call (18) is the top band's two_from, narrated. RITE abilities carry 'summon' (the creature) and 'min_sp': once per battle, ALL remaining SP (min_sp at least) calls it. Tracked: summonKills (foes slain by a hero's summons). GROWTH (8/14/16) modifies every creature the hero calls: summon_ac / summon_dmg (flat, named in the math), summon_hp (a fraction more HP), summon_attacks (extra blows), summon_inflict {condition, rounds, dc} (a rider on every landed blow), summon_first (the creature acts BEFORE its master in the round), summon_immune [conditions], summon_revive (returns once a battle at half HP). Titles, trinkets and the Rite creatures are CONTENT FLAGS; every number is a proposal.",
+      "fork_level": 5,
+      "lanes": [
+        {
+          "id": "druid",
+          "name": "Druid",
+          "archetype": "Elder Druid",
+          "blurb": "The wild answers. Wolves, then bears, then the elements themselves walk beside you — and you tend the party's wounds and skin.",
+          "offsets": {
+            "ac": 1
+          },
+          "passive": {
+            "id": "wild_call",
+            "name": "Wild Call",
+            "blurb": "{name}: the animals of the wood come when called — a wolf from level 5, a bear from 10, an elemental from 15"
+          },
+          "summons": [
+            {
+              "from": 5,
+              "id": "wolf",
+              "cost": 4,
+              "two_from": 8
+            },
+            {
+              "from": 10,
+              "id": "bear",
+              "cost": 6,
+              "two_from": 13
+            },
+            {
+              "from": 15,
+              "id": "elemental",
+              "name": "an Elemental",
+              "cost": 8,
+              "two_from": 18,
+              "choose": [
+                "elemental_fire",
+                "elemental_earth",
+                "elemental_water",
+                "elemental_air"
+              ]
+            }
+          ],
+          "verb": {
+            "id": "call_of_the_bear",
+            "level": 10,
+            "name": "Call of the Bear",
+            "blurb": "The wood sends something heavier: a bear answers your call — two claws a round, and a hide worth hiding behind.",
+            "how": "Open the C menu and choose the call — the bear steps out beside you and fights on its own, right after your turn. Calling again while one lives sends it home and brings a fresh one. From level 13 one call brings two."
+          },
+          "capstone": {
+            "id": "call_the_elements",
+            "level": 15,
+            "name": "Call the Elements",
+            "blurb": "Fire, earth, water or air: an elemental answers, and its blows are magic in themselves — they bite what steel cannot.",
+            "how": "The C menu offers one call per element — pick the element the fight wants (fire sears the regenerating, earth shrugs off arrows, water slows, air is all lightning). From level 18 one call brings two."
+          },
+          "refinement": {
+            "id": "twin_call",
+            "level": 18,
+            "name": "Twin Call",
+            "blurb": "One call now brings two elementals."
+          },
+          "rite": {
+            "ability": {
+              "id": "spirit_of_elements",
+              "name": "Spirit of the Elements",
+              "summon": "spirit_of_the_elements",
+              "min_sp": 8,
+              "blurb": "Once per battle, every spell point you have left (8 at least): the Spirit of the Elements itself answers — a storm given shape, two blows a round, and nothing mundane can turn it.",
+              "_comment": "CONTENT FLAG: the creature's numbers live in data/summons.json — retune freely"
+            },
+            "tracked": "summonKills",
+            "tiers": [
+              {
+                "min": 0,
+                "title": "the Wildcaller"
+              },
+              {
+                "min": 5,
+                "title": "Warden of the Green",
+                "trinket": "wildheart_charm"
+              },
+              {
+                "min": 15,
+                "title": "Voice of the Wild",
+                "dungeon": "The Green Heart — a grove overrun, held by your summons alone",
+                "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
+              }
+            ],
+            "tracked_label": "Foes slain by your summons",
+            "tracked_deed": "foes slain by the creatures you called"
+          },
+          "growth": {
+            "levels": [
+              8,
+              14,
+              16
+            ],
+            "options": [
+              {
+                "id": "thick_hide",
+                "name": "Thick Hide",
+                "blurb": "Whatever you call wears a thicker hide: +2 AC on your summons.",
+                "summon_ac": 2
+              },
+              {
+                "id": "savage_jaws",
+                "name": "Savage Jaws",
+                "blurb": "Your creatures bite deeper: +2 damage on every blow they land.",
+                "summon_dmg": 2
+              },
+              {
+                "id": "venom_fang",
+                "name": "Venom Fang",
+                "blurb": "Every blow your creatures land carries venom — the struck must save or be poisoned.",
+                "summon_inflict": {
+                  "condition": "poison",
+                  "rounds": 3,
+                  "dc": 12
+                }
+              },
+              {
+                "id": "pack_sense",
+                "name": "Pack Sense",
+                "blurb": "Your creatures move before you do — they act ahead of you in the round instead of after.",
+                "summon_first": true
+              },
+              {
+                "id": "wild_vigor",
+                "name": "Wild Vigor",
+                "blurb": "The wild sends its hardiest: your summons have a quarter more hit points.",
+                "summon_hp": 0.25
+              },
+              {
+                "id": "deep_roots_wild",
+                "name": "Rooted Calm",
+                "blurb": "Nothing you call can be frightened or put to sleep.",
+                "summon_immune": [
+                  "frightened",
+                  "sleep"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "shaman",
+          "name": "Shaman",
+          "archetype": "Spirit Talker",
+          "blurb": "The dead answer. A spirit, then a spirit warrior, then a fey blade-dancer walk beside you — and your verses put an edge on them and on the party.",
+          "offsets": {
+            "sp": 1
+          },
+          "passive": {
+            "id": "spirit_call",
+            "name": "Spirit Call",
+            "blurb": "{name}: the spirits come when called — a spirit from level 5, a spirit warrior from 10, a fey spirit from 15"
+          },
+          "summons": [
+            {
+              "from": 5,
+              "id": "spirit",
+              "cost": 4,
+              "two_from": 8
+            },
+            {
+              "from": 10,
+              "id": "spirit_warrior",
+              "cost": 6,
+              "two_from": 13
+            },
+            {
+              "from": 15,
+              "id": "fey_spirit",
+              "cost": 8,
+              "two_from": 18
+            }
+          ],
+          "verb": {
+            "id": "spirit_warrior",
+            "level": 10,
+            "name": "Spirit Warrior",
+            "blurb": "A warrior of the dead answers your call — and its ghost-blade is magic in itself, biting what steel cannot.",
+            "how": "Open the C menu and choose the call — the spirit warrior steps out beside you and fights on its own, right after your turn. Calling again while one lives dismisses it for a fresh one. From level 13 one call brings two."
+          },
+          "capstone": {
+            "id": "fey_spirit",
+            "level": 15,
+            "name": "Fey Spirit",
+            "blurb": "A blade-dancer of the fey court answers: hard to hit, and every blow that lands on it is answered with a stroke of its own.",
+            "how": "The C menu offers the call — the fey spirit ripostes every melee blow that lands on it, so put it where the enemy must swing. From level 18 one call brings two."
+          },
+          "refinement": {
+            "id": "twin_call",
+            "level": 18,
+            "name": "Twin Call",
+            "blurb": "One call now brings two fey spirits."
+          },
+          "rite": {
+            "ability": {
+              "id": "spirit_of_ancestors",
+              "name": "Spirit of the Ancestors",
+              "summon": "spirit_of_the_ancestors",
+              "min_sp": 8,
+              "blurb": "Once per battle, every spell point you have left (8 at least): the Ancestors themselves take the field — two blows a round, every blow answered, and the living quail before them.",
+              "_comment": "CONTENT FLAG: the creature's numbers live in data/summons.json — retune freely"
+            },
+            "tracked": "summonKills",
+            "tiers": [
+              {
+                "min": 0,
+                "title": "the Spirit-Touched"
+              },
+              {
+                "min": 5,
+                "title": "Ancestor's Voice",
+                "trinket": "ancestor_fetish"
+              },
+              {
+                "min": 15,
+                "title": "Elder of Spirits",
+                "dungeon": "The Barrow of the First — a hall of restless ancestors to quiet",
+                "_comment": "thresholds are proposals (doc: TBD); the vignette dungeon itself is a later build"
+              }
+            ],
+            "tracked_label": "Foes slain by your spirits",
+            "tracked_deed": "foes slain by the spirits you called"
+          },
+          "growth": {
+            "levels": [
+              8,
+              14,
+              16
+            ],
+            "options": [
+              {
+                "id": "spirit_steel",
+                "name": "Spirit Steel",
+                "blurb": "Your spirits strike harder: +2 damage on every blow they land.",
+                "summon_dmg": 2
+              },
+              {
+                "id": "ghostly_form",
+                "name": "Ghostly Form",
+                "blurb": "Your spirits are harder to pin: +2 AC on your summons.",
+                "summon_ac": 2
+              },
+              {
+                "id": "chilling_touch",
+                "name": "Chilling Touch",
+                "blurb": "A spirit's touch numbs — the struck must save or be slowed.",
+                "summon_inflict": {
+                  "condition": "slowed",
+                  "rounds": 2,
+                  "dc": 12
+                }
+              },
+              {
+                "id": "wrathful_spirit",
+                "name": "Wrathful Spirit",
+                "blurb": "Your spirits strike twice a round.",
+                "summon_attacks": 1
+              },
+              {
+                "id": "bound_tighter",
+                "name": "Bound Tighter",
+                "blurb": "A spirit that falls returns once a battle, at half its hit points.",
+                "summon_revive": true
+              },
+              {
+                "id": "ancestral_calm",
+                "name": "Ancestral Calm",
+                "blurb": "Nothing you call can be frightened or put to sleep.",
+                "summon_immune": [
+                  "frightened",
+                  "sleep"
+                ]
+              }
+            ]
+          }
+        }
+      ]
     }
   }
 }

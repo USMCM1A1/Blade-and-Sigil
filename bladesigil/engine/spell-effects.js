@@ -16,7 +16,7 @@
 
 import { COLOR } from './constants.js';
 
-const heroAt = (b, c, s, x, y) => s.targets === 'allies' || s.targets === 'self' || !!b.heroAt(x, y);
+const heroAt = (b, c, s, x, y) => s.targets === 'allies' || s.targets === 'self' || !!b.friendAt(x, y); // a hero — or a creature the party called
 const foeAt = (b, c, s, x, y) => {
   const aimed = s.area === 'all' || (c.ref.maelstromArmed && s.type === 'damage' && typeof s.scroll !== 'string');
   return aimed || s.area > 0 || !!b.monsterAt(x, y);

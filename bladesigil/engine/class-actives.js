@@ -8,7 +8,7 @@
 // ctx = { D: data, ref: the hero, lane, cap: lane capstone, rite }. The
 // order here IS the menu order. Adding an art = one entry.
 
-import { laneOf, hasVerb, hasCapstone, hasRefinement, riteOf, snareGrant, snareKinds, snareDice } from './progression.js';
+import { laneOf, hasVerb, hasCapstone, hasRefinement, riteOf, snareGrant, snareKinds, snareDice, summonBand, summonCount, riteSummon } from './progression.js';
 import { activeStances } from './magic.js';
 import * as audio from './audio.js';
 import { COLOR } from './constants.js';
@@ -23,6 +23,48 @@ export const SNARE_RIDERS = {
 };
 
 export const CLASS_ACTIVES = [
+  {
+    // ---- The Summoner's calls (2026-09-05) ----
+    // The band in force (classes.json "summons" before the fork, the lane's
+    // ladder after) offers one entry per creature it can call — several for
+    // a band with "choose" (the four elementals) — for the band's SP cost;
+    // the band rule brings two per call from `two_from`. The Rite's grand
+    // call sits below it: once a battle, every spell point (min_sp at least).
+    id: 'summon',
+    menu: (b, c, { D, ref, lane, cap, rite }, out) => {
+      const band = summonBand(D, ref);
+      if (band) {
+        const n = summonCount(band, ref);
+        const held = b.allies().filter(a => a.ref.master === c.uid).length;
+        for (const id of band.choose ?? [band.id]) {
+          const def = D.summons.summons[id];
+          if (!def) continue;
+          const swap = held ? ` Your ${held > 1 ? 'creatures are' : 'creature is'} released first.` : '';
+          const pl = def.plural ?? `${def.name}s`;
+          const one = `${/^[aeiou]/i.test(def.name) ? 'an' : 'a'} ${def.name}`;
+          out.push({ kind: 'active', id: 'summon', summonId: id, count: n, cost: band.cost, affordable: ref.sp >= band.cost,
+            name: `Call ${n > 1 ? `two ${pl}` : one}`, hint: `Call ${n > 1 ? pl : one}`,
+            description: `${band.cost} SP: ${n > 1 ? `two ${pl}` : one} (${def.hp} HP, AC ${10 + def.ac}, ${def.damage}${(def.attacks ?? 1) > 1 ? ` ×${def.attacks}` : ''}${def.magic ? ', strikes as enchanted' : ''}) ${n > 1 ? ' step' : ' steps'} out beside you and ${n > 1 ? 'fight' : 'fights'} on ${n > 1 ? 'their' : 'its'} own.${swap}` });
+        }
+      }
+      const rs = riteSummon(D, ref);
+      if (rs && !b.spentOnce(ref, 'rite_summon')) {
+        const def = D.summons.summons[rs.summon];
+        const min = rs.min_sp ?? 1;
+        if (def) out.push({ kind: 'active', id: 'summon', summonId: rs.summon, count: 1, cost: Math.max(min, ref.sp), rite: true, affordable: ref.sp >= min,
+          name: ref.rite.abilityName, hint: ref.rite.abilityName,
+          description: `Once per battle, EVERY spell point you have left (${min} at least): the ${def.name} itself answers (${def.hp} HP, AC ${10 + def.ac}, ${def.damage}${(def.attacks ?? 1) > 1 ? ` ×${def.attacks}` : ''}). Anything you hold is released first.` });
+      }
+    },
+    use: (b, c, entry, { D, ref, lane, cap }) => {
+      const made = b.callSummons(c, { id: entry.summonId, count: entry.count, name: entry.rite ? ref.rite.abilityName : null, verb: entry.rite ? `works ${ref.rite.abilityName}` : null });
+      if (!made) return; // no room — nothing spent, the turn goes on
+      ref.sp = Math.max(0, ref.sp - entry.cost);
+      if (entry.rite) b.markSpent(ref, 'rite_summon');
+      b.game.log(`${ref.name} spends ${entry.cost} SP on the call (${ref.sp}/${ref.maxSp} left).`, 'info');
+      b.endHeroTurn();
+    },
+  },
   {
     id: 'vanish',
     menu: (b, c, { D, ref, lane, cap, rite }, out) => {

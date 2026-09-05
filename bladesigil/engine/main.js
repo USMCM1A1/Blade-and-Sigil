@@ -1,7 +1,7 @@
 // Boot: load data files, build the game, wire input, run the render loop.
 
 import { loadJSON, showFatal } from './loader.js';
-import { Game, validateItems, validateMonsters } from './game.js';
+import { Game, validateItems, validateMonsters, validateSummons } from './game.js';
 import { Renderer, preloadImages } from './render.js';
 import { buildPartyPanel, updateUI, toggleEquipment, equipmentOpen, openBuilding, buildingOpen, closeBuilding, maybeOpenChoice, choiceOpen, choicePick, togglePlaytest, playtestOpen, levelupOpen, dismissLevelup, toggleSpellbook, spellbookOpen, flipToSheet, flipToBook, toggleMarching, marchingOpen, campOpen, openCamp, closeCamp } from './ui.js';
 import { validateProgression } from './progression.js';
@@ -13,7 +13,7 @@ import * as audio from './audio.js';
 import { registerPanel, togglePanel, closePanel, isOpen } from './panel.js';
 
 async function boot() {
-  const [classes, races, monsters, party, level, spells, conditions, items, town, dungeon, progression, sounds] = await Promise.all([
+  const [classes, races, monsters, party, level, spells, conditions, items, town, dungeon, progression, sounds, summons] = await Promise.all([
     loadJSON('data/classes.json'),
     loadJSON('data/races.json'),
     loadJSON('data/monsters.json'),
@@ -26,6 +26,7 @@ async function boot() {
     loadJSON('data/dungeon.json'),
     loadJSON('data/progression.json'),
     loadJSON('data/sounds.json'),
+    loadJSON('data/summons.json'),
   ]);
   audio.init(sounds.sounds); // the moment → file table is the designer's
 
@@ -34,12 +35,13 @@ async function boot() {
   const tactics = {};
   for (const n of tacticsNames) tactics[n] = await loadJSON(`data/tactics/${n}.json`);
 
-  const data = { classes, races, monsters, party, level, tactics, spells, conditions, items, town, dungeon, progression };
+  const data = { classes, races, monsters, party, level, tactics, spells, conditions, items, town, dungeon, progression, summons };
   deriveScrollItems(data);   // magic v3: spells flagged "scroll" become scroll_<id> items
   validateProgression(data); // friendly errors for progression.json typos
   validateMagic(data);       // …and for spells.json / scroll items
   validateItems(data);       // …and for items.json (tiers, immunities, potion effects)
   validateMonsters(data);    // …and for monsters.json (families, abilities, danger fields)
+  validateSummons(data);     // …and for summons.json + the Summoner's calling ladders
   validateDungeon(data);     // …and for every dungeon tier's roster/loot/traps
   const { def: partyDef, run } = await choosePartyDef(data);
   const game = new Game({ ...data, party: { ...party, party: partyDef } });
@@ -52,6 +54,7 @@ async function boot() {
   }
   for (const c of Object.values(classes.classes)) { sprites.add(c.sprite); sprites.add(c.sprite_dead); if (c.portrait) sprites.add(c.portrait); }
   for (const m of Object.values(monsters.monsters)) { sprites.add(m.sprite); if (m.sprite_dead) sprites.add(m.sprite_dead); }
+  for (const m of Object.values(summons.summons)) { if (m.sprite) sprites.add(m.sprite); if (m.sprite_dead) sprites.add(m.sprite_dead); }
   const images = await preloadImages([...sprites]);
 
   const canvas = document.getElementById('viewport');

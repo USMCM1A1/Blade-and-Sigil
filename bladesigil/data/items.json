@@ -1699,6 +1699,24 @@
       "portal_depth": 20,
       "value": 8000,
       "description": "The words are not in any living tongue. Read on the map to step home from any depth — the way back stays open at the gate."
+    },
+    "wildheart_charm": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Druid — rename/retune freely",
+      "name": "Wildheart Charm",
+      "type": "jewelry_neck",
+      "ac": 1,
+      "value": 150,
+      "description": "A knot of living root that never dries. +1 AC.",
+      "tier": 3
+    },
+    "ancestor_fetish": {
+      "_comment": "CONTENT FLAG: Rite tier-2 trinket, Shaman — rename/retune freely",
+      "name": "Ancestor Fetish",
+      "type": "jewelry_neck",
+      "dmg": 1,
+      "value": 150,
+      "description": "A cord of knucklebones that whisper. +1 damage on every hit.",
+      "tier": 3
     }
   }
 }

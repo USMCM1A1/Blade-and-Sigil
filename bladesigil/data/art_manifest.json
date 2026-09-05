@@ -2058,6 +2058,138 @@
       "out": "assets/misc/camp_3.png",
       "size": 1024,
       "post": "trim"
+    },
+    {
+      "id": "hero_wood_elf_summoner_m1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a wood elf man with sun-browned skin and pointed ears, dark-haired, calm and watchful, wearing green-brown druidic robes hung with feathers and antler charms, a gnarled staff in hand and a faint floating light at his shoulder.",
+      "out": "assets/heroes/gen/wood_elf_summoner_m1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_wood_elf_summoner_m1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a wood elf man with sun-browned skin and pointed ears, dark-haired, calm and watchful, wearing green-brown druidic robes hung with feathers and antler charms, a gnarled staff in hand and a faint floating light at his shoulder.",
+      "reference": "assets/heroes/gen/wood_elf_summoner_m1_face.png",
+      "out": "assets/heroes/gen/wood_elf_summoner_m1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_wood_elf_summoner_m2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a wood elf man with sun-browned skin and pointed ears, silver-haired and weathered, wearing bone-and-hide shaman's robes painted with spirit marks, a bone-topped staff in hand and a pale ghostly wisp hovering beside him.",
+      "out": "assets/heroes/gen/wood_elf_summoner_m2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_wood_elf_summoner_m2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a wood elf man with sun-browned skin and pointed ears, silver-haired and weathered, wearing bone-and-hide shaman's robes painted with spirit marks, a bone-topped staff in hand and a pale ghostly wisp hovering beside him.",
+      "reference": "assets/heroes/gen/wood_elf_summoner_m2_face.png",
+      "out": "assets/heroes/gen/wood_elf_summoner_m2.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_wood_elf_summoner_f1_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a lithe wood elf woman with sun-browned skin and pointed ears, auburn-haired with a crown of leaves, wearing layered green druidic robes, a living-wood staff in hand and a small glowing wisp circling her.",
+      "out": "assets/heroes/gen/wood_elf_summoner_f1_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_wood_elf_summoner_f1",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a lithe wood elf woman with sun-browned skin and pointed ears, auburn-haired with a crown of leaves, wearing layered green druidic robes, a living-wood staff in hand and a small glowing wisp circling her.",
+      "reference": "assets/heroes/gen/wood_elf_summoner_f1_face.png",
+      "out": "assets/heroes/gen/wood_elf_summoner_f1.png",
+      "size": 1024
+    },
+    {
+      "id": "hero_wood_elf_summoner_f2_face",
+      "style": "hero_portrait",
+      "post": "trim",
+      "prompt": "a lithe wood elf woman with sun-browned skin and pointed ears, black-haired with ash-painted cheeks, wearing dark feathered shaman's robes and a necklace of bones, a bone staff in hand and a faint spirit-light at her side.",
+      "out": "assets/heroes/gen/wood_elf_summoner_f2_face.png",
+      "size": 512
+    },
+    {
+      "id": "hero_wood_elf_summoner_f2",
+      "style": "hero_cutout",
+      "post": "cutout",
+      "prompt": "a lithe wood elf woman with sun-browned skin and pointed ears, black-haired with ash-painted cheeks, wearing dark feathered shaman's robes and a necklace of bones, a bone staff in hand and a faint spirit-light at her side.",
+      "reference": "assets/heroes/gen/wood_elf_summoner_f2_face.png",
+      "out": "assets/heroes/gen/wood_elf_summoner_f2.png",
+      "size": 1024
+    },
+    {
+      "id": "summon_wisp",
+      "style": "monster_card",
+      "prompt": "a small floating ball of pale blue-white light with a soft trailing tail, hovering over a dungeon floor, gentle and curious, lighting the stones around it.",
+      "out": "assets/enemies/gen/summon_wisp.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "summon_wolf",
+      "style": "monster_card",
+      "prompt": "a lean grey forest wolf, hackles raised and teeth bared, standing on a torchlit dungeon floor, loyal and fierce.",
+      "out": "assets/enemies/gen/summon_wolf.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "summon_bear",
+      "style": "monster_card",
+      "prompt": "a huge brown bear reared up on its hind legs, claws spread, roaring, on a torchlit dungeon floor.",
+      "out": "assets/enemies/gen/summon_bear.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "summon_spirit",
+      "style": "monster_card",
+      "prompt": "a translucent pale-green ghostly figure in vague human shape, faceless, drifting above a dungeon floor with a faint inner glow.",
+      "out": "assets/enemies/gen/summon_spirit.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "summon_spirit_warrior",
+      "style": "monster_card",
+      "prompt": "a translucent ghostly warrior in ancient armor, wielding a glowing spectral sword, striding across a dungeon floor with a cold blue light.",
+      "out": "assets/enemies/gen/summon_spirit_warrior.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "summon_fey_spirit",
+      "style": "monster_card",
+      "prompt": "a slender translucent fey blade-dancer with antlers of light and two glowing thin swords, mid-spin, on a dungeon floor lit in green and gold.",
+      "out": "assets/enemies/gen/summon_fey_spirit.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "summon_spirit_of_the_elements",
+      "style": "monster_card",
+      "prompt": "a towering swirling spirit made of fire, stone, water and storm-wind all at once, four elements braided into one vast humanoid shape, filling a dungeon hall with light.",
+      "out": "assets/enemies/gen/summon_spirit_of_the_elements.png",
+      "size": 1024,
+      "post": "trim"
+    },
+    {
+      "id": "summon_spirit_of_the_ancestors",
+      "style": "monster_card",
+      "prompt": "a vast ghostly figure of a crowned ancestral elf chieftain, translucent and stern, wreathed in the faint faces of the dead, holding a spectral spear, towering over a dungeon hall.",
+      "out": "assets/enemies/gen/summon_spirit_of_the_ancestors.png",
+      "size": 1024,
+      "post": "trim"
     }
   ]
 }

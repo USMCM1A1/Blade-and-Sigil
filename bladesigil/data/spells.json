@@ -2021,6 +2021,180 @@
         "color": "#fff3c8",
         "sound": "light"
       }
+    },
+    "mend_the_wild": {
+      "name": "Mend the Wild",
+      "level": 1,
+      "classes": [
+        "summoner"
+      ],
+      "lane": "druid",
+      "stat": "wis",
+      "type": "heal",
+      "range": 3,
+      "area": 0,
+      "dice": "1d8",
+      "scale": {
+        "per_levels": 2,
+        "max": 2,
+        "dice": "1d8"
+      },
+      "description": "Green life knits a wound: one ally (or one of your creatures) heals 1d8, +1d8 per 2 caster levels (max +2d8)",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#6ad46a",
+        "sound": "heal"
+      }
+    },
+    "barkskin": {
+      "name": "Barkskin",
+      "level": 1,
+      "classes": [
+        "summoner"
+      ],
+      "lane": "druid",
+      "stat": "wis",
+      "type": "buff",
+      "range": 3,
+      "area": 0,
+      "targets": "ally",
+      "ac": 2,
+      "description": "Bark ridges over one ally's (or one creature's) skin: +2 AC this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#a0783c",
+        "sound": "buff"
+      }
+    },
+    "purge_venom": {
+      "name": "Purge Venom",
+      "level": 2,
+      "classes": [
+        "summoner"
+      ],
+      "lane": "druid",
+      "stat": "wis",
+      "type": "cure",
+      "range": 3,
+      "area": 0,
+      "dice": "1d4",
+      "cures": [
+        "poison"
+      ],
+      "description": "Draws the venom out of one ally, and mends a little",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#7ec850",
+        "sound": "heal"
+      }
+    },
+    "thorn_mantle": {
+      "name": "Thorn Mantle",
+      "level": 3,
+      "classes": [
+        "summoner"
+      ],
+      "lane": "druid",
+      "stat": "wis",
+      "type": "buff",
+      "range": 3,
+      "area": 0,
+      "targets": "ally",
+      "thorns": {
+        "dice": "1d6",
+        "element": "poison"
+      },
+      "description": "Briars wrap one ally or creature: every melee blow that lands on them tears the attacker for 1d6 poison, this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#5e8a3a",
+        "sound": "buff"
+      }
+    },
+    "spirit_edge": {
+      "name": "Spirit Edge",
+      "level": 1,
+      "classes": [
+        "summoner"
+      ],
+      "lane": "shaman",
+      "stat": "wis",
+      "type": "buff",
+      "range": 3,
+      "area": 0,
+      "targets": "ally",
+      "enchant": true,
+      "description": "A ghost-light runs along one ally's weapon or one spirit's claws: they strike as ENCHANTED this battle, biting what steel cannot",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#9fd4ff",
+        "sound": "arcane"
+      }
+    },
+    "spirit_fangs": {
+      "name": "Spirit Fangs",
+      "level": 2,
+      "classes": [
+        "summoner"
+      ],
+      "lane": "shaman",
+      "stat": "wis",
+      "type": "buff",
+      "range": 3,
+      "area": 0,
+      "targets": "ally",
+      "bonus_damage": {
+        "dice": "1d6",
+        "element": "frost"
+      },
+      "description": "Grave-cold rides one ally's or spirit's blows: +1d6 frost on every hit this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#9fd8ff",
+        "sound": "frost"
+      }
+    },
+    "wrath_of_ancestors": {
+      "name": "Wrath of the Ancestors",
+      "level": 2,
+      "classes": [
+        "summoner"
+      ],
+      "lane": "shaman",
+      "stat": "wis",
+      "type": "buff",
+      "range": 3,
+      "area": 0,
+      "targets": "ally",
+      "hit": 2,
+      "dmg": 2,
+      "description": "The dead lend their fury to one ally or spirit: +2 to hit and +2 damage this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#e07040",
+        "sound": "buff"
+      }
+    },
+    "war_chant": {
+      "name": "War Chant",
+      "level": 3,
+      "classes": [
+        "summoner"
+      ],
+      "lane": "shaman",
+      "stat": "wis",
+      "type": "buff",
+      "range": 0,
+      "area": 0,
+      "targets": "allies",
+      "hit": 1,
+      "dmg": 1,
+      "description": "The ancestors' chant lifts the whole party and every spirit with it: +1 to hit and +1 damage this battle",
+      "fx": {
+        "kind": "sparkle",
+        "color": "#e0a040",
+        "sound": "buff"
+      }
     }
   }
 }
