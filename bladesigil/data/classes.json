@@ -1,5 +1,5 @@
 {
-  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. SPELL POINTS (magic v2, doc formula): casters use \"spell_points\": {\"base\": N, \"multiplier\": M} — max SP = base + (level x multiplier x 3), so a Wizard (4, 1.0) has 7 SP at level 1 and 64 at level 20. A legacy per-level array still works; classes with neither have no magic. hit_bonus applies to attack AND damage rolls. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules. 'detect': per-level % chance (design doc tables, thief & archer) to notice secret doors and traps — the party uses its best detector, +5% per point of DEX modifier, +race detect_bonus. 'disarms': true lets the class defuse a DETECTED trap by stepping onto it (thieves only, per the doc). | \"locked\": true hides a class from character creation until its progression lanes are built (2026-08-26: archer/spellblade/summoner wait; delete the flag to release one). | Itemization v2: 'robe' in armor_types is the armor_robe category (scholar's robes) — every class wears them, including mages. | MAGIC v3 (2026-08-28): 'caster': arcane | divine says which school a class works in — ARCANE casters may READ scrolls in battle. A 'spellbook' block makes the class keep a spellbook FROM LEVEL 1: 'starting_spells' (the kit every new hero opens with), 'study_levels' (each listed level grants one free STUDY pick of any common class spell of castable level — arrives as a card on the map), 'slots_base' (+ max spell level + one per 'extra_slot_levels' reached = prepared spells at a time). 'revelation_levels' (priests): {spell level: character level} — the RARE prayers of that level are revealed automatically on reaching it. | NEW CLASSES (2026-08-29, companion doc v1): 'magic': 'lane' = the fixed-list half-caster model (Spellblade, Stoneshaper) — before the fork the hero knows only the creation-gift spell (if the gift is a spell), else the class's 'starting_spells' list, else every level-1 lane spell; from the fork on, every spell tagged with their lane in spells.json as its level opens (a swapped-out Stance is exchanged free). Level-1 lane spells are STANCES (spells.json 'stance': flat SP cost, lasts until the next full rest); the rest cost the standard level x 2 + 1. 'spell_cost': {per_level, base} may still override the formula for a class (unused since the v1.1 playtest revision). 'creation_pick' = a level-1 gift chosen in character creation: options carry 'spell' (known from level 1), 'detect' (+% trap/secret skill), or 'ac_vs_element' (+AC vs one element chosen at creation). | RANGER (2026-08-29): the Archer class is DROPPED (doc ruling); see the ranger entry's comment for spell_unlocks / dual_wield / point_blank_penalty / favored_enemy. | 'scroll_gamble' {chance, school} (designer ruling 2026-09-03): this class may TRY to read a scroll of that school without being a caster — 'chance'% it works, and the scroll BURNS either way. The level it may attempt is what a real caster of the same character level could CAST (one tier tighter than a caster's own reading, which reaches a level higher). The Thief's classic gamble.",
+  "_comment": "Character classes from the Blade & Sigil design doc. Arrays are indexed by level: index 0 = level 1, index 19 = level 20. SPELL POINTS (magic v2, doc formula): casters use \"spell_points\": {\"base\": N, \"multiplier\": M} — max SP = base + (level x multiplier x 3), so a Wizard (4, 1.0) has 7 SP at level 1 and 64 at level 20. A legacy per-level array still works; classes with neither have no magic. hit_bonus applies to attack AND damage rolls. GEAR: 'starting_weapon' is an item id from items.json. 'weapon_types' lists the weapon categories the class may wield (or [\"any\"]); 'armor_types' lists light/med/heavy; 'shields' allows a shield. These enforce the design doc's item rules. 'detect': per-level % chance (design doc tables, thief & archer) to notice secret doors and traps — the party uses its best detector, +5% per point of DEX modifier, +race detect_bonus. 'disarms': true lets the class defuse a DETECTED trap by stepping onto it (thieves only, per the doc). | \"locked\": true hides a class from character creation until its progression lanes are built (2026-08-26: archer/spellblade/summoner wait; delete the flag to release one). | Itemization v2: 'robe' in armor_types is the armor_robe category (scholar's robes) — every class wears them, including mages. | MAGIC v3 (2026-08-28): 'caster': arcane | divine says which school a class works in — ARCANE casters may READ scrolls in battle. A 'spellbook' block makes the class keep a spellbook FROM LEVEL 1: 'starting_spells' (the kit every new hero opens with), 'study_levels' (each listed level grants one free STUDY pick of any common class spell of castable level — arrives as a card on the map), 'slots_base' (+ max spell level + one per 'extra_slot_levels' reached = prepared spells at a time). 'revelation_levels' (priests): {spell level: character level} — the RARE prayers of that level are revealed automatically on reaching it. | NEW CLASSES (2026-08-29, companion doc v1): 'magic': 'lane' = the fixed-list half-caster model (Spellblade, Stoneshaper) — before the fork the hero knows only the creation-gift spell (if the gift is a spell), else the class's 'starting_spells' list, else every level-1 lane spell; from the fork on, every spell tagged with their lane in spells.json as its level opens (a swapped-out Stance is exchanged free). Level-1 lane spells are STANCES (spells.json 'stance': flat SP cost, lasts until the next full rest); the rest cost the standard level x 2 + 1. 'spell_cost': {per_level, base} may still override the formula for a class (unused since the v1.1 playtest revision). 'creation_pick' = a level-1 gift chosen in character creation: options carry 'spell' (known from level 1), 'detect' (+% trap/secret skill), or 'ac_vs_element' (+AC vs one element chosen at creation). | RANGER (2026-08-29): the Archer class is DROPPED (doc ruling); see the ranger entry's comment for spell_unlocks / dual_wield / point_blank_penalty / favored_enemy. | 'scroll_gamble' {chance, school} (designer ruling 2026-09-03): this class may TRY to read a scroll of that school without being a caster — 'chance'% it works, and the scroll BURNS either way. The level it may attempt is what a real caster of the same character level could CAST (one tier tighter than a caster's own reading, which reaches a level higher). The Thief's classic gamble. | AC (designer ruling 2026-09-04): the per-class ac_bonus tables are GONE. A hero's AC = 10 + DEX modifier + worn armor/shield/jewelry (+ lane lean, + spells, stances and wards in battle). An 'ac_bonus' field here is ignored.",
   "classes": {
     "warrior": {
       "name": "Warrior",
@@ -44,28 +44,6 @@
         6,
         7,
         8
-      ],
-      "ac_bonus": [
-        1,
-        1,
-        2,
-        2,
-        3,
-        4,
-        4,
-        4,
-        5,
-        5,
-        6,
-        6,
-        7,
-        7,
-        8,
-        8,
-        9,
-        9,
-        10,
-        10
       ],
       "attacks_per_round": [
         1,
@@ -133,28 +111,6 @@
         4,
         4,
         5
-      ],
-      "ac_bonus": [
-        0,
-        0,
-        0,
-        1,
-        1,
-        1,
-        2,
-        2,
-        2,
-        3,
-        3,
-        3,
-        4,
-        4,
-        4,
-        5,
-        5,
-        5,
-        6,
-        6
       ],
       "attacks_per_round": [
         1,
@@ -231,28 +187,6 @@
         0,
         0,
         0
-      ],
-      "ac_bonus": [
-        0,
-        0,
-        0,
-        0,
-        2,
-        2,
-        2,
-        2,
-        3,
-        3,
-        3,
-        3,
-        4,
-        4,
-        4,
-        4,
-        4,
-        5,
-        5,
-        5
       ],
       "attacks_per_round": [
         1,
@@ -377,28 +311,6 @@
         4,
         5
       ],
-      "ac_bonus": [
-        1,
-        1,
-        1,
-        2,
-        2,
-        2,
-        3,
-        3,
-        3,
-        4,
-        4,
-        4,
-        5,
-        5,
-        5,
-        6,
-        6,
-        6,
-        7,
-        7
-      ],
       "attacks_per_round": [
         1,
         1,
@@ -464,28 +376,6 @@
         4,
         4,
         4,
-        5
-      ],
-      "ac_bonus": [
-        0,
-        0,
-        0,
-        0,
-        2,
-        2,
-        2,
-        2,
-        3,
-        3,
-        3,
-        3,
-        4,
-        4,
-        4,
-        4,
-        4,
-        5,
-        5,
         5
       ],
       "attacks_per_round": [
@@ -595,28 +485,6 @@
         0,
         0
       ],
-      "ac_bonus": [
-        0,
-        0,
-        0,
-        0,
-        2,
-        2,
-        2,
-        2,
-        3,
-        3,
-        3,
-        3,
-        4,
-        4,
-        4,
-        4,
-        4,
-        5,
-        5,
-        5
-      ],
       "attacks_per_round": [
         1,
         1,
@@ -709,28 +577,6 @@
         4,
         4,
         5
-      ],
-      "ac_bonus": [
-        0,
-        0,
-        0,
-        1,
-        1,
-        1,
-        2,
-        2,
-        2,
-        3,
-        3,
-        3,
-        4,
-        4,
-        4,
-        5,
-        5,
-        5,
-        6,
-        6
       ],
       "attacks_per_round": [
         1,
@@ -864,28 +710,6 @@
         7,
         8
       ],
-      "ac_bonus": [
-        0,
-        0,
-        0,
-        1,
-        1,
-        1,
-        2,
-        2,
-        2,
-        3,
-        3,
-        3,
-        4,
-        4,
-        4,
-        5,
-        5,
-        5,
-        6,
-        6
-      ],
       "attacks_per_round": [
         1,
         1,
@@ -937,11 +761,11 @@
         "2": 15
       },
       "scouting": {
-      "name": "Scouting",
-      "blurb": "The Ranger keeps watch on the trail. When a monster the party can see closes to arm's reach, the Ranger rolls their skill: on a success it halts at the edge of the torchlight and the party acts first — no ambush.",
-      "bonus": 0
-    },
-    "dual_wield": {
+        "name": "Scouting",
+        "blurb": "The Ranger keeps watch on the trail. When a monster the party can see closes to arm's reach, the Ranger rolls their skill: on a success it halts at the edge of the torchlight and the party acts first — no ambush.",
+        "bonus": 0
+      },
+      "dual_wield": {
         "penalty": 4
       },
       "point_blank_penalty": 2,

@@ -118,7 +118,7 @@ export function choosePartyDef(data) {
           const bonus = ab => (race.ability_bonus[ab] ?? 0) + (race.floating_bonus && state.bonusAbility === ab ? race.floating_bonus : 0);
           const final = ab => state.rolls[ABILITIES.indexOf(ab)] + bonus(ab);
           const hp = Math.max(1, cls.hp_die + abilityMod(final('con')));
-          const ac = 10 + cls.ac_bonus[0] + abilityMod(final('dex'));
+          const ac = 10 + abilityMod(final('dex')); // + the starting armor once it is worn
           const weap = id => data.items.items[data.classes.classes[id].starting_weapon] ?? { name: '?', damage: '?' };
           const hit = cls.hit_bonus[0] + abilityMod(final(weap(state.class).range ? 'dex' : 'str')); // ranged weapons aim with DEX
           return { race, allowed, cls, bonus, final, hp, ac, weap, hit, pick, giftOpt };

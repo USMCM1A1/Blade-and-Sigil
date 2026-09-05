@@ -682,7 +682,10 @@ export class Game {
     ch.hitPieces = pieces.filter(d => d.hit).map(d => ({ name: d.name, hit: d.hit }));
     ch.hitBase = ch.cls.hit_bonus[lvlIdx] + (off.hit ?? 0);
     ch.attacks = ch.cls.attacks_per_round[lvlIdx];
-    ch.ac = 10 + ch.cls.ac_bonus[lvlIdx] + abilityMod(ch.abilities.dex) + (off.ac ?? 0)
+    // AC = 10 + DEX + what you wear (+ a lane lean, + spells/stances/wards
+    // layered on in battle). The class AC tables were REMOVED (designer
+    // ruling 2026-09-04): armor is the thing that matters, not the level.
+    ch.ac = 10 + abilityMod(ch.abilities.dex) + (off.ac ?? 0)
       + pieces.reduce((sum, d) => sum + (d.ac || 0), 0);
     // Magic v2: the doc's SP formula (or a legacy array) + lane lean + gear.
     const newMax = Math.max(0, spellPointsFor(ch.cls, ch.level) + (off.sp ?? 0)
