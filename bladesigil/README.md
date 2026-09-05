@@ -9,8 +9,9 @@ window it spawns open while you play.
 
 The title screen offers **Create New Party** (roll your own four heroes: 3d6
 with 1s re-rolled, arrange the scores as you like, pick race/class/row),
-**Play Your Party** (your last created party, saved in the browser), or
-**Quick Start** (the pregenerated party from `data/party.json`).
+**Play Your Party** (your last created party, saved in the browser), and
+**Continue the Descent** when a run is saved. The game is also hosted at
+https://usmcm1a1.github.io/Blade-and-Sigil/ — see the README at the repo root.
 
 - **Arrow keys / WASD** — move the party. Walk into things to interact:
   - Walk into a **monster** to start a battle (see below)
